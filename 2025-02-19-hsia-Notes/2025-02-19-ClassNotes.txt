@@ -1,0 +1,122 @@
+
+# Chez Scheme
+https://scheme.com/download     
+
+
+-----------------------------------------------------
+CodeDescription :
+-----------------------------------------------------
+
+已完成：
+
+  None.
+
+新加入功能：
+
+  系統一開始print greetings.
+  使用者key in任何輸入、以ENTER做結束，系統就echo使用者的輸入
+  可以反覆如此做，直到使用者輸入done或quit或exit為止
+
+-----------------------------------------------------
+TestIO :
+-----------------------------------------------------
+
+Interactive I/O :
+
+> ./a.out
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> hello 
+echoing : hello 
+> Why is that???
+echoing : Why is that???
+> Are you here at all?
+echoing : Are you here at all?
+> done
+Bye! You have a good day!
+> 
+
+Batch input :
+
+>>>>>>>>
+hello
+Why is that???
+Are you here at all?
+done
+<<<<<<<<
+
+Batch output :
+
+> ./a.out < testInput1.txt 
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> echoing : hello
+> echoing : Why is that???
+> echoing : Are you here at all?
+> Bye! You have a good day!
+> 
+
+-----------------------------------------------------
+
+
+
+
+
+-----------------------------------------------------
+以下是第二個example of 'CodeDescription'與'TestIO' :
+-----------------------------------------------------
+
+-----------------------------------------------------
+CodeDescription :
+-----------------------------------------------------
+
+已完成：
+
+  系統一開始print greetings.
+  使用者key in任何輸入、以ENTER做結束，系統就echo使用者的輸入
+  可以反覆如此做，直到使用者輸入done或quit或exit為止
+
+新加入功能：
+
+  系統每次在處理完使用者輸入後會要求使用者重新輸入，
+  此時如果碰到EOF，系統就結束運作、並輸出結束訊息。
+
+-----------------------------------------------------
+TestIO :
+-----------------------------------------------------
+
+Interactive I/O :
+
+> ./a.out
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> hello 
+echoing : hello 
+> Why is that???
+echoing : Why is that???
+> Are you here at all?
+echoing : Are you here at all?
+> 
+Bye! You have a good day!
+> 
+
+Batch input :
+
+>>>>>>>>
+hello
+Why is that???
+Are you here at all?
+<<<<<<<<
+
+Batch output :
+
+> ./a.out < testInput1.txt 
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> echoing : hello
+> echoing : Why is that???
+> echoing : Are you here at all?
+> 
+Bye! You have a good day!
+
+-----------------------------------------------------
+
+
+
+

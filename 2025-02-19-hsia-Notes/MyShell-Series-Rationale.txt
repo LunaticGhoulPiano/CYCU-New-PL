@@ -1,0 +1,1225 @@
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ls
+execlTest-01       fork-wait-01.cpp   myShell-01n.cpp  myShell-04-01.cpp   myShell-05n.cpp
+execlTest-01.cpp   fork-wait-01n.cpp  myShell-02       myShell-04-01n.cpp  PrintEnv
+execlTest-01n.cpp  mMyShell           myShell-02.cpp   myShell-04-02       PrintEnv.c
+execvTest-01       mMyShell.cpp       myShell-02n.cpp  myShell-04-02.cpp   PrintEnv-n.c
+execvTest-01.cpp   mMyShell-n.cpp     myShell-03       myShell-04-02n.cpp  singlePID-fork-wait.cpp
+execvTest-01n.cpp  myShell-01         myShell-03.cpp   myShell-05
+fork-wait-01       myShell-01.cpp     myShell-03n.cpp  myShell-05.cpp
+
+註：
+
+以 myShell-02.cpp 與 myShell-02n.cpp 為例，myShell-02.cpp 是真正用來編譯與產生 myShell-02 的程式，而 myShell-02n.cpp 則是將 myShell-02.cpp 拿來、去掉一些『有礙視覺』的註解、同時也可能稍微美化一下(比如說又加一些comment與調整一下程式的寫法)後的結果。
+
+如果將 myShell-02n.cpp 拿來編譯，應該要得到與『拿myShell-02.cpp來編譯』同樣的結果。
+
+The basic idea is : 解釋程式是用 myShell-02n.cpp 來解釋，但 myShell-02.cpp 則包含更多(應該也算重要、但可能比較次要的)註解。
+
+---------------------------------------------------------------
+
+# A demo of how ./mMyShell works.
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ./mMyShell
+                                          <------------- 這個空行是另外加的(為了閱讀方便)
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> what is that
+echoing : what is that
+> what
+echoing : what
+> OK but
+echoing : OK but
+> quit
+Bye! You have a good day!
+
+---------------------------------------------------------------
+
+# its code :
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > cat mMyShell-n.cpp 
+                                          <------------- 這個空行是另外加的(為了閱讀方便)
+# include <cstdio>
+# include <iostream>
+# include <cstring>
+using namespace std ;
+
+// For a line that is 2000 char long, we need 2001 char-spaces.
+# define SIZE 2001
+# define NOT !
+
+int main( ) {
+
+  char ch ;
+  char * str = new char[SIZE] ;
+  bool done = false ;
+
+  printf( "Enter any string, followed by an ENTER. Enter 'done' when you are done.\n" ) ;
+
+  while ( NOT done ) {
+
+    printf( "> " ) ;
+
+    cin.getline( str, SIZE ) ;
+
+    if ( NOT done )
+      if ( ( strcmp( "done", str ) == 0 )
+           ||
+           ( strcmp( "quit", str ) == 0 )
+           ||
+           ( strcmp( "exit", str ) == 0 )
+         )
+        done = true ;
+      else // not "done" or "quit" or "exit"
+        printf( "echoing : %s\n", str ) ;
+
+    else // done
+      ;  // nothing needs to be done ; just exit the system-user interaction loop
+
+  } // while NOT done
+
+  printf( "Bye! You have a good day!\n" ) ;
+
+} // main()
+
+---------------------------------------------------------------
+
+# the actual code that I worked on :
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > cat mMyShell.cpp 
+                                          <------------- 這個空行是另外加的(為了閱讀方便)
+# include <cstdio>
+# include <iostream>
+# include <cstring>
+using namespace std ;
+
+// For a line that is 2000 char long, we need 2001 char-spaces.
+# define SIZE 2001
+# define NOT !
+
+int main( ) {
+
+  char ch ;
+  char * str = new char[SIZE] ;
+  bool done = false ;
+
+  printf( "Enter any string, followed by an ENTER. Enter 'done' when you are done.\n" ) ;
+
+  while ( NOT done ) {
+
+    printf( "> " ) ;
+
+    //   scanf( "%s", str ) ; // this does not get the whole line
+    cin.getline( str, SIZE ) ;
+    //   cin >> ch ;     // No need to read in the ENTER char when we use getline()
+
+    if ( NOT done )
+      if ( strcmp( "done", str ) == 0 )
+        done = true ;
+      else if ( strcmp( "quit", str ) == 0 )
+        done = true ;
+      else if ( strcmp( "exit", str ) == 0 )
+        done = true ;
+      else // not done or quit or exit
+        printf( "echoing : %s\n", str ) ;
+
+    else // done
+      ;  // nothing needs to be done ; just exit the system-user interaction loop
+
+  } // while NOT done
+
+  printf( "Bye! You have a good day!\n" ) ;
+
+} // main()
+
+---------------------------------------------------------
+
+# a more sophisticated demo :
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ./mMyShell
+                                          <------------- 這個空行是另外加的(為了閱讀方便)
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> That is
+echoing : That is
+>    That is    <--------- 前後都有空格
+echoing :    That is    <--------- 照章全印
+> <--------- 直接ENTER
+echoing : <--------- 啥都沒印
+>     <--------- 幾個空格再ENTER
+echoing :     <--------- 照章全印
+> exit <--------- 'exit'之後有一個空格
+echoing : exit <--------- 照章全印
+>  exit<--------- 'exit'之前有一個空格
+echoing :  exit<--------- 照章全印
+> exit<--------- 'exit'前後無空格
+Bye! You have a good day!
+
+---------------------------------------------------------
+準備好了嗎？ 現在要往前進了！ (we now extend mMyShell.cpp to get myShell-01n.cpp)
+---------------------------------------------------------
+
+# A demo of how shell reacts to Ctrl-d
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > abc=10                                    <--------- 定義了一個新的變數(所謂的shell variable)
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > echo $abc                                 <--------- 要print其值
+10
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > bash
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell  <--------- 這事實上是一個新的shell在與我們互動
+hsia > echo $abc
+                                                 <--------- 此shell沒abc這shell variable，所以空字串
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > <--------------------------------------------------- 在這裏直接按Ctrl-d
+exit
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell  <--------- 回到原來的shell了
+hsia > echo $abc                                 <--------- 證明一下
+10
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > 
+
+重點：
+
+When a shell gets its input from stdin (and prints its output to stdout), the execution of this shell will terminate when it encounters an EOT-char (which can be generated by pressing Ctrl-d ; 據說Windows是press Ctrl-z, followed by ENTER). Supposedly, shell will not read in this EOT-char.
+
+還有一重點：
+
+那Ctrl-d必須是整個line of input的第一個字元！否則無效。(這一點跟真正的input file可能有差距，I wonder what will happen if we are able to put an EOT-char (ASCII code 4) following, say 'abc', which is then followed by some more normal chars (such as 'abc') in a file and use this file as stdin when we invoke shell.)
+
+# A second demo of how shell reacts to Ctrl-d (note that it has to be the very first char of a line)
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > bash
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > echo hi
+hi
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia >     <-------------------------------------- Ctrl-d following several SPACEs
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia >         <---------------------------------- SPACEs followed by Ctrl-d, then more SPACEs
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > exit
+exit
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > echo $abc <-------------------------------- to make sure that I am really back
+10
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > 
+
+------------------------
+
+# An example of using a file as stdin when invoking shell
+
+Ubuntu-2204 : /home/hsia/Shell_Practice
+hsia > cat ex
+date 
+date
+
+Ubuntu-2204 : /home/hsia/Shell_Practice
+hsia > abcd=234
+Ubuntu-2204 : /home/hsia/Shell_Practice
+hsia > echo $abcd
+234
+Ubuntu-2204 : /home/hsia/Shell_Practice
+hsia > bash < ex         <--------------------- use the file 'ex' as stdin when we invoke bash
+公曆 20廿四年 十月 三日 週四 十七時十一分34秒
+公曆 20廿四年 十月 三日 週四 十七時十一分34秒
+Ubuntu-2204 : /home/hsia/Shell_Practice
+hsia > echo $abcd        <--------------------- to make sure that we are back
+234
+Ubuntu-2204 : /home/hsia/Shell_Practice
+hsia > 
+
+# As a matter of fact, we can do the same thing with myShell (i.e., use an actual file as stdin). However, we have to wait until myShell is capable of handling the EOF-character. (If you want, you can try to run 'mMyShell < ../ex' and see what happens. Use Ctrl-c to kill if you need to.)
+
+---------------------------------------------------------
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ./mMyShell
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> That is
+echoing : That is
+> <-------------- 如果我在這裏直接Ctrl-d
+echoing : 
+> 
+echoing : 
+> 
+echoing : 
+> 
+echoing : 
+> 
+echoing : 
+> 
+... <--------------- 以上的印出將會沒完沒了(an infinite loop!)。   ＷＨＹ？ What is your guess？
+
+---------------------------------------------------------
+
+# We now extend mMyShell.cpp so that it can also handle Ctrl-d (correctly), just like a normal shell
+
+hsia > cat myShell-01n.cpp
+
+# include <cstdio>
+# include <iostream>
+# include <cstring>
+using namespace std ;
+
+// For a line that is 2000 char long, we need 2001 char-spaces.
+# define SIZE 2001
+# define NOT !
+
+int main( ) {
+
+  char ch ;
+  char * str = new char[SIZE] ;
+  bool done = false ;
+
+  printf( "Enter any string, followed by an ENTER. Enter 'done' when you are done.\n" ) ;
+
+  while ( NOT done ) {
+
+    printf( "> " ) ;
+
+    cin.getline( str, SIZE ) ;
+
+    if ( cin.eof() ) {            <------------ 就加在這裡
+      done = true ;               <------------ (不過整個故事並沒這麼簡單
+      printf( "\n" ) ;            <------------  你必須看『無美化版』才能知道到底發生過什麼事)
+    } // if no more input         <------------
+
+    if ( NOT done )
+      if ( strcmp( "done", str ) == 0 )
+        done = true ;
+      else if ( strcmp( "quit", str ) == 0 )
+        done = true ;
+      else if ( strcmp( "exit", str ) == 0 )
+        done = true ;
+      else // not done or quit or exit
+        printf( "echoing : %s\n", str ) ;
+
+  } // while NOT done
+
+  printf( "Bye! You have a good day!\n" ) ;
+
+} // main()
+
+---------------------------------------------------------
+
+# a demo that myShell-01 is able to handle Ctrl-d, JUST LIKE how shell handles Ctrl-d
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ./myShell-01
+
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> hi there
+echoing : hi there
+> what
+echoing : what
+>           <-------------------- SPACEs Ctrl-d SPACES
+echoing :           
+>    <--------------------------- SPACEs Ctrl-d
+echoing :    
+> echoing : 
+> <------------------------------ Ctrl-d
+Bye! You have a good day!
+
+---------------------------------------------------------
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > cat myShell-01.cpp       # 『無美化版』that tells a story
+
+# include <cstdio>
+# include <iostream>
+# include <cstring>
+using namespace std ;
+
+// For a line that is 2000 char long, we need 2001 char-spaces.
+# define SIZE 2001
+# define NOT !
+
+int main( ) {
+
+  char ch ;
+  char * str = new char[SIZE] ;
+  bool done = false ;
+
+  printf( "Enter any string, followed by an ENTER. Enter 'done' when you are done.\n" ) ;
+
+  while ( NOT done ) {
+
+    printf( "> " ) ;
+
+    // if ( cin.eof() ) {            <------------- 本來是加在這裡的啦！理論上也該加在這裏才對！
+    //   done = true ;
+    //   printf( "\n" ) ;
+    // } // if no more input
+    // else // there is more input
+
+    //   scanf( "%s", str ) ; // this does not get the whole line
+    cin.getline( str, SIZE ) ;
+    //   cin >> ch ;     // No need to read in the ENTER char when we use getline()
+
+                                     # 若沒上面的cin.eof()測試碼，沒人(包括我)能看懂下面三行的解釋
+    // as it seems, if the user enters Ctrl-D at the start of a line, cin.eof() returns false ;
+    // getline() will directly return if the first char is Ctrl-D ; then, cin.eof() returns true
+    // (getline() will not return if the first char is not Ctrl-D and there is no line-enter (yet))
+
+    if ( cin.eof() ) {
+      done = true ;
+      printf( "\n" ) ;
+    } // if no more input
+
+    if ( NOT done )
+      if ( strcmp( "done", str ) == 0 )
+        done = true ;
+      else if ( strcmp( "quit", str ) == 0 )
+        done = true ;
+      else if ( strcmp( "exit", str ) == 0 )
+        done = true ;
+      else // not done or quit or exit
+        printf( "echoing : %s\n", str ) ;
+
+    else // done
+      ;  // nothing needs to be done ; just exit the system-user interaction loop
+
+  } // while NOT done
+
+  printf( "Bye! You have a good day!\n" ) ;
+
+} // main()
+
+---------------------------------------------------------
+
+Now that myShell can handle Ctrl-d perfectly (I hope), we can now use myShell-01 to demonstrate that we can also "feed" input to myShell by using the '< fileName' mechanism. 
+
+myShell is just like bash. Both are just executables. We, the ones who run an executable, are the ones who are responsible for determining what (a file or a terminal or the stdout of some other process) is the stdin of the executable we run.
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > cat ../ex
+date 
+date
+                                  <------------- 真的有一個end-of-line在這，這不是另外加的。
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ./myShell-01 < ../ex
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> echoing : date 
+> echoing : date
+> echoing : 
+> echoing : 
+> 
+Bye! You have a good day!
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > 
+
+# In comparison
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > bash < ../ex
+公曆 20廿四年 十月 五日 週六 十一時37分廿三秒
+公曆 20廿四年 十月 五日 週六 十一時37分廿三秒
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > 
+
+# Well, 也許還是用scanf( "%c", &ch )或getchar()比較好(比較符合需求)...
+
+---------------------------------------------------------
+
+目前的狀況
+
+mMyshell-n.cpp      : the basic idea of system-user interaction (content of main() of ANY interpreter)
+mMyshell.cpp        : actual code
+
+myShell-01n.cpp     : adding code to allow Ctrl-d (the EOT-char) to work
+myShell-01.cpp      : actual code
+
+接下來要做的是
+
+myShell-02n.cpp     : code transformation to get a standard GetUserInput-ProcessUserInput-PrintSystemResponse code structure
+
+---------------------------------------------------------
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > cat myShell-02n.cpp
+
+# include <cstdio>
+# include <iostream>
+# include <cstring>
+using namespace std ;
+
+// For a line that is 2000 char long, we need 2001 char-spaces.
+# define SIZE 2001
+# define NOT !
+
+typedef char InputStrType[SIZE] ;
+
+void GetUserInput( InputStrType userInput ) ;
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+void PrintSystemOutput( string response ) ;
+
+int main( ) {
+
+  InputStrType inputStr = {} ;  // initialized to be all NULLs
+  bool done = false ;
+
+  printf( "Enter any string, followed by an ENTER. Enter 'done' when you are done.\n" ) ;
+
+  while ( NOT done ) {
+
+    printf( "> " ) ;
+
+    GetUserInput( inputStr ) ;
+
+    if ( cin.eof() ) {
+      done = true ;
+      printf( "\n" ) ;
+    } // if no more input
+
+    if ( NOT done ) {
+
+      string response = "" ;
+      ProcessUserInput( done, inputStr, response ) ;
+
+      if ( NOT done )
+        PrintSystemOutput( response ) ;
+
+    } // if NOT done
+
+    else // done
+      ;  // nothing needs to be done ; just exit this interaction loop
+
+  } // while NOT done
+
+  printf( "Bye! You have a good day!\n" ) ;
+
+} // main()
+
+void GetUserInput( InputStrType userInput ) {
+// There is user input, and it is guaranteed not to start with a Ctrl-D ;
+// Get one line of user input and put it in 'userInput' (at most SIZE char are allowed, including NULL)
+
+  cin.getline( userInput, SIZE ) ;
+
+} // GetUserInput()
+
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) {
+// Process user input and put system response (to user) in 'response'
+
+  response = "" ; // if done
+
+  if ( strcmp( "done", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "quit", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "exit", inputStr ) == 0 )
+    done = true ;
+  else // NOT done
+    response = "echoing : " + string( inputStr ) + "\n" ;
+
+} // ProcessUserInput()
+
+void PrintSystemOutput( string response ) {
+
+  printf( "%s", response.c_str() ) ;
+
+} // PrintSystemOutput()
+
+---------------------------------------------------------
+
+# We now show that myShell-02n.cpp is just a very SIMPLE TRANSFORMATION of the previous code (myShell-01n.cpp). Everything works just the same. It is just that the old code has now been reorganized so that what we have now is a "standard" code structure (for interpreters of all languages, including shell-scripting languages).
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ./myShell-02
+                                          <------------- 這個空行是另外加的(為了閱讀方便)
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> what hi hello
+echoing : what hi hello
+> there
+echoing : there
+>        <------------------------- SPACEs, Ctrl-d
+echoing :        
+>          <----------------------- SPACEs, Ctrl-d, SPACEs
+echoing :          
+> done
+Bye! You have a good day!
+
+
+# again
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > ./myShell-02
+                                          <------------- 這個空行是另外加的(為了閱讀方便)
+Enter any string, followed by an ENTER. Enter 'done' when you are done.
+> hi
+echoing : hi
+> <-------------------------------- Ctrl-d
+Bye! You have a good day!
+
+
+
+---------------------------------------------------------
+
+各位！在myShell這支程式的"發展史"上(In the course of developing myShell)，我們已來到一個(看似很不起眼、但卻超級)重要的一個轉捩點：程式的模組化。
+
+從現在開始，我們將會一直「有些(會愈來愈多)模組不動它，有些模組則開始"深化"(refine)之、也會因此而必須加入新的模組」，直到把myShell搞定為止。
+
+註：我們在這裏把function稱為『模組』，這事實上不太對，不過暫時就這樣。
+
+重點是：
+
+  原有的功能基本上會持續保持，新功能則持續增加。
+  已寫好的模組會--繼續重用--、若沒必要就不會去動它！(這點很重要)
+  每次都是"深化"(refine)某一模組或再增加一二模組(因為必須要做一些新的事)，
+  在深化任一個模組時、我們必須要小心『code的安排』、原則上不應影響到『此模組原先已能做到的功能』。(這點也超級重要)
+  要確保每一模組都「使命必達！不負所托！」 # 此模組的使命是啥？講清楚！說明白！它有沒有確實做到？你必須確定之！！！
+
+重點的重點：
+
+  從現在開始，看程式再也不是『從頭看到尾』了！！！
+
+  從現在開始，我們必須「心中(腦中)永遠都有一個『程式的整體邏輯』」，看程式也必須永遠都是「心中(腦中)有著程式的整體邏輯，只是在『檢查與調整個別環節的運作』"而已"」。
+
+  (這就有點像是一個公司的CEO永遠都必須『非常清楚公司要做到什麼、挑戰是啥、各要怎麼應付、各個重要環節又是由誰在負責』，如果出事了、CEO就必須查出是哪個環節出了問題、為什麼會發生這問題、也必須找人想出可行的調整、使不再出錯、而且新作法也絕對不能讓原先沒問題的地方反而(因為新作法而)發生問題，必要時可能甚至必須整個公司的組織架構全部重新調整(所謂的『砍掉重煉』))
+
+  (如果做不到這樣 或 完全不想這樣做，那你還是別當CEO吧)
+
+---------------------------------------------------------
+
+Next :
+
+  How can this code RECOGNIZE, e.g., "a = 10" and "a" and process it correctly?
+
+  First, this code must be able to RECOGNIZE such a "command" and also KNOW what command it is.
+  Then, this code must be able to DO what this "command" is asking for.
+
+---------------------------------------------------------
+
+void GetUserInput( InputStrType userInput ) ;
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+void PrintSystemOutput( string response ) ;
+
+改哪個？
+
+記住：不管改哪個，都必須尊重其他的！！！ (此即所謂的各司其職！否則大家怎麼合作？？？這從頭到尾就是個合作的概念！！！)
+
+---------------------------------------------------------
+
+先想像(計畫)一下你打算達成的是什麼...
+
+hsia > ./myShell-03
+
+Enter a var-name or '<varName> = <string>' or two or more words and then ENTER. Use 'done' to exit.
+> what how
+echoing : what how            <-------- same as before
+> This is strange.
+echoing : This is strange.    <-------- same as before
+> abc = 100                   <-------- new
+> def = 200                   <-------- the same kind of new one
+> abc                         <-------- new (what is the difference with the previous "new" one???)
+100
+> def
+200
+> abc   
+100
+>     abc    <------------------------- SPACEs should not cause any problem
+100
+> def = 30       <--------------------- SPACEs should not cause any problem
+> def
+30
+>       abc      =     456     <------- SPACEs should not cause any problem
+> abc
+456
+>     def<----------------------------- SPACEs should not cause any problem
+30
+> what<------------------------- 這個可能在一開始不會想得那麼清楚，要到後來才會發現這跟"abc"應是一樣的處理方式
+
+> abc is<----------------------- 就這麼決定了！要麼"abc = defg"要麼"abc"，除此之外都只是給它echo而已。
+echoing : abc is
+> done
+Bye! You have a good day!
+
+---------------------------------------------------------
+
+So, what should we do?
+
+void GetUserInput( InputStrType userInput ) ;
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+void PrintSystemOutput( string response ) ;
+
+改哪個？
+
+記住：不管改哪個，都必須尊重其他的！！！ (此即所謂的各司其職！否則大家怎麼合作？？？這從頭到尾就是個合作的概念！！！)
+
+目前的程式架構是：
+
+  基本上就是
+    void GetUserInput( InputStrType userInput ) ;
+    void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+    void PrintSystemOutput( string response ) ;
+  反覆做。
+  
+  ProcessUserInput()會檢查user input(即userInput)、並適當處理'done'/'exit'/'quit'的case，剩下的一百零一個case(既非'done'  也非'exit'也非'quit')就直接讓它成為output-string，只是前面加上"echoing : "的字眼而已。(系統會叫PrintSystemOutput()把這output-string給印出去)。ProcessUserInput()就"只"處理這兩種case。Ctrl-d則不干這裡的事，已由別處處理掉了。
+
+  (就ProcessUserInput()而言，Ctrl-d在別處是怎麼處理的、完全是「干我屁事！」，此即所謂的『本位主義』。「各人自掃門前雪，休管他人瓦上霜！」，ProcessUserInput()不該管、事實上也管不了、他人的瓦上霜！！！ 當你(主事者)來到ProcessUserInput()時，你--應該、也必須思考清楚的--是ProcessUserInput()的運作細節、並確保ProcessUserInput()一切都『運作順暢、使命必達』！！！ 此時、你不該去思考整個程式的--所有--細節！！！ 不管你願不願意承認，你事實上無法同時思考一支大程式的--所有--運作細節(更別說、你現在正看著ProcessUserInput()的程式碼在作思考，你又怎可能在此時此刻同時思考清楚整支程式的--所有--運作細節？『思考一下整體邏輯(以及ProcessUserInput()在此中所扮演的角色)』是可行的(畢竟程式的整體邏輯自始至終都牢記在腦中)，但不是、也不該是『思考與檢查整支程式的--所有--運作細節』)。)
+
+  (有誰能『不看著程式碼而嚴格檢查此段程式碼的正確性』的？ 也許有這種人，但絕對不會是你(更不是我)！)
+
+  # myShell總共就這麼三種case : Ctrl-d (system exit)、'done'/'exit'/'quit' (system exit)、其他 (echo之)。
+
+記住這個架構沒有？
+
+目前的(完整)程式碼：
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > cat myShell-02.cpp
+
+# include <cstdio>
+# include <iostream>
+# include <cstring>
+using namespace std ;
+
+// For a line that is 2000 char long, we need 2001 char-spaces.
+# define SIZE 2001
+# define NOT !
+
+typedef char InputStrType[SIZE] ;
+
+void GetUserInput( InputStrType userInput ) ;
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+void PrintSystemOutput( string response ) ;
+
+int main( ) {
+
+  InputStrType inputStr = {} ;  // initialized to be all NULLs
+  bool done = false ;
+
+  printf( "Enter any string, followed by an ENTER. Enter 'done' when you are done.\n" ) ;
+
+  while ( NOT done ) {
+
+    printf( "> " ) ;
+
+    /*
+    if ( cin.eof() ) { // no more user input
+      done = true ;
+      printf( "\n" ) ;  // Ctrl-D should be echoed as line-enter
+    } // if no more user input
+
+    else // there is more user input
+      GetUserInput( inputStr ) ;
+    */
+
+    GetUserInput( inputStr ) ;
+
+    // as it seems, if the user enters Ctrl-D at the start of a line, cin.eof() returns false ;
+    // getline() will directly return if the first char is Ctrl-D ; then, cin.eof() returns true
+    // (getline() will not return if the first char is not Ctrl-D and there is no line-enter (yet))
+
+    if ( cin.eof() ) {
+      done = true ;
+      printf( "\n" ) ;
+    } // if no more input
+
+    if ( NOT done ) {
+
+      string response = "" ;
+      ProcessUserInput( done, inputStr, response ) ;
+
+      if ( NOT done )
+        PrintSystemOutput( response ) ;
+
+    } // if NOT done
+
+    // else done
+    //   nothing needs to be done ; just exit this interaction loop
+
+  } // while NOT done
+
+  printf( "Bye! You have a good day!\n" ) ;
+
+} // main()
+
+void GetUserInput( InputStrType userInput ) {
+// There is user input, and it is guaranteed not to start with a Ctrl-D ;
+// Get one line of user input and put it in 'userInput' (at most SIZE char are allowed, including NULL)
+
+  // scanf( "%s", inputStr ) ; // this does not get the whole line
+  cin.getline( userInput, SIZE ) ;
+  // cin >> ch ;     // No need to read in the ENTER char when we use getline()
+
+} // GetUserInput()
+
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) {
+
+  response = "" ; // if done
+
+  if ( strcmp( "done", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "quit", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "exit", inputStr ) == 0 )
+    done = true ;
+  else // NOT done
+    response = "echoing : " + string( inputStr ) + "\n" ;
+
+} // ProcessUserInput()
+
+void PrintSystemOutput( string response ) {
+
+  printf( "%s", response.c_str() ) ;
+
+} // PrintSystemOutput()
+
+---------------------------------------------------------
+
+# 改ProcessUserInput吧！
+
+# 亦即：
+
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) {
+// Process user input and put system response (to user) in 'response'
+
+  response = "" ; // default for 'done'
+
+  if ( strcmp( "done", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "quit", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "exit", inputStr ) == 0 )
+    done = true ;
+  else if ( IsCmdAndProcessed( inputStr, response ) )    <---------------------
+    ; // NOT done ; response set by IsCmdAndProcessed()  <---------------------
+  else // NOT 'done'/'quit'/'exit' and NOT a command
+    response = "echoing : " + string( inputStr ) + "\n" ;
+
+} // ProcessUserInput()
+
+用 IsCmdAndProcessed( inputStr, response ) 來處理 (整個line只有)"abc = defg"與"abc"  的狀況，其他都不變。
+
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+Will that take care of the (newly added) problem (the case of user commands)?
+
+---------------------------------------------------------
+
+看清楚！想清楚！
+
+回顧一下我們想要達到的效果：
+
+hsia > ./myShell-03
+
+Enter a var-name or '<varName> = <string>' or two or more words and then ENTER. Use 'done' to exit.
+> what how
+echoing : what how 
+> This is strange.
+echoing : This is strange.
+> abc = 100
+> def = 200
+> abc
+100
+> def
+200
+> abc   
+100
+>     abc
+100
+> def = 30
+> def
+30
+>       abc      =     456
+> abc
+456
+>     def
+30
+> what
+
+> abc is
+echoing : abc is
+> done
+Bye! You have a good day!
+
+而計畫做的修改是：
+
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) {
+// Process user input and put system response (to user) in 'response'
+
+  response = "" ; // default for 'done'
+
+  if ( strcmp( "done", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "quit", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "exit", inputStr ) == 0 )
+    done = true ;
+  else if ( IsCmdAndProcessed( inputStr, response ) )    <---------------------
+    ; // NOT done ; response set by IsCmdAndProcessed()  <---------------------
+  else // NOT 'done'/'quit'/'exit' and NOT a command
+    response = "echoing : " + string( inputStr ) + "\n" ;
+
+} // ProcessUserInput()
+
+可行嗎？？？？？？？？
+
+IsCmdAndProcessed( inputStr, response ) 只處理 (整個line只有)"abc = defg"與"abc" 的那種，
+剩下的就由原有的code來應付就好。
+
+可乎？？？？？？？？
+
+請注意IsCmdAndProcessed這個名字！！！(名字很重要)  
+
+註：我們在這裏把"abc = defg"與"abc"這種東東叫command，其他的都不是command。
+
+---------------------------------------------------------
+
+以下就是打算加進去的東西(純粹是為了處理"abc = defg"與"abc"這種user input)
+
+struct Variable {
+  string name ;
+  string value ;
+} ;
+
+typedef Variable VariableArray[ 50 ] ;
+
+VariableArray uVars ; // at most 50 myShell-vars
+int uVarCount = 0 ;   // currently none
+
+string FindValue( ShortString name ) ;
+void SetValue( ShortString name, ShortString value ) ;
+
+bool IsCmdAndProcessed( InputStrType inputStr, string & response ) {
+// We only accept two kinds of "commands" :
+//   abc       // print the value of 'abc' in this case
+//   abc = 10  // set 'abc' to '10' and print nothing
+// It is  assumed that there is no error in the input.
+
+  bool isCmd = false ;  // assume
+
+  ShortString name, equalSign, value, more ;
+
+  int numOfMatch = sscanf( inputStr, "%s%s%s%s", name, equalSign, value, more ) ;
+
+  if ( numOfMatch == 1 || (( numOfMatch == 3 ) && string( equalSign ) == "=" ) ) {
+
+    isCmd = true ;
+
+    if ( numOfMatch == 1 )
+      response = FindValue( name ) ;
+
+    else { // ( numOfMatch == 3 && equalSign == "=" )
+
+      SetValue( name, value ) ;
+      response = "" ;
+
+    } // else "abc = 20"
+
+  } // if is command
+
+  return isCmd ;
+
+} // IsCmdAndProcessed()
+
+可以達成任務嗎？？？
+
+# Don't you think it's really ＮＯＴ ALL THAT HARD？
+
+---------------------------------------------------------
+
+會work嗎？
+
+Recall our design :
+
+  IsCmdAndProcessed( inputStr, response ) 只處理 (整個line只有)"abc = defg"與"abc"  的那種，
+  剩下的就由現有的code來應付就好。
+
+  # 程式中忘了加註：'done'在一開始必是false。
+
+  response = "" ; // default for 'done'
+
+  if ( strcmp( "done", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "quit", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "exit", inputStr ) == 0 )
+    done = true ;
+  else if ( IsCmdAndProcessed( inputStr, response ) )    <---------------------
+    ; // NOT done ; response set by IsCmdAndProcessed()  <---------------------
+  else // NOT 'done'/'quit'/'exit' and NOT a command
+    response = "echoing : " + string( inputStr ) + "\n" ;
+
+  註：Ctrl-d已經由其他部分處理掉了！不干我們這邊的事！使用者所input的整個line的內容也已經存在inputStr裡面了。
+
+So the question is (only) :
+  
+  IsCmdAndProcessed( inputStr, response ) 可以處理 (整個line只有)"abc = defg"與"abc" 的那種嗎？
+
+  Yes還是no？
+
+只要IsCmdAndProcessed( inputStr, response ) 確實可以處理 (整個line只有)"abc = defg"與"abc" 的case，
+(當然也必須要事先確定SetValue()與FindValue()的運作無誤！不過那是另一回事！總共有三回事(而不是一回事)！
+ 這三回事的『運作正確與否』是可以獨立開來、個別判斷的！ This is ＶＥＲＹ ＶＥＲＹ ＩＭＰＯＲＴＡＮＴ！)
+
+那這個"系統"--應該--就可以達成預設的目標了，對吧？ 
+
+(當然，『微調』幾乎是不可免的，但『整體邏輯沒錯』是最重要的！你必須隨時都很清楚自己的整體邏輯是什麼！！！)
+
+---------------------------------------------------------
+
+This (way of reasoning) leads us to developing the following program (by adding IsCmdAndProcessed(), FindValue(), SetValue(), and the needed data structure for storing "shell variables" and their string-values).
+
+在沒看完整程式碼之前先問一下：
+
+    你知道看下面的程式應該要看哪裡嗎？
+
+
+基本上就是
+  void GetUserInput( InputStrType userInput ) ;
+  void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+  void PrintSystemOutput( string response ) ;
+反覆做。
+
+ProcessUserInput()會呼叫
+  bool IsCmdAndProcessed( InputStrType inputStr, string & response ) ;
+來負責偵測與處理command(總共就只有兩種command：a = 10 與 a)的部分
+(其他的就直接讓它成為output-string，只是前面加上"echoing : "的字眼。Ctrl-d則不干這裡的事，已由別處處理掉了。)
+
+bool IsCmdAndProcessed( InputStrType inputStr, string & response ) ;
+則需要兩個小老弟的支援(而且不能出錯) ：
+  string FindValue( ShortString name ) ;
+  void SetValue( ShortString name, ShortString value ) ;
+
+
+所以，下面的程式應該要看哪裡？
+
+應該要看
+
+  IsCmdAndProcessed()是如何被呼叫的？ 它應該要做什麼？ 又應該要return什麼？
+
+  IsCmdAndProcessed()是如何呼叫SetValue()與FindValue()的? 又依賴它們完成什麼任務？
+
+  SetValue()與FindValue()是不是確實能夠完成它們該完成的任務？
+
+這就是你該看的地方！
+
+# 否則、程式那麼大(而且只會愈長愈大)，你要看什麼地方？？？ 
+
+# 『已經檢查過、也確定過的地方』就不要再看了啦！拜託！你沒那麼多精力、也沒那麼多時間，更不可能每次都檢查全部小細節！！！
+
+
+Ubuntu-2204 : /home/hsia/Shell_Practice/MyShell
+hsia > cat myShell-03n.cpp 
+
+# include <cstdio>
+# include <iostream>
+# include <cstring>
+using namespace std ;
+
+// For a line that is 2000 char long, we need 2001 char-spaces.
+# define SIZE 2001
+# define NOT !
+
+typedef char InputStrType[SIZE] ;
+typedef char ShortString[50] ;
+
+struct Variable {
+  string name ;
+  string value ;
+} ;
+
+typedef Variable VariableArray[ 50 ] ;
+
+VariableArray uVars ; // at most 50 myShell-vars
+int uVarCount = 0 ;   // currently none
+
+void GetUserInput( InputStrType userInput ) ;
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+void PrintSystemOutput( string response ) ;
+
+string FindValue( ShortString name ) ;
+void SetValue( ShortString name, ShortString value ) ;
+bool IsCmdAndProcessed( InputStrType inputStr, string & response ) ;
+
+int main( ) {
+
+  InputStrType inputStr = {} ;  // initialized to be all NULLs
+  bool done = false ;
+
+  printf( "Enter a var-name or '<varName> = <string>' or two or more words and then ENTER. Use 'done' to exit.\n" ) ;
+
+  while ( NOT done ) {
+
+    printf( "> " ) ;
+
+    GetUserInput( inputStr ) ;
+
+    if ( cin.eof() ) {
+      done = true ;
+      printf( "\n" ) ;
+    } // if no more input
+
+    if ( NOT done ) {
+
+      string response = "" ;
+      ProcessUserInput( done, inputStr, response ) ;
+
+      if ( NOT done )
+        PrintSystemOutput( response ) ;
+
+    } // if NOT done
+
+    else // done
+      ;  // nothing needs to be done ; just exit this interaction loop
+
+  } // while NOT done
+
+  printf( "Bye! You have a good day!\n" ) ;
+
+} // main()
+
+void GetUserInput( InputStrType userInput ) {
+// There is user input, and it is guaranteed not to start with a Ctrl-D ;
+// Get one line of user input and put it in 'userInput' (at most SIZE char are allowed, including NULL)
+
+  cin.getline( userInput, SIZE ) ;
+
+} // GetUserInput()
+
+string FindValue( ShortString varName ) {
+
+  string toReturn = "" ;
+
+  for ( int i = 0 ; i < uVarCount ; i++ )
+    if ( uVars[i].name == string( varName ) )
+      toReturn = uVars[i].value ;
+
+  return toReturn + "\n" ;
+
+} // FindValue()
+
+void SetValue( ShortString name, ShortString value ) {
+
+  bool exist = false ;  // found to exist (in uVars[])
+  int inWhere = -1 ;    // of uVars[]
+
+  for ( int i = 0 ; i < uVarCount && NOT exist ; i++ )
+    if ( uVars[i].name == string( name ) ) {
+      exist = true ;
+      inWhere = i ;
+    } // if found
+
+  if ( exist )
+    uVars[inWhere].value = string( value ) ;
+
+  else { // NOT yet exist in uVars[]
+
+    uVars[ uVarCount ].name = string( name ) ;
+    uVars[ uVarCount ].value = string( value ) ;
+    uVarCount++ ;
+
+  } // else NOT yet exist (in uVars[])
+
+} // SetValue()
+
+bool IsCmdAndProcessed( InputStrType inputStr, string & response ) {
+// We only accept two kinds of "commands" :
+//   abc       // print the value of 'abc' in this case
+//   abc = 10  // set 'abc' to '10' and print nothing
+// It is  assumed that there is no error in the input.
+
+  bool isCmd = false ;  // assume
+
+  ShortString name, equalSign, value, more ;
+
+  int numOfMatch = sscanf( inputStr, "%s%s%s%s", name, equalSign, value, more ) ;
+
+  if ( numOfMatch == 1 || (( numOfMatch == 3 ) && string( equalSign ) == "=" ) ) {
+
+    isCmd = true ;
+
+    if ( numOfMatch == 1 )
+      response = FindValue( name ) ;
+
+    else { // ( numOfMatch == 3 && equalSign == "=" )
+
+      SetValue( name, value ) ;
+      response = "" ;
+
+    } // else "abc = 20"
+
+  } // if is command
+
+  return isCmd ;
+
+} // IsCmdAndProcessed()
+
+void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) {
+// Process user input and put system response (to user) in 'response'
+
+  response = "" ; // default for 'done'
+
+  if ( strcmp( "done", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "quit", inputStr ) == 0 )
+    done = true ;
+  else if ( strcmp( "exit", inputStr ) == 0 )
+    done = true ;
+  else if ( IsCmdAndProcessed( inputStr, response ) )
+    ; // NOT done ; response set by IsCmdAndProcessed()
+  else // NOT 'done'/'quit'/'exit' and NOT a command
+    response = "echoing : " + string( inputStr ) + "\n" ;
+
+} // ProcessUserInput()
+
+void PrintSystemOutput( string response ) {
+
+  printf( "%s", response.c_str() ) ;
+
+} // PrintSystemOutput()
+
+---------------------------------------------------------
+
+有沒有注意到：程式愈長愈大了！但這又怎樣？重點是：你知不知道自己的整體邏輯是什麼？
+
+大家(所有模組)都各司其職！每個模組的任務是什麼？誰又是在呼叫誰？
+
+把大家(各個模組)彼此的關係分辨清楚！把每個人各自的任務分派清楚！
+
+只要你這個主導者能確保每個人(模組)的任務都夠明確、每個人(模組)也都有做到「使命必達、不負所托」，程式就該work！不work的理由是什麼？
+
+如果不work，要麼是任務分派不夠明確、要麼是有人擺爛！找出來！！！ 是誰該做到什麼沒做到？ 它沒做到的理由又是什麼？ Find it! And then fix it! 這就是debug！ (如果是你這個主導者自己沒把任務分派的很明確，那你就該向自己道歉、然後重新分派清楚)
+
+相信邏輯！！！ 別相信xxx(自己填空)！！！
+
+---------------------------------------------------------
+
+Review (again) : 
+
+基本上就是
+  void GetUserInput( InputStrType userInput ) ;
+  void ProcessUserInput ( bool & done, InputStrType inputStr, string & response ) ;
+  void PrintSystemOutput( string response ) ;
+反覆做。
+
+ProcessUserInput()會呼叫
+  bool IsCmdAndProcessed( InputStrType inputStr, string & response ) ;
+來負責偵測與處理command(總共就只有兩種command：a = 10 與 a)的部分
+(其他的就直接讓它成為output-string，只是前面加上"echoing : "的字眼。Ctrl-d則不干這裡的事，已由別處處理掉了。)
+
+bool IsCmdAndProcessed( InputStrType inputStr, string & response ) ;
+則需要兩個小老弟的支援(而且不能出錯) ：
+  string FindValue( ShortString name ) ;
+  void SetValue( ShortString name, ShortString value ) ;
+
+# 以上應該能有效解釋『系統(shell)是如何implement/support所謂的shell variables』了吧？！
+ 
+  (就是這樣做的呀！程式碼也許不一樣，存取機制也很有可能大不同，但概念就是這樣啊！它(shell)還能怎麼做？！)
+
+---------------------------------------------------------
