@@ -2,6 +2,7 @@
 #include <exception>
 #include <vector>
 #include <string>
+#include <sstream>
 #include <memory>
 
 /* Token Types*/
@@ -139,22 +140,35 @@ class NoMoreInput: public BaseException {
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Parser {
     private:
-        std::string buffer;
-    public:
+        char ch;
+        std::string line;
+        std::stringstream buffer;
+        int errorLine = 0, errorColumn = 1;
         std::vector<Token> tokens;
-        
+
+    public:
         S_Exp_Parser() {
-            buffer = "";
+            ch = '\0';
+            line = "";
+            buffer.str("");
+            buffer.clear();
         }
 
-        void readAndTokenize() {
-            // read
-            buffer = "";
-            if (! std::getline(std::cin, buffer)) throw NoMoreInput();
-            
-            // tokenize
-            for (int i = 0; i < buffer.length(); i++) {
-                //
+        void read() {
+            line = "";
+            if (! std::getline(std::cin, line)) throw NoMoreInput();
+            errorLine++;
+        }
+        
+        void tokenize() {
+            ch = '\0';
+            buffer.str("");
+            buffer.clear();
+            buffer << line;
+            while (buffer.get(ch)) {
+                errorColumn++;
+                // check whitespace
+                std::cout << ch << std::endl;
             }
         }
 };
@@ -166,17 +180,23 @@ int main() {
     while (true) {
         std::cout << "> ";
         try {
-            parser.readAndTokenize();
-        } catch (NoMoreInput &e) {
+            parser.read();
+            parser.tokenize();
+        } catch (NoMoreInput &e) { // Windows: Ctrl+Z, Linux/Unix: Ctrl+D
             std::cerr << e.what() << std::endl;
+            break;
         } catch (UnexpectedToken &e) {
             std::cerr << e.what() << std::endl;
+            break;
         } catch (NoClosingQuote &e) {
             std::cerr << e.what() << std::endl;
+            break;
         } catch (NoRightParen &e) {
             std::cerr << e.what() << std::endl;
+            break;
         } catch (...) {
             std::cerr << "Unknown error" << std::endl;
+            break;
         }
     }
     return 0;
