@@ -5,6 +5,8 @@
 #include <sstream>
 #include <memory>
 
+int gTestNum;
+
 /* Token Types*/
 enum class TokenType {
     LEFT_PARENT, // '('
@@ -139,12 +141,17 @@ class NoMoreInput: public BaseException {
 // <S-exp> ::= <ATOM> | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | QUOTE <S-exp>
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Parser {
+    
     private:
         char ch;
         std::string line;
         std::stringstream buffer;
-        int errorLine = 0, errorColumn = 1;
+        int lineNum = 0, columnNum = 1;
         std::vector<Token> tokens;
+
+        bool isWhiteSpace(char ch) {
+            return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
+        }
 
     public:
         S_Exp_Parser() {
@@ -157,7 +164,7 @@ class S_Exp_Parser {
         void read() {
             line = "";
             if (! std::getline(std::cin, line)) throw NoMoreInput();
-            errorLine++;
+            lineNum++;
         }
         
         void tokenize() {
@@ -166,15 +173,19 @@ class S_Exp_Parser {
             buffer.clear();
             buffer << line;
             while (buffer.get(ch)) {
-                errorColumn++;
-                // check whitespace
-                std::cout << ch << std::endl;
+                columnNum++;
+
+                // split and judge the token type
+                if (isWhiteSpace(ch)) continue; // ignore white space
+                else if (ch == ';') break; // comment
+                else if (ch == '(') {}
             }
         }
 };
 
 /* Main Read-Eval-Print-Loop */
 int main() {
+    std::cin >> gTestNum;
     std::cout << "Welcome to OurScheme!" << std::endl;
     S_Exp_Parser parser;
     while (true) {
@@ -182,7 +193,7 @@ int main() {
         try {
             parser.read();
             parser.tokenize();
-        } catch (NoMoreInput &e) { // Windows: Ctrl+Z, Linux/Unix: Ctrl+D
+        } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
             break;
         } catch (UnexpectedToken &e) {
