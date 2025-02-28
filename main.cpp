@@ -133,45 +133,51 @@ class NoMoreInput: public BaseException {
         NoMoreInput(): BaseException("ERROR (no more input) : END-OF-FILE encountered") {}
 };
 
-/* Lexer */
+/* S-Expression Recursive Descent Parser */
 // Syntax of OurScheme:
 // <S-exp> ::= <ATOM> | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | QUOTE <S-exp>
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
-class S_Exp_Lexer {
+class S_Exp_Parser {
     private:
         std::string buffer;
     public:
-        S_Exp_Lexer() {
-            buffer = "";
-        }
-        void read() {
-            buffer = "";
-            std::getline(std::cin, buffer);
-        }
-
-        void syntaxAnalysis() {}
-};
-
-/* S-Expression Recursive Descent Parser */
-class S_Exp_Parser {
-    public:
         std::vector<Token> tokens;
+        
+        S_Exp_Parser() {
+            buffer = "";
+        }
+
+        void readAndTokenize() {
+            // read
+            buffer = "";
+            if (! std::getline(std::cin, buffer)) throw NoMoreInput();
+            
+            // tokenize
+            for (int i = 0; i < buffer.length(); i++) {
+                //
+            }
+        }
 };
 
 /* Main Read-Eval-Print-Loop */
 int main() {
     std::cout << "Welcome to OurScheme!" << std::endl;
-    S_Exp_Lexer lexer;
     S_Exp_Parser parser;
     while (true) {
         std::cout << "> ";
-        lexer.read();
         try {
-            lexer.syntaxAnalysis();
-        } catch(const std::exception& e) {
-            std::cerr << e.what() << '\n';
+            parser.readAndTokenize();
+        } catch (NoMoreInput &e) {
+            std::cerr << e.what() << std::endl;
+        } catch (UnexpectedToken &e) {
+            std::cerr << e.what() << std::endl;
+        } catch (NoClosingQuote &e) {
+            std::cerr << e.what() << std::endl;
+        } catch (NoRightParen &e) {
+            std::cerr << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "Unknown error" << std::endl;
         }
-        
     }
     return 0;
 }
