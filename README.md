@@ -9,3 +9,4 @@
     3. Ok
     4. Great
     0. Not good
+- Project分數到80可以不用出席
