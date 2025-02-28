@@ -1,11 +1,10 @@
 #include <iostream>
 #include <exception>
 #include <vector>
-//#include <unordered_map>
 #include <string>
 #include <memory>
 
-// Types
+/* Token Types*/
 enum class TokenType {
     LEFT_PARENT, // '('
     RIGHT_PARENT, // ')'
@@ -24,7 +23,7 @@ enum class TokenType {
         // (i.e., uppercase and lowercase are different);
 };
 
-// Token structure
+/* Token structure */
 struct Token {
     TokenType type;
     std::string value;
@@ -32,7 +31,7 @@ struct Token {
     int column;
 };
 
-// S-Expression Abstract Syntax Tree
+/* S-Expression Abstract Syntax Tree */
 class ASTNode {
     public:
         virtual ~ASTNode() = default;
@@ -93,7 +92,7 @@ class DotPairNode: public ASTNode {
         }
 };
 
-// Exceptions
+/* Error Exceptions */
 class BaseException: public std::exception {
     protected:
         std::string message = "";
@@ -104,19 +103,37 @@ class BaseException: public std::exception {
         }
 };
 
+// ERROR (unexpected token) : atom or '(' expected when token at Line X Column Y is >>...<<
 class UnexpectedToken: public BaseException {
-    // ERROR (unexpected token) : atom or '(' expected when token at Line X Column Y is >>...<<
-    // ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
+    public:
+        UnexpectedToken(int line, int column, const std::string &token):
+            BaseException("ERROR (unexpected token) : atom or '(' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<") {}
 };
 
+// ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
+class NoRightParen: public BaseException {
+    public:
+        NoRightParen(int line, int column, const std::string &token):
+            BaseException("ERROR (unexpected token) : ')' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<") {}
+};
+
+// ERROR (no closing quote) : END-OF-LINE encountered at Line X Column Y
 class NoClosingQuote: public BaseException {
-    // ERROR (no closing quote) : END-OF-LINE encountered at Line X Column Y
+    public:
+        NoClosingQuote(int line, int column, const std::string &token):
+            BaseException("ERROR (no closing quote) : END-OF-LINE encountered at Line "
+                + std::to_string(line) + " Column " + std::to_string(column)) {}
 };
 
+// ERROR (no more input) : END-OF-FILE encountered
 class NoMoreInput: public BaseException {
-    // ERROR (no more input) : END-OF-FILE encountered
+    public:
+        NoMoreInput(): BaseException("ERROR (no more input) : END-OF-FILE encountered") {}
 };
 
+/* Lexer */
 // Syntax of OurScheme:
 // <S-exp> ::= <ATOM> | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | QUOTE <S-exp>
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
@@ -135,13 +152,13 @@ class S_Exp_Lexer {
         void syntaxAnalysis() {}
 };
 
-// S-Expression Recursive Descent Parser
+/* S-Expression Recursive Descent Parser */
 class S_Exp_Parser {
     public:
         std::vector<Token> tokens;
 };
 
-// Read-Eval-Print-Loop
+/* Main Read-Eval-Print-Loop */
 int main() {
     std::cout << "Welcome to OurScheme!" << std::endl;
     S_Exp_Lexer lexer;
