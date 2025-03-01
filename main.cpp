@@ -156,9 +156,8 @@ class S_Exp_Lexer {
         std::string line;
         std::stringstream buffer;
         int lineNum = 0, columnNum = 0;
+        bool isFirstComment = false;
         std::vector<SubToken> subTokens;
-        std::stack<char> stack;
-        //std::vector<Token> tokens;
 
         bool isWhiteSpace(char ch) {
             return (ch == ' ' || ch == '\t');
@@ -174,32 +173,30 @@ class S_Exp_Lexer {
         }
 
     public:
-        S_Exp_Lexer() {
+        void init() {
             ch = '\0';
-            prev_ch = '\0';
             line = "";
+            prev_ch = '\0';
             buffer.str("");
             buffer.clear();
+            subTokens.clear();
+            isFirstComment = false;
         }
 
-        void read() {
-            line = "";
+        std::vector<SubToken> read() {
+            if (! isFirstComment) std::cout << "> ";
             if (! std::getline(std::cin, line)) throw NoMoreInput();
+            init();
+            buffer << line;
             lineNum++;
             columnNum = 0;
-        }
-
-        bool tokenize() {
-            ch = '\0';
-            prev_ch = '\0';
-            buffer.str("");
-            buffer.clear();
-            buffer << line;
-            subTokens.clear();
-            std::cout << "> ";
+            
             while (buffer.get(ch)) {
                 columnNum++;
-                if (subTokens.empty() && ch == ';') break;
+                if (subTokens.empty() && ch == ';') {
+                    isFirstComment = true; // has error, to be tested and fixed
+                    break;
+                }
                 if (subTokens.empty() && isWhiteSpace(ch)) continue;
                 if (ch == '\\') {
                     char next_ch = buffer.peek();
@@ -225,15 +222,12 @@ class S_Exp_Lexer {
                 prev_ch = ch;
             }
 
-            if (subTokens.empty()) return true;
-            //std::cout << subTokens[0].line << " " << subTokens[0].column << std::endl;
-            std::string tempstr = "";
-            for (auto &subToken: subTokens) tempstr += subToken.value;
-            if (tempstr == "(exit)") return false;
-            std::cout << tempstr << "\n" << std::endl;
-            //for (auto &subToken: subTokens) {
-            //    std::cout << subToken.value << " at Line " << subToken.line << " Column " << subToken.column << std::endl;
-            //}
+            return subTokens;
+        }
+
+        bool tokenize(std::vector<SubToken> subTokens) {
+            if (line == "(exit)") return false;
+            std::cout << line << "\n" << std::endl;
             return true;
         }
 };
@@ -249,8 +243,7 @@ int main() {
     S_Exp_Parser parser;
     while (true) {
         try {
-            lexer.read();
-            if (! lexer.tokenize()) break;
+            if (! lexer.tokenize(lexer.read())) break;
         } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
             break;
