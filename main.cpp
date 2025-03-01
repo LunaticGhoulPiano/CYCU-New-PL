@@ -1,16 +1,17 @@
 #include <iostream>
 #include <exception>
 #include <vector>
+#include <stack>
 #include <string>
 #include <sstream>
 #include <memory>
 
-int gTestNum;
+std::string gTestNum; // note that it is int + '\n'
 
 /* Token Types*/
 enum class TokenType {
-    LEFT_PARENT, // '('
-    RIGHT_PARENT, // ')'
+    LEFT_PAREN, // '('
+    RIGHT_PAREN, // ')'
     INT, // e.g., '123', '+123', '-123'
     STRING, // "string's (example)." (strings do not extend across lines)
     DOT, // '.'
@@ -24,6 +25,14 @@ enum class TokenType {
         // white-spaces ; 
         // Symbols are case-sensitive 
         // (i.e., uppercase and lowercase are different);
+};
+
+/* Char structure */
+// for tokenization
+struct SubToken {
+    char value;
+    int line;
+    int column;
 };
 
 /* Token structure */
@@ -136,26 +145,38 @@ class NoMoreInput: public BaseException {
         NoMoreInput(): BaseException("ERROR (no more input) : END-OF-FILE encountered") {}
 };
 
-/* S-Expression Recursive Descent Parser */
+/* S-Expression Lexer */
 // Syntax of OurScheme:
 // <S-exp> ::= <ATOM> | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | QUOTE <S-exp>
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
-class S_Exp_Parser {
+class S_Exp_Lexer {
     
     private:
-        char ch;
+        char ch, prev_ch;
         std::string line;
         std::stringstream buffer;
-        int lineNum = 0, columnNum = 1;
-        std::vector<Token> tokens;
+        int lineNum = 0, columnNum = 0;
+        std::vector<SubToken> subTokens;
+        std::stack<char> stack;
+        //std::vector<Token> tokens;
 
         bool isWhiteSpace(char ch) {
-            return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
+            return (ch == ' ' || ch == '\t');
+            //return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
+        }
+
+        bool isDigit(char ch) {
+            return ('0' <= ch && ch <= '9');
+        }
+
+        bool isEscape(char ch) {
+            return (ch == 'n' || ch == '\"' || ch == 't'|| ch == '\\');
         }
 
     public:
-        S_Exp_Parser() {
+        S_Exp_Lexer() {
             ch = '\0';
+            prev_ch = '\0';
             line = "";
             buffer.str("");
             buffer.clear();
@@ -165,34 +186,71 @@ class S_Exp_Parser {
             line = "";
             if (! std::getline(std::cin, line)) throw NoMoreInput();
             lineNum++;
+            columnNum = 0;
         }
-        
-        void tokenize() {
+
+        bool tokenize() {
             ch = '\0';
+            prev_ch = '\0';
             buffer.str("");
             buffer.clear();
             buffer << line;
+            subTokens.clear();
+            std::cout << "> ";
             while (buffer.get(ch)) {
                 columnNum++;
-
-                // split and judge the token type
-                if (isWhiteSpace(ch)) continue; // ignore white space
-                else if (ch == ';') break; // comment
-                else if (ch == '(') {}
+                if (subTokens.empty() && ch == ';') break;
+                if (subTokens.empty() && isWhiteSpace(ch)) continue;
+                if (ch == '\\') {
+                    char next_ch = buffer.peek();
+                    if (isEscape(next_ch)) {
+                        if (prev_ch == '\\' && next_ch == '\\') continue; // '\\\"' -> '\"'
+                        if (next_ch == 't' && prev_ch != '\\') { // \t -> tab
+                            ch = '\t';
+                            buffer.get();
+                            columnNum++;
+                        }
+                        else if (next_ch == 'n' && prev_ch != '\\') { // \n -> new line
+                            ch = '\n';
+                            buffer.get();
+                            columnNum++;
+                        }
+                        else if (prev_ch != '\\') {
+                            prev_ch = ch;
+                            continue;
+                        }
+                    }
+                }
+                subTokens.push_back({ch, lineNum, columnNum});
+                prev_ch = ch;
             }
+
+            if (subTokens.empty()) return true;
+            //std::cout << subTokens[0].line << " " << subTokens[0].column << std::endl;
+            std::string tempstr = "";
+            for (auto &subToken: subTokens) tempstr += subToken.value;
+            if (tempstr == "(exit)") return false;
+            std::cout << tempstr << "\n" << std::endl;
+            //for (auto &subToken: subTokens) {
+            //    std::cout << subToken.value << " at Line " << subToken.line << " Column " << subToken.column << std::endl;
+            //}
+            return true;
         }
 };
 
+/* S-Expression Recursive Descent Parser */
+class S_Exp_Parser {};
+
 /* Main Read-Eval-Print-Loop */
 int main() {
-    std::cin >> gTestNum;
-    std::cout << "Welcome to OurScheme!" << std::endl;
+    std::getline(std::cin, gTestNum);
+    std::cout << "Welcome to OurScheme!\n" << std::endl;
+    S_Exp_Lexer lexer;
     S_Exp_Parser parser;
     while (true) {
-        std::cout << "> ";
         try {
-            parser.read();
-            parser.tokenize();
+            lexer.read();
+            if (! lexer.tokenize()) break;
         } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
             break;
@@ -210,5 +268,7 @@ int main() {
             break;
         }
     }
+
+    std::cout << "Thanks for using OurScheme!" << std::endl;
     return 0;
 }
