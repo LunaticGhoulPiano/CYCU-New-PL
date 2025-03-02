@@ -27,20 +27,17 @@ enum class TokenType {
         // (i.e., uppercase and lowercase are different);
 };
 
-/* Char structure */
-// for tokenization
-struct SubToken {
-    char value;
-    int line;
-    int column;
-};
-
 /* Token structure */
 struct Token {
     TokenType type;
-    std::string value;
-    int line;
-    int column;
+    std::string value = "";
+    int line = -1;
+    int column = -1;
+    void reset() {
+        value = "";
+        line = -1;
+        column = -1;
+    }
 };
 
 /* S-Expression Abstract Syntax Tree */
@@ -156,48 +153,95 @@ class S_Exp_Lexer {
         std::string line;
         std::stringstream buffer;
         int lineNum = 0, columnNum = 0;
-        bool isFirstComment = false;
-        std::vector<SubToken> subTokens;
+        bool multiLineInASExp = false;
+        std::vector<Token> tokens;
 
         bool isWhiteSpace(char ch) {
-            return (ch == ' ' || ch == '\t');
-            //return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
+            return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
         }
 
         bool isDigit(char ch) {
             return ('0' <= ch && ch <= '9');
         }
 
+        bool isAlphabet(char ch) {
+            return (('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z'));
+        }
+
         bool isEscape(char ch) {
             return (ch == 'n' || ch == '\"' || ch == 't'|| ch == '\\');
         }
 
+        bool isSeperator(char ch) {
+            return (isWhiteSpace(ch) || ch == '(' || ch == ')' || ch == '\'' || ch == '\"' || ch == ';');
+        }
+
     public:
-        void init() {
+        S_Exp_Lexer() {
             ch = '\0';
             line = "";
             prev_ch = '\0';
             buffer.str("");
             buffer.clear();
-            subTokens.clear();
-            isFirstComment = false;
+            multiLineInASExp = false;
         }
 
-        std::vector<SubToken> read() {
-            if (! isFirstComment) std::cout << "> ";
+        void printAllTokens() {
+            for (auto token: tokens) std::cout << "token: " << token.value << " at Line " << token.line << " Column " << token.column << std::endl;
+        }
+
+        void readANewLine(bool updateLineNum) {
+            line = "";
             if (! std::getline(std::cin, line)) throw NoMoreInput();
-            init();
+            buffer.str("");
+            buffer.clear();
             buffer << line;
-            lineNum++;
+            if (updateLineNum) lineNum++;
             columnNum = 0;
+        }
+
+        void saveAToken(Token &token) {
+            tokens.push_back(token);
+            token.reset();
+        }
+
+        void read() {
+            std::cout << "> ";
+            readANewLine(true);
+            // init
+            ch = '\0';
+            prev_ch = '\0';
+            Token token;
+            multiLineInASExp = false;
             
             while (buffer.get(ch)) {
-                columnNum++;
-                if (subTokens.empty() && ch == ';') {
-                    isFirstComment = true; // has error, to be tested and fixed
-                    break;
+                if (isWhiteSpace(ch) || ch == ';') {
+                    saveAToken(token);
+                    if (ch == '\n') {
+                        multiLineInASExp = true;
+                        readANewLine(true);
+                        continue;
+                    }
+                    else if (ch == ';') {
+                        multiLineInASExp = true;
+                        readANewLine(false);
+                        continue;
+                    }
+                    else {
+                        columnNum++;
+                        continue;
+                    }
                 }
-                if (subTokens.empty() && isWhiteSpace(ch)) continue;
+
+                columnNum++;
+                token.value += ch;
+
+                // record token's position by the first char in token.value
+                if (token.line == -1 && token.column == -1) {
+                    token.line = lineNum;
+                    token.column = columnNum;
+                }
+                /*
                 if (ch == '\\') {
                     char next_ch = buffer.peek();
                     if (isEscape(next_ch)) {
@@ -218,17 +262,13 @@ class S_Exp_Lexer {
                         }
                     }
                 }
-                subTokens.push_back({ch, lineNum, columnNum});
+
+                //subTokens.push_back({ch, lineNum, columnNum});
                 prev_ch = ch;
+                */
             }
 
-            return subTokens;
-        }
-
-        bool tokenize(std::vector<SubToken> subTokens) {
-            if (line == "(exit)") return false;
-            std::cout << line << "\n" << std::endl;
-            return true;
+            saveAToken(token);
         }
 };
 
@@ -243,7 +283,8 @@ int main() {
     S_Exp_Parser parser;
     while (true) {
         try {
-            if (! lexer.tokenize(lexer.read())) break;
+            lexer.read();
+            lexer.printAllTokens();
         } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
             break;
