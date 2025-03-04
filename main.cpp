@@ -3,7 +3,7 @@
 #include <vector>
 #include <stack>
 #include <string>
-#include <sstream>
+//#include <sstream>
 #include <unordered_map>
 #include <memory>
 
@@ -155,10 +155,7 @@ class S_Exp_Lexer {
     
     private:
         char ch, prev_ch;
-        std::string line;
-        std::stringstream buffer;
         int lineNum = 0, columnNum = 0;
-        bool multiLineInASExp = false, endANInput = false;
         std::vector<Token> tokens;
 
         bool isWhiteSpace(char ch) {
@@ -180,47 +177,36 @@ class S_Exp_Lexer {
         bool isSeperator(char ch) {
             return (isWhiteSpace(ch) || ch == '(' || ch == ')' || ch == '\'' || ch == '\"' || ch == ';');
         }
+        
+        // TODO
+        void judgeAndSetTokenType(Token &token) {
+            //
+        }
 
     public:
         S_Exp_Lexer() {
             ch = '\0';
-            line = "";
             prev_ch = '\0';
-            buffer.str("");
-            buffer.clear();
-            multiLineInASExp = false;
-            endANInput = false;
         }
 
         void printAllTokens() {
             for (auto token: tokens) std::cout << "token: " << token.value << " at Line " << token.line << " Column " << token.column << std::endl;
         }
 
-        void readANewLine(bool updateLineNum) {
-            line = "";
-            if (! std::getline(std::cin, line)) throw NoMoreInput();
-            buffer.str("");
-            buffer.clear();
-            buffer << line;
-            if (updateLineNum) lineNum++;
-            columnNum = 0;
-            ch = '\0';
-            prev_ch = '\0';
-        }
-
         void saveAToken(Token &token) {
+            if (token.value == "") return;
+            judgeAndSetTokenType(token);
             std::cout << "save token: ->" << token.value << "<- at Line " << token.line << " Column " << token.column << std::endl;
             tokens.push_back(token);
             token.reset();
         }
 
-        void read() {
+        void readAndTokenize() {
             std::cout << "> ";
             Token token;
             lineNum++;
             ch = '\0';
             prev_ch = '\0';
-            multiLineInASExp = false;
             
             while (std::cin.get(ch)) {
                 columnNum++;
@@ -342,7 +328,7 @@ int main() {
     while (true) {
         try {
             std::cout << "out" << std::endl;
-            lexer.read();
+            lexer.readAndTokenize();
             lexer.printAllTokens();
         } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
