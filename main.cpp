@@ -4,6 +4,7 @@
 #include <stack>
 #include <string>
 #include <sstream>
+#include <unordered_map>
 #include <memory>
 
 std::string gTestNum; // note that it is int + '\n'
@@ -208,7 +209,7 @@ class S_Exp_Lexer {
         }
 
         void saveAToken(Token &token) {
-            std::cout << "save token: " << token.value << " at Line " << token.line << " Column " << token.column << std::endl;
+            std::cout << "save token: ->" << token.value << "<- at Line " << token.line << " Column " << token.column << std::endl;
             tokens.push_back(token);
             token.reset();
         }
@@ -233,28 +234,79 @@ class S_Exp_Lexer {
                             lineNum++;
                             columnNum = 0;
                         }
+                        prev_ch = ch;
+                        continue;
                     }
-                    else if (token.value != "" && token.value[0] != '\"') saveAToken(token); // if whitespace not in double-qupte, skip it
-                    continue; // don't save whitespace
+                    else if (token.value == "") {
+                        prev_ch = ch;
+                        continue; // don't save whitespace
+                    }
+                    else if (token.value != "" && token.value[0] != '\"') {
+                        saveAToken(token); // if whitespace not in double-qupte, skip it
+                        prev_ch = ch;
+                        continue;
+                    }
+                    // else DON'T continue, it may store into a double-quote
                 }
                 if (ch == ';' && token.value == "") {
                     if (! token.value.empty()) saveAToken(token);
                     if (! tokens.empty() || token.value != "") lineNum++;
                     columnNum = 0;
                     while (ch != '\n') std::cin.get(ch); // skip the rest of the line
+                    prev_ch = ch;
                     continue;
                 }
                 if (ch == '\\') { // escape
-                    
+                    char next_ch = std::cin.peek();
+                    if (next_ch == 'n' || next_ch == '"' || next_ch == 't' || next_ch == '\\') {
+                        std::cout << "Next: " << next_ch << std::endl;
+                        std::cout << "Cur: " << ch << std::endl;
+                        std::cout << "Prev: " << prev_ch << std::endl;
+                        /*
+                        if (next_ch == '\"') {
+                            std::cout << "token = " << token.value << std::endl;
+                        }
+                        if (prev_ch == '\\') {
+                            prev_ch = ch;
+                            std::cin.get(ch); // '\\n' -> '\n', '\\\"' -> '\"'
+                        }
+                        */
+                        if (prev_ch != '\'') { // ex. "There is an ENTER HERE>>\nSee?!" -> replace to the true white space value
+                            std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
+                            if (escape_map.count(next_ch)) {
+                                std::cin.get(); // skip the next char that will be replace
+                                prev_ch = next_ch;
+                                ch = escape_map[next_ch];
+                                if (next_ch == '\"') {
+                                    token.value += ch;
+                                    continue;
+                                }
+                            }
+                            // not shure is 'v', 'f', 'r' need to be replaced
+                        }
+                        else {
+                            /*
+                            '\"' -> '"'
+                            '\\"' -> '\"'
+                            '\\n' -> '\n'
+                            '\\t' -> '\t'
+                            */
+                           //if (next_ch)
+                        }
+                    }
+                    // else just a backslash
                 }
+
+                //std::cout << "token=: " << token.value << " at Line " << lineNum << " Column " << columnNum << "" << std::endl;
 
                 prev_ch = ch;
                 token.value += ch;
 
                 // end of a double-quote
+                // 
                 if (token.value.length() >= 2 && token.value[0] == '\"' && token.value[token.value.length() - 1] == '\"') saveAToken(token);
                 // 
-                if (ch == '(' || ch == ')' || ch == '\'' || ch == '.' || ch == '#') saveAToken(token);
+                if (ch == '(' || ch == ')' || ch == '.' || ch == '#') saveAToken(token);
 
                 // record token's position by the first char in token.value
                 if (token.line == -1 && token.column == -1) token.setPos(lineNum, columnNum);
@@ -365,19 +417,19 @@ int main() {
             lexer.printAllTokens();
         } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
-            break;
+            //break;
         } catch (UnexpectedToken &e) {
             std::cerr << e.what() << std::endl;
-            break;
+            //break;
         } catch (NoClosingQuote &e) {
             std::cerr << e.what() << std::endl;
-            break;
+            //break;
         } catch (NoRightParen &e) {
             std::cerr << e.what() << std::endl;
-            break;
+            //break;
         } catch (...) {
             std::cerr << "Unknown error" << std::endl;
-            break;
+            //break;
         }
     }
 
