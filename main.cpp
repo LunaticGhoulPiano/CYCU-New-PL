@@ -38,6 +38,10 @@ struct Token {
         line = -1;
         column = -1;
     }
+    void setPos(int lineNum, int columnNum) {
+        line = lineNum;
+        column = columnNum;
+    }
 };
 
 /* S-Expression Abstract Syntax Tree */
@@ -153,7 +157,7 @@ class S_Exp_Lexer {
         std::string line;
         std::stringstream buffer;
         int lineNum = 0, columnNum = 0;
-        bool multiLineInASExp = false;
+        bool multiLineInASExp = false, endANInput = false;
         std::vector<Token> tokens;
 
         bool isWhiteSpace(char ch) {
@@ -184,6 +188,7 @@ class S_Exp_Lexer {
             buffer.str("");
             buffer.clear();
             multiLineInASExp = false;
+            endANInput = false;
         }
 
         void printAllTokens() {
@@ -198,49 +203,120 @@ class S_Exp_Lexer {
             buffer << line;
             if (updateLineNum) lineNum++;
             columnNum = 0;
+            ch = '\0';
+            prev_ch = '\0';
         }
 
         void saveAToken(Token &token) {
+            std::cout << "save token: " << token.value << " at Line " << token.line << " Column " << token.column << std::endl;
             tokens.push_back(token);
             token.reset();
+        }
+
+        void testread() {
+            std::cout << "> ";
+            Token token;
+            lineNum++;
+            ch = '\0';
+            prev_ch = '\0';
+            multiLineInASExp = false;
+            
+            while (std::cin.get(ch)) {
+                columnNum++;
+
+                if (isWhiteSpace(ch)) {
+                    if (ch == '\n') {
+                        if (token.value[0] == '\"') throw NoClosingQuote(token.line, token.column, token.value);
+                        else {
+                            if (token.value != "") saveAToken(token);
+                            std::cout << "> "; // may have bug when empty line
+                            lineNum++;
+                            columnNum = 0;
+                        }
+                    }
+                    else if (token.value != "" && token.value[0] != '\"') saveAToken(token); // if whitespace not in double-qupte, skip it
+                    continue; // don't save whitespace
+                }
+                if (ch == ';' && token.value == "") {
+                    if (! token.value.empty()) saveAToken(token);
+                    if (! tokens.empty() || token.value != "") lineNum++;
+                    columnNum = 0;
+                    while (ch != '\n') std::cin.get(ch); // skip the rest of the line
+                    continue;
+                }
+                if (ch == '\\') { // escape
+                    
+                }
+
+                prev_ch = ch;
+                token.value += ch;
+
+                // end of a double-quote
+                if (token.value.length() >= 2 && token.value[0] == '\"' && token.value[token.value.length() - 1] == '\"') saveAToken(token);
+                // 
+                if (ch == '(' || ch == ')' || ch == '\'' || ch == '.' || ch == '#') saveAToken(token);
+
+                // record token's position by the first char in token.value
+                if (token.line == -1 && token.column == -1) token.setPos(lineNum, columnNum);
+            }
+
+            saveAToken(token);
         }
 
         void read() {
             std::cout << "> ";
             readANewLine(true);
-            // init
-            ch = '\0';
-            prev_ch = '\0';
             Token token;
             multiLineInASExp = false;
             
             while (buffer.get(ch)) {
-                if (isWhiteSpace(ch) || ch == ';') {
-                    saveAToken(token);
-                    if (ch == '\n') {
-                        multiLineInASExp = true;
-                        readANewLine(true);
-                        continue;
-                    }
-                    else if (ch == ';') {
-                        multiLineInASExp = true;
-                        readANewLine(false);
-                        continue;
+                if (isWhiteSpace(ch)) {
+                    if (token.value != "") {
+                        if (ch == '\n') {
+                            if (token.value[0] == '\"') throw NoClosingQuote(token.line, token.column, token.value);
+                            else {
+                                // skip '\n'
+                                saveAToken(token);
+                                readANewLine(false);
+                                continue;
+                            }
+                        }
+                        else if (token.value[0] != '\"') {
+                            // if whitespace not in double-qupte, skip it
+                            saveAToken(token);
+                            continue;
+                        }
                     }
                     else {
                         columnNum++;
                         continue;
                     }
                 }
+                if (ch == ';' && token.value == "") {
+                    saveAToken(token);
+                    readANewLine(false);
+                    continue;
+                }
+                if (ch == '(' || ch == ')' || ch == '.' || ch == '\'') {
+                    saveAToken(token);
+                    token.value += ch;
+                    saveAToken(token);
+                    continue;
+                }
+                if (ch == '\"') {
+                    if (token.value != "") {
+                        token.value += ch;
+                        saveAToken(token);
+                        continue;
+                    }
+                    else if (buffer.peek() == EOF) throw NoClosingQuote(token.line, token.column, token.value);
+                }
 
                 columnNum++;
                 token.value += ch;
 
                 // record token's position by the first char in token.value
-                if (token.line == -1 && token.column == -1) {
-                    token.line = lineNum;
-                    token.column = columnNum;
-                }
+                if (token.line == -1 && token.column == -1) token.setPos(lineNum, columnNum);
                 /*
                 if (ch == '\\') {
                     char next_ch = buffer.peek();
@@ -283,7 +359,9 @@ int main() {
     S_Exp_Parser parser;
     while (true) {
         try {
-            lexer.read();
+            std::cout << "out" << std::endl;
+            lexer.testread();
+            //lexer.read();
             lexer.printAllTokens();
         } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
