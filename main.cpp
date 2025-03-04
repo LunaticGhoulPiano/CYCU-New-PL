@@ -214,7 +214,7 @@ class S_Exp_Lexer {
             token.reset();
         }
 
-        void testread() {
+        void read() {
             std::cout << "> ";
             Token token;
             lineNum++;
@@ -258,7 +258,7 @@ class S_Exp_Lexer {
                 }
                 if (ch == '\\') { // escape
                     char next_ch = std::cin.peek();
-                    if (next_ch == 'n' || next_ch == '"' || next_ch == 't' || next_ch == '\\') {
+                    if (next_ch == 'n' || next_ch == '\"' || next_ch == 't' || next_ch == '\\') {
                         std::cout << "Next: " << next_ch << std::endl;
                         std::cout << "Cur: " << ch << std::endl;
                         std::cout << "Prev: " << prev_ch << std::endl;
@@ -272,26 +272,40 @@ class S_Exp_Lexer {
                         }
                         */
                         if (prev_ch != '\'') { // ex. "There is an ENTER HERE>>\nSee?!" -> replace to the true white space value
+                            // not shure is 'v', 'f', 'r' need to be replaced
                             std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
                             if (escape_map.count(next_ch)) {
                                 std::cin.get(); // skip the next char that will be replace
                                 prev_ch = next_ch;
                                 ch = escape_map[next_ch];
-                                if (next_ch == '\"') {
+                                if (next_ch == '\"') { // to avoid storing double-quotes
                                     token.value += ch;
                                     continue;
                                 }
                             }
-                            // not shure is 'v', 'f', 'r' need to be replaced
                         }
                         else {
                             /*
+                            prev_ch == '\''
+                            cur_ch == '\\'
+                            next_ch == 'n' || '"' || 't' || '\\'
+                            -> '\n
+                            -> '\"
+                            -> '\t
+                            -> '\\
+
                             '\"' -> '"'
                             '\\"' -> '\"'
                             '\\n' -> '\n'
                             '\\t' -> '\t'
                             */
-                           //if (next_ch)
+                           /*
+                           try this:
+                           "a: \n b: '\n' c: '\\n' d: '\"' e: '\\"' f: '\\\"' "
+                           */
+                            if (next_ch == '\\') {
+                               
+                            }
                         }
                     }
                     // else just a backslash
@@ -314,90 +328,6 @@ class S_Exp_Lexer {
 
             saveAToken(token);
         }
-
-        void read() {
-            std::cout << "> ";
-            readANewLine(true);
-            Token token;
-            multiLineInASExp = false;
-            
-            while (buffer.get(ch)) {
-                if (isWhiteSpace(ch)) {
-                    if (token.value != "") {
-                        if (ch == '\n') {
-                            if (token.value[0] == '\"') throw NoClosingQuote(token.line, token.column, token.value);
-                            else {
-                                // skip '\n'
-                                saveAToken(token);
-                                readANewLine(false);
-                                continue;
-                            }
-                        }
-                        else if (token.value[0] != '\"') {
-                            // if whitespace not in double-qupte, skip it
-                            saveAToken(token);
-                            continue;
-                        }
-                    }
-                    else {
-                        columnNum++;
-                        continue;
-                    }
-                }
-                if (ch == ';' && token.value == "") {
-                    saveAToken(token);
-                    readANewLine(false);
-                    continue;
-                }
-                if (ch == '(' || ch == ')' || ch == '.' || ch == '\'') {
-                    saveAToken(token);
-                    token.value += ch;
-                    saveAToken(token);
-                    continue;
-                }
-                if (ch == '\"') {
-                    if (token.value != "") {
-                        token.value += ch;
-                        saveAToken(token);
-                        continue;
-                    }
-                    else if (buffer.peek() == EOF) throw NoClosingQuote(token.line, token.column, token.value);
-                }
-
-                columnNum++;
-                token.value += ch;
-
-                // record token's position by the first char in token.value
-                if (token.line == -1 && token.column == -1) token.setPos(lineNum, columnNum);
-                /*
-                if (ch == '\\') {
-                    char next_ch = buffer.peek();
-                    if (isEscape(next_ch)) {
-                        if (prev_ch == '\\' && next_ch == '\\') continue; // '\\\"' -> '\"'
-                        if (next_ch == 't' && prev_ch != '\\') { // \t -> tab
-                            ch = '\t';
-                            buffer.get();
-                            columnNum++;
-                        }
-                        else if (next_ch == 'n' && prev_ch != '\\') { // \n -> new line
-                            ch = '\n';
-                            buffer.get();
-                            columnNum++;
-                        }
-                        else if (prev_ch != '\\') {
-                            prev_ch = ch;
-                            continue;
-                        }
-                    }
-                }
-
-                //subTokens.push_back({ch, lineNum, columnNum});
-                prev_ch = ch;
-                */
-            }
-
-            saveAToken(token);
-        }
 };
 
 /* S-Expression Recursive Descent Parser */
@@ -412,8 +342,7 @@ int main() {
     while (true) {
         try {
             std::cout << "out" << std::endl;
-            lexer.testread();
-            //lexer.read();
+            lexer.read();
             lexer.printAllTokens();
         } catch (NoMoreInput &e) {
             std::cerr << e.what() << std::endl;
