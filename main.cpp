@@ -185,6 +185,10 @@ class S_Exp_Lexer {
             return (isWhiteSpace(ch) || ch == '(' || ch == ')' || ch == '\'' || ch == '\"' || ch == ';');
         }
 
+        void judgeTokenType(Token &token) {
+            //
+        }
+
     public:
         S_Exp_Lexer() {
             ch = '\0';
@@ -197,10 +201,13 @@ class S_Exp_Lexer {
 
         void saveAToken(Token &token) {
             if (token.value == "") return;
+            judgeTokenType(token);
             std::cout << token.value << "\n" << std::endl;
             //std::cout << "save token: ->" << token.value << "<- at Line " << token.line << " Column " << token.column << std::endl;
             tokens.push_back(token);
             token.reset();
+            int s = tokens.size();
+            if (s >= 3 && tokens[s-3].value == "(" && tokens[s-2].value == "exit" && tokens[s-1].value == ")") throw CorrectExit();
         }
 
         void readAndTokenize() {
@@ -216,16 +223,15 @@ class S_Exp_Lexer {
                 std::cin.clear();
                 throw NoMoreInput();
             }
-            
+
             while (std::cin.get(ch)) {
                 columnNum++;
-
                 if (isWhiteSpace(ch)) {
                     if (ch == '\n') {
                         if (token.value[0] == '\"') throw NoClosingQuote(token.line, token.column, token.value);
                         else {
                             if (token.value != "") saveAToken(token);
-                            std::cout << "> "; // may have bug when empty line
+                            std::cout << "> "; // have bug when empty line or start with ;
                             lineNum++;
                             columnNum = 0;
                         }
@@ -243,15 +249,19 @@ class S_Exp_Lexer {
                     }
                     // else DON'T continue, it may store into a double-quote
                 }
-                if (ch == ';' && token.value == "") {
+                if (ch == ';') {
                     if (! token.value.empty()) saveAToken(token);
                     if (! tokens.empty() || token.value != "") lineNum++;
                     columnNum = 0;
-                    while (ch != '\n') std::cin.get(ch); // skip the rest of the line
+                    while (std::cin.peek() != '\n') std::cin.get(ch); // skip the rest of the line
                     prev_ch = ch;
                     continue;
                 }
                 if (ch == '\\') { // escape
+                    /* 
+                    TO FIX:
+                    "1'\"'2'\\"'3'\\\"'4'\\\\"'5'\\\\\"'" ; 再測一次
+                    */
                     char next_ch = std::cin.peek();
                     if (next_ch == 'n' || next_ch == '\"' || next_ch == 't' || next_ch == '\\') {
                         if (prev_ch != '\'') { // escape char not in ''
@@ -309,30 +319,6 @@ class S_Exp_Lexer {
                         continue;
                     }
                 }
-                /*
-                if ((isDigit(ch) || ch == '+' || ch == '-' || ch == '.') && token.value == "") { // judge INT or FLOAT
-                    if (ch == '.' && isDigit(std::cin.peek())) {
-                        // add '.'
-                        token.value += ch;
-                        columnNum++;
-                        // add the following numbers
-                        while (isDigit(std::cin.peek())) {
-                            std::cin.get(ch);
-                            token.value += ch;
-                            columnNum++;
-                        }
-                        continue;
-                    }
-                    else if ((ch == '+' || ch == '-') && (isDigit(std::cin.peek()) || std::cin.peek() == '.')) {
-                        // +2
-                        // +2.
-                        // +.3
-                    }
-                    else if (isDigit(ch)) {
-                        //
-                    }
-                }
-                */
 
                 prev_ch = ch;
                 token.value += ch;
@@ -358,29 +344,30 @@ int main() {
     std::cout << "Welcome to OurScheme!\n" << std::endl;
     S_Exp_Lexer lexer;
     S_Exp_Parser parser;
-    //while (true) {
-    try {
-        //std::cout << "out" << std::endl;
-        lexer.readAndTokenize();
-        //lexer.printAllTokens();
-    } catch (CorrectExit &c) {
-        std::cout << c.what() << std::endl;
-    } catch (NoMoreInput &e) {
-        std::cerr << e.what() << std::endl;
-        //break;
-    } catch (UnexpectedToken &e) {
-        std::cerr << e.what() << std::endl;
-        //break;
-    } catch (NoClosingQuote &e) {
-        std::cerr << e.what() << std::endl;
-        //break;
-    } catch (NoRightParen &e) {
-        std::cerr << e.what() << std::endl;
-        //break;
-    } catch (...) {
-        std::cerr << "Unknown error" << std::endl;
-        //break;
+    while (true) {
+        try {
+            //std::cout << "out" << std::endl;
+            lexer.readAndTokenize();
+            //lexer.printAllTokens();
+        } catch (CorrectExit &c) {
+            std::cout << c.what() << std::endl;
+            break;
+        } catch (NoMoreInput &e) {
+            std::cerr << e.what() << std::endl;
+            break;
+        } catch (UnexpectedToken &e) {
+            std::cerr << e.what() << std::endl;
+            //break;
+        } catch (NoClosingQuote &e) {
+            std::cerr << e.what() << std::endl;
+            //break;
+        } catch (NoRightParen &e) {
+            std::cerr << e.what() << std::endl;
+            //break;
+        } catch (...) {
+            std::cerr << "Unknown error" << std::endl;
+            //break;
+        }
     }
-    //}
     return 0;
 }
