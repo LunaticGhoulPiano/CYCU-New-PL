@@ -117,6 +117,12 @@ class BaseException: public std::exception {
         }
 };
 
+class CorrectExit: public BaseException {
+    public:
+        CorrectExit():
+            BaseException("Thanks for using OurScheme!") {}
+};
+
 // ERROR (unexpected token) : atom or '(' expected when token at Line X Column Y is >>...<<
 class UnexpectedToken: public BaseException {
     public:
@@ -178,11 +184,6 @@ class S_Exp_Lexer {
         bool isSeperator(char ch) {
             return (isWhiteSpace(ch) || ch == '(' || ch == ')' || ch == '\'' || ch == '\"' || ch == ';');
         }
-        
-        // TODO
-        void judgeAndSetTokenType(Token &token) {
-            //
-        }
 
     public:
         S_Exp_Lexer() {
@@ -196,8 +197,8 @@ class S_Exp_Lexer {
 
         void saveAToken(Token &token) {
             if (token.value == "") return;
-            judgeAndSetTokenType(token);
-            std::cout << "save token: ->" << token.value << "<- at Line " << token.line << " Column " << token.column << std::endl;
+            std::cout << token.value << "\n" << std::endl;
+            //std::cout << "save token: ->" << token.value << "<- at Line " << token.line << " Column " << token.column << std::endl;
             tokens.push_back(token);
             token.reset();
         }
@@ -308,9 +309,19 @@ class S_Exp_Lexer {
                         continue;
                     }
                 }
-                if (isDigit(ch) || ch == '+' || ch == '-' || ch == '.') {
+                /*
+                if ((isDigit(ch) || ch == '+' || ch == '-' || ch == '.') && token.value == "") { // judge INT or FLOAT
                     if (ch == '.' && isDigit(std::cin.peek())) {
-                        // .3
+                        // add '.'
+                        token.value += ch;
+                        columnNum++;
+                        // add the following numbers
+                        while (isDigit(std::cin.peek())) {
+                            std::cin.get(ch);
+                            token.value += ch;
+                            columnNum++;
+                        }
+                        continue;
                     }
                     else if ((ch == '+' || ch == '-') && (isDigit(std::cin.peek()) || std::cin.peek() == '.')) {
                         // +2
@@ -321,6 +332,7 @@ class S_Exp_Lexer {
                         //
                     }
                 }
+                */
 
                 prev_ch = ch;
                 token.value += ch;
@@ -346,29 +358,29 @@ int main() {
     std::cout << "Welcome to OurScheme!\n" << std::endl;
     S_Exp_Lexer lexer;
     S_Exp_Parser parser;
-    while (true) {
-        try {
-            std::cout << "out" << std::endl;
-            lexer.readAndTokenize();
-            lexer.printAllTokens();
-        } catch (NoMoreInput &e) {
-            std::cerr << e.what() << std::endl;
-            //break;
-        } catch (UnexpectedToken &e) {
-            std::cerr << e.what() << std::endl;
-            //break;
-        } catch (NoClosingQuote &e) {
-            std::cerr << e.what() << std::endl;
-            //break;
-        } catch (NoRightParen &e) {
-            std::cerr << e.what() << std::endl;
-            //break;
-        } catch (...) {
-            std::cerr << "Unknown error" << std::endl;
-            //break;
-        }
+    //while (true) {
+    try {
+        //std::cout << "out" << std::endl;
+        lexer.readAndTokenize();
+        //lexer.printAllTokens();
+    } catch (CorrectExit &c) {
+        std::cout << c.what() << std::endl;
+    } catch (NoMoreInput &e) {
+        std::cerr << e.what() << std::endl;
+        //break;
+    } catch (UnexpectedToken &e) {
+        std::cerr << e.what() << std::endl;
+        //break;
+    } catch (NoClosingQuote &e) {
+        std::cerr << e.what() << std::endl;
+        //break;
+    } catch (NoRightParen &e) {
+        std::cerr << e.what() << std::endl;
+        //break;
+    } catch (...) {
+        std::cerr << "Unknown error" << std::endl;
+        //break;
     }
-
-    std::cout << "Thanks for using OurScheme!" << std::endl;
+    //}
     return 0;
 }
