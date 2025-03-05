@@ -157,6 +157,7 @@ class S_Exp_Lexer {
         char ch, prev_ch;
         int lineNum = 0, columnNum = 0;
         std::vector<Token> tokens;
+        std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
 
         bool isWhiteSpace(char ch) {
             return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
@@ -207,6 +208,13 @@ class S_Exp_Lexer {
             lineNum++;
             ch = '\0';
             prev_ch = '\0';
+
+            // avoid invisible char
+            // TODO: error must fix 'c' + Ctrl+Z + 'c' -> "cc", should be "c" "c"
+            if (std::cin.peek() == EOF) {
+                std::cin.clear();
+                throw NoMoreInput();
+            }
             
             while (std::cin.get(ch)) {
                 columnNum++;
@@ -245,23 +253,11 @@ class S_Exp_Lexer {
                 if (ch == '\\') { // escape
                     char next_ch = std::cin.peek();
                     if (next_ch == 'n' || next_ch == '\"' || next_ch == 't' || next_ch == '\\') {
-                        std::cout << "Next: " << next_ch << std::endl;
-                        std::cout << "Cur: " << ch << std::endl;
-                        std::cout << "Prev: " << prev_ch << std::endl;
-                        /*
-                        if (next_ch == '\"') {
-                            std::cout << "token = " << token.value << std::endl;
-                        }
-                        if (prev_ch == '\\') {
-                            prev_ch = ch;
-                            std::cin.get(ch); // '\\n' -> '\n', '\\\"' -> '\"'
-                        }
-                        */
-                        if (prev_ch != '\'') { // ex. "There is an ENTER HERE>>\nSee?!" -> replace to the true white space value
-                            // not shure is 'v', 'f', 'r' need to be replaced
-                            std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
+                        if (prev_ch != '\'') { // escape char not in ''
                             if (escape_map.count(next_ch)) {
+                                // not shure is 'v', 'f', 'r' need to be replaced
                                 std::cin.get(); // skip the next char that will be replace
+                                columnNum++;
                                 prev_ch = next_ch;
                                 ch = escape_map[next_ch];
                                 if (next_ch == '\"') { // to avoid storing double-quotes
@@ -270,49 +266,74 @@ class S_Exp_Lexer {
                                 }
                             }
                         }
-                        else {
-                            /*
-                            prev_ch == '\''
-                            cur_ch == '\\'
-                            next_ch == 'n' || '"' || 't' || '\\'
-                            -> '\n
-                            -> '\"
-                            -> '\t
-                            -> '\\
-
-                            '\"' -> '"'
-                            '\\"' -> '\"'
-                            '\\n' -> '\n'
-                            '\\t' -> '\t'
-                            */
-                           /*
-                           try this:
-                           "a: \n b: '\n' c: '\\n' d: '\"' e: '\\"' f: '\\\"' "
-                           */
-                            if (next_ch == '\\') {
-                               
+                        else { // escape must in ''
+                            if (next_ch != '\\') { // odd backslash, ex. "'\"'" -> '\"'
+                                // not shure is 'v', 'f', 'r' need to be replaced
+                                if (escape_map.count(next_ch)) {
+                                    std::cin.get(ch); // skip the next char that will be replace
+                                    columnNum++;
+                                    prev_ch = ch;
+                                    ch = escape_map[prev_ch];
+                                    if (ch == '\"') { // to avoid storing double-quotes
+                                        token.value += ch;
+                                        continue;
+                                    }
+                                }
+                            }
+                            else { // even backslash, ex. "'\\n'" -> '\\' + '\n' 
+                                std::cin.get(); // skip even number of backslash
+                                columnNum++;
+                                prev_ch = '\'';
+                                token.value += ch;
+                                continue;
                             }
                         }
                     }
                     // else just a backslash
                 }
-
-                //std::cout << "token=: " << token.value << " at Line " << lineNum << " Column " << columnNum << "" << std::endl;
+                if (ch == '(' || ch == ')' || ch == '\'') {
+                    if (token.value == "") {
+                        prev_ch = ch;
+                        token.value += ch;
+                        saveAToken(token);
+                        continue;
+                    }
+                    else if (token.value[0] != '\"') {
+                        // save the token before '(' or ')'
+                        saveAToken(token);
+                        // save '(' or ')' as a single token
+                        prev_ch = ch;
+                        token.value += ch;
+                        saveAToken(token);
+                        continue;
+                    }
+                }
+                if (isDigit(ch) || ch == '+' || ch == '-' || ch == '.') {
+                    if (ch == '.' && isDigit(std::cin.peek())) {
+                        // .3
+                    }
+                    else if ((ch == '+' || ch == '-') && (isDigit(std::cin.peek()) || std::cin.peek() == '.')) {
+                        // +2
+                        // +2.
+                        // +.3
+                    }
+                    else if (isDigit(ch)) {
+                        //
+                    }
+                }
 
                 prev_ch = ch;
                 token.value += ch;
 
                 // end of a double-quote
-                // 
                 if (token.value.length() >= 2 && token.value[0] == '\"' && token.value[token.value.length() - 1] == '\"') saveAToken(token);
-                // 
-                if (ch == '(' || ch == ')' || ch == '.' || ch == '#') saveAToken(token);
 
                 // record token's position by the first char in token.value
                 if (token.line == -1 && token.column == -1) token.setPos(lineNum, columnNum);
             }
 
             saveAToken(token);
+            if (tokens.empty()) throw NoMoreInput();
         }
 };
 
