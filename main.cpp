@@ -127,30 +127,30 @@ class CorrectExit: public BaseException {
 class UnexpectedToken: public BaseException {
     public:
         UnexpectedToken(int line, int column, const std::string &token):
-            BaseException("ERROR (unexpected token) : atom or '(' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<") {}
+            BaseException("> ERROR (unexpected token) : atom or '(' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n\n") {}
 };
 
 // ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
 class NoRightParen: public BaseException {
     public:
         NoRightParen(int line, int column, const std::string &token):
-            BaseException("ERROR (unexpected token) : ')' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<") {}
+            BaseException("> ERROR (unexpected token) : ')' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n\n") {}
 };
 
 // ERROR (no closing quote) : END-OF-LINE encountered at Line X Column Y
 class NoClosingQuote: public BaseException {
     public:
-        NoClosingQuote(int line, int column, const std::string &token):
-            BaseException("ERROR (no closing quote) : END-OF-LINE encountered at Line "
-                + std::to_string(line) + " Column " + std::to_string(column)) {}
+        NoClosingQuote(int line, int column):
+            BaseException("> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + "\n\n") {}
 };
 
 // ERROR (no more input) : END-OF-FILE encountered
 class NoMoreInput: public BaseException {
     public:
-        NoMoreInput(): BaseException("ERROR (no more input) : END-OF-FILE encountered") {}
+        NoMoreInput(): BaseException("> ERROR (no more input) : END-OF-FILE encountered\n\n") {}
 };
 
 /* S-Expression Lexer */
@@ -161,7 +161,7 @@ class S_Exp_Lexer {
     
     private:
         char ch, prev_ch;
-        int lineNum = 0, columnNum = 0;
+        int lineNum = 1, columnNum = 0;
         std::vector<Token> tokens;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
 
@@ -191,6 +191,8 @@ class S_Exp_Lexer {
         }
 
     public:
+        bool printInputSign = true;
+        
         S_Exp_Lexer() {
             ch = '\0';
             prev_ch = '\0';
@@ -212,15 +214,88 @@ class S_Exp_Lexer {
         }
 
         void read() {
-            Token token;
-            lineNum++;
+            Token token; // to store single token
+            std::vector<Token> lineBuffer; // clear when line error or save when line ok
+            lineNum = 1;
+            columnNum = 0;
             ch = '\0';
             prev_ch = '\0';
+            if (printInputSign) std::cout << "> ";
+            printInputSign = true;
+
             while (std::cin.get(ch)) {
-                if (ch == ';') while (ch != '\n') std::cin.get(ch);
-                if (isWhiteSpace(ch)) {
-                    
+                std::cout << "->" << ch << "<-" << std::endl;
+                if (ch == ';') {
+                    if (! token.value.empty()) {
+                        if (token.value[0] != '\"') {
+                            // saveAToken(token);
+                            while (ch != '\n') std::cin.get(ch);
+                        }
+                        else { // in the double-quote
+                            token.value += ch;
+                            columnNum++;
+                        }
+                    }
+                    else while (ch != '\n') std::cin.get(ch);
                 }
+                else if (isWhiteSpace(ch)) {
+                    if (token.value.empty()) { // between complete tokens
+                        if (ch == '\n') {
+                            lineNum++;
+                            columnNum = 0;
+                        }
+                        else columnNum++;
+                    }
+                    else { // incomplete token still inputing
+                        if (ch == '\n') {
+                            switch (token.value[0]) {
+                                case '\"': {
+                                    columnNum++;
+                                    throw NoClosingQuote(token.line, token.column);
+                                }
+                                case '(': {
+                                    // because still not meat the coressponding ')'
+                                    // so only a line-feed, still inputing a double-quote
+                                    lineNum++;
+                                    columnNum = 0;
+                                }
+                                case '\'': {
+                                    // because still not meat the end of single-quote (ATOM or RIGHT-PAREN)
+                                    // so only a line-feed, still inputing a double-quote
+                                    lineNum++;
+                                    columnNum = 0;
+                                }
+                            }
+                        }
+                        else {
+                            //
+                        }
+                    }
+                }
+                else if (ch == '(') {
+                    //
+                }
+                else if (ch == ')') {
+                    //
+                }
+                else if (ch == '\"' && ! token.value.empty()) {
+                    if (token.value[0] == '\"') {
+                        token.value += ch;
+                        saveAToken(token);
+                        columnNum = 0;
+                    }
+                    // else throw NoClosingQuote(token.line, token.column, token.value);
+                }
+                else if (ch == '\'') {
+                    //
+                }
+                else if (ch == '\\') {
+                    //
+                }
+                else if (ch == '+' || ch == '-' || ch == '.') {
+                    //
+                }
+                else token.value += ch;
             }
             throw CorrectExit();
         }
@@ -244,7 +319,7 @@ class S_Exp_Lexer {
                 columnNum++;
                 if (isWhiteSpace(ch)) {
                     if (ch == '\n') {
-                        if (token.value[0] == '\"') throw NoClosingQuote(token.line, token.column, token.value);
+                        if (token.value[0] == '\"') throw NoClosingQuote(token.line, token.column);
                         else {
                             if (token.value != "") saveAToken(token);
                             std::cout << "> "; // have bug when empty line or start with ;
@@ -326,19 +401,19 @@ int main() {
             //lexer.readAndTokenize();
             //lexer.printAllTokens();
         } catch (CorrectExit &c) {
-            std::cout << c.what() << std::endl;
+            std::cout << c.what();
             break;
         } catch (NoMoreInput &e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << e.what();
             break;
         } catch (UnexpectedToken &e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << e.what();
             //break;
         } catch (NoClosingQuote &e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << e.what();
             //break;
         } catch (NoRightParen &e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << e.what();
             //break;
         } catch (...) {
             std::cerr << "Unknown error" << std::endl;
