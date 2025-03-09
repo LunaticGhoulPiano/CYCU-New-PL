@@ -166,7 +166,8 @@ class S_Exp_Lexer {
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
 
         bool isWhiteSpace(char ch) {
-            return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
+            return (ch == ' ' || ch == '\t' || ch == '\n');
+            //return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
         }
 
         bool isDigit(char ch) {
@@ -210,6 +211,21 @@ class S_Exp_Lexer {
             if (s >= 3 && tokens[s-3].value == "(" && tokens[s-2].value == "exit" && tokens[s-1].value == ")") throw CorrectExit();
         }
 
+        void read() {
+            Token token;
+            lineNum++;
+            ch = '\0';
+            prev_ch = '\0';
+            while (std::cin.get(ch)) {
+                if (ch == ';') while (ch != '\n') std::cin.get(ch);
+                if (isWhiteSpace(ch)) {
+                    
+                }
+            }
+            throw CorrectExit();
+        }
+
+        // deprecate
         void readAndTokenize() {
             std::cout << "> ";
             Token token;
@@ -258,49 +274,8 @@ class S_Exp_Lexer {
                     continue;
                 }
                 if (ch == '\\') { // escape
-                    /* 
-                    TO FIX:
-                    "1'\"'2'\\"'3'\\\"'4'\\\\"'5'\\\\\"'" ; 再測一次
-                    */
                     char next_ch = std::cin.peek();
-                    if (next_ch == 'n' || next_ch == '\"' || next_ch == 't' || next_ch == '\\') {
-                        if (prev_ch != '\'') { // escape char not in ''
-                            if (escape_map.count(next_ch)) {
-                                // not shure is 'v', 'f', 'r' need to be replaced
-                                std::cin.get(); // skip the next char that will be replace
-                                columnNum++;
-                                prev_ch = next_ch;
-                                ch = escape_map[next_ch];
-                                if (next_ch == '\"') { // to avoid storing double-quotes
-                                    token.value += ch;
-                                    continue;
-                                }
-                            }
-                        }
-                        else { // escape must in ''
-                            if (next_ch != '\\') { // odd backslash, ex. "'\"'" -> '\"'
-                                // not shure is 'v', 'f', 'r' need to be replaced
-                                if (escape_map.count(next_ch)) {
-                                    std::cin.get(ch); // skip the next char that will be replace
-                                    columnNum++;
-                                    prev_ch = ch;
-                                    ch = escape_map[prev_ch];
-                                    if (ch == '\"') { // to avoid storing double-quotes
-                                        token.value += ch;
-                                        continue;
-                                    }
-                                }
-                            }
-                            else { // even backslash, ex. "'\\n'" -> '\\' + '\n' 
-                                std::cin.get(); // skip even number of backslash
-                                columnNum++;
-                                prev_ch = '\'';
-                                token.value += ch;
-                                continue;
-                            }
-                        }
-                    }
-                    // else just a backslash
+
                 }
                 if (ch == '(' || ch == ')' || ch == '\'') {
                     if (token.value == "") {
@@ -346,8 +321,9 @@ int main() {
     S_Exp_Parser parser;
     while (true) {
         try {
+            lexer.read();
             //std::cout << "out" << std::endl;
-            lexer.readAndTokenize();
+            //lexer.readAndTokenize();
             //lexer.printAllTokens();
         } catch (CorrectExit &c) {
             std::cout << c.what() << std::endl;
