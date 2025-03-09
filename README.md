@@ -1,6 +1,7 @@
 # CYCU-New-PL (中原資工程式語言project - OurScheme)
 ## 資料
 - 簡報: https://www.canva.com/design/DAGemJ7sLQI/X3aeWBckMJEJuJ5ks3dF7w/edit?utm_content=DAGemJ7sLQI&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
+- 老大的上傳系統: https://pai.lab715.uk:5001/PL-PostCode/
 - 系統只吃一個檔案，所以要全部塞在同一檔案中
 - Project deadline修改為與大三相同
 - 平時分數計算：每堂課會有4分
@@ -19,7 +20,7 @@
     - ```NoClosingQuote```:
         - lineNum一定是1，因為```""```之間不可以有```\n```
         - columnNum是當前正在判斷的字元位置+1
-        - 範例（空格用```_```表示，但greeting的```> ```會正常印）：
+        - 範例（空格用```_```表示，但greeting的```> ```與Error message的空格會正常印）：
             1.
             ```
             > "123""
