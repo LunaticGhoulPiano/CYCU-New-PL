@@ -121,7 +121,7 @@ class CorrectExit: public BaseException {
 class UnexpectedToken: public BaseException {
     public:
         UnexpectedToken(int line, int column, const std::string &token):
-            BaseException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
+            BaseException("\n-1> ERROR (unexpected token) : atom or '(' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
@@ -129,7 +129,7 @@ class UnexpectedToken: public BaseException {
 class NoRightParen: public BaseException {
     public:
         NoRightParen(int line, int column, const std::string &token):
-            BaseException("\n> ERROR (unexpected token) : ')' expected when token at Line "
+            BaseException("\n-2> ERROR (unexpected token) : ')' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
@@ -137,14 +137,14 @@ class NoRightParen: public BaseException {
 class NoClosingQuote: public BaseException {
     public:
         NoClosingQuote(int line, int column):
-            BaseException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+            BaseException("\n-3> ERROR (no closing quote) : END-OF-LINE encountered at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + "\n") {}
 };
 
 // ERROR (no more input) : END-OF-FILE encountered
 class NoMoreInput: public BaseException {
     public:
-        NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\n") {}
+        NoMoreInput(): BaseException("\n-4> ERROR (no more input) : END-OF-FILE encountered\n") {}
 };
 
 /* S-Expression Lexer */
@@ -215,7 +215,7 @@ class S_Exp_Lexer {
             columnNum = 0;
             ch = '\0';
             prev_ch = '\0';
-            if (printInputSign) std::cout << "\n0> "; // input prompt
+            if (printInputSign) std::cout << "\n0> "; // init input prompt
             printInputSign = true;
 
             while (std::cin.get(ch)) {
@@ -223,6 +223,7 @@ class S_Exp_Lexer {
                     if (! token.value.empty()) {
                         if (token.value[0] != '\"') {
                             while (ch != '\n') std::cin.get(ch);
+                            std::cout << "\n1> "; // input prompt be printed when new line encountered
                         }
                         else { // in the double-quote
                             token.value += ch;
@@ -249,18 +250,18 @@ class S_Exp_Lexer {
                                 // may have error here
                                 // because still not meat the coressponding ')'
                                 // so only a line-feed, still inputing a double-quote
-                                std::cout << "\n1> " << token.value << "\n"; // output prompt
+                                std::cout << "\n2> " << token.value << "\n"; // output prompt
                                 saveAToken(token);
                                 lineNum++;
-                                std::cout << "\n2> "; // input prompt
+                                std::cout << "\n3> "; // input prompt be printed when new line encountered
                             }
                         }
                         else { // ' ' or '\t'
                             if (token.value[0] != '\"') { // token finished, store and reset
-                                std::cout << "\n3> " << token.value << "\n"; // output prompt
+                                std::cout << "\n4> " << token.value << "\n"; // output prompt
                                 saveAToken(token);
                                 columnNum++; // the position of white space
-                                std::cout << "\n4> "; // input prompt
+                                if (std::cin.peek() == '\n') std::cout << "\n5> "; // input prompt be printed when new line encountered
                             }
                             else { // store into double-quote
                                 token.value += ch;
@@ -278,21 +279,16 @@ class S_Exp_Lexer {
                 else if (ch == '\"' && ! token.value.empty()) {
                     if (token.value[0] == '\"') { // end of double-quote
                         token.value += ch;
-                        std::cout << "\n5> " << token.value << "\n"; // output prompt
+                        std::cout << "\n6> " << token.value << "\n"; // output prompt
                         saveAToken(token);
-                        /*
-                        test cases:
-                        > ""
-                        > "123"  f "v
-                        */
-                        std::cout << "\n6> "; // input prompt
+                       if (std::cin.peek() == '\n') std::cout << "\n7> "; // input prompt be printed when new line encountered
                     }
                     else {
-                        std::cout << "\n7> " << token.value << "\n"; // output prompt
+                        std::cout << "\n8> " << token.value << "\n"; // output prompt
                         saveAToken(token); // store the token before double-quote, ex. > 4"
                         token.value += ch;
                         columnNum++;
-                        std::cout << "\n8> "; // input prompt
+                        //if (std::cin.peek() == '\n') std::cout << "\n9> "; // input prompt be printed when new line encountered
                     }
                 }
                 else if (ch == '\'') {
