@@ -7,13 +7,6 @@
 
 std::string gTestNum; // note that it is int + '\n'
 
-/* Temporary structure for judging S-Exp with multiple line-returns */
-typedef struct TempTokenInLineBuffer {
-    std::string value = "";
-    int lineNum = -1;
-    int columnNum = -1;
-} TempTokenInLineBuffer;
-
 /* Token Types */
 enum class TokenType {
     LEFT_PAREN, // '('
@@ -210,7 +203,7 @@ class S_Exp_Lexer {
 
         void read() {
             Token token; // to store single token
-            std::vector<TempTokenInLineBuffer> lineBuffer; // clear when line error or save when line ok
+            std::vector<Token> tokensBuffer; // a buffer of tokens of an ATOM or S-Exp
             lineNum = 1;
             columnNum = 0;
             ch = '\0';
@@ -235,7 +228,7 @@ class S_Exp_Lexer {
                 else if (isWhiteSpace(ch)) {
                     if (token.value.empty()) { // between complete tokens
                         if (ch == '\n') {
-                            lineNum++;
+                            lineNum = 1;
                             columnNum = 0;
                         }
                         else columnNum++; // skip ' ' or '\t'
@@ -271,10 +264,22 @@ class S_Exp_Lexer {
                     }
                 }
                 else if (ch == '(') {
-                    //
+                    if (token.value != "" && token.value[0] == '\"') {
+                        token.value += ch;
+                        columnNum++;
+                    }
+                    else {
+                        //
+                    }
                 }
                 else if (ch == ')') {
-                    //
+                    if (token.value != "" && token.value[0] == '\"') {
+                        token.value += ch;
+                        columnNum++;
+                    }
+                    else {
+                        //
+                    }
                 }
                 else if (ch == '\"' && ! token.value.empty()) {
                     if (token.value[0] == '\"') { // end of double-quote
@@ -292,13 +297,35 @@ class S_Exp_Lexer {
                     }
                 }
                 else if (ch == '\'') {
-                    //
+                    if (token.value != "" && token.value[0] == '\"') {
+                        token.value += ch;
+                        columnNum++;
+                    }
+                    else {
+                        //
+                    }
                 }
                 else if (ch == '\\') {
-                    //
+                    if (token.value != "" && token.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in double-string, escape
+                        // ch + next_ch = "\t" or "\n" or "\\" or "\""
+                        columnNum++; // first backslash
+                        ch = std::cin.get();
+                        token.value += escape_map[ch];
+                        columnNum++;
+                    }
+                    else { // just a normal backslash
+                        token.value += ch;
+                        columnNum++;
+                    }
                 }
                 else if (ch == '+' || ch == '-' || ch == '.') {
-                    //
+                    if (token.value != "" && token.value[0] == '\"') {
+                        token.value += ch;
+                        columnNum++;
+                    }
+                    else {
+                        //
+                    }
                 }
                 else {
                     token.value += ch;
