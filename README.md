@@ -18,6 +18,15 @@
     - 正常的token:
         - 每次保存一個token之後都要重設
         - lineNum = 1, columnNum = 0
+        - 只有以下可以在輸入期間出現換行
+        ```
+        '
+        (
+        a
+        .
+        +456.2
+        )
+        ```
     - ```NoClosingQuote```:
         - lineNum一定是1，因為```""```之間不可以有```\n```
         - columnNum是當前正在判斷的字元位置+1
