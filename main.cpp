@@ -1,6 +1,7 @@
 #include <iostream>
 #include <exception>
 #include <vector>
+#include <stack>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -29,6 +30,7 @@ enum class TokenType {
 /* Token structure */
 struct Token {
     TokenType type;
+    std::vector<std::string> values;
     std::string value = "";
 };
 
@@ -114,7 +116,7 @@ class CorrectExit: public BaseException {
 class UnexpectedToken: public BaseException {
     public:
         UnexpectedToken(int line, int column, const std::string &token):
-            BaseException("\n-1> ERROR (unexpected token) : atom or '(' expected when token at Line "
+            BaseException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
@@ -122,7 +124,7 @@ class UnexpectedToken: public BaseException {
 class NoRightParen: public BaseException {
     public:
         NoRightParen(int line, int column, const std::string &token):
-            BaseException("\n-2> ERROR (unexpected token) : ')' expected when token at Line "
+            BaseException("\n> ERROR (unexpected token) : ')' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
@@ -130,14 +132,14 @@ class NoRightParen: public BaseException {
 class NoClosingQuote: public BaseException {
     public:
         NoClosingQuote(int line, int column):
-            BaseException("\n-3> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+            BaseException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + "\n") {}
 };
 
 // ERROR (no more input) : END-OF-FILE encountered
 class NoMoreInput: public BaseException {
     public:
-        NoMoreInput(): BaseException("\n-4> ERROR (no more input) : END-OF-FILE encountered\n") {}
+        NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\n") {}
 };
 
 /* S-Expression Lexer */
@@ -199,34 +201,35 @@ class S_Exp_Lexer {
             // just to correctly quit the system
             int s = tokens.size();
             if (s >= 3 && tokens[s-3].value == "(" && tokens[s-2].value == "exit" && tokens[s-1].value == ")") throw CorrectExit();
+            if (s >= 1 && tokens[s-1].value == "(exit)") throw CorrectExit();
         }
 
         void read() {
-            Token token; // to store single token
-            std::vector<Token> tokensBuffer; // a buffer of tokens of an ATOM or S-Exp
+            Token tokenBuffer; // to store single token
+            std::stack<char> parenStack;
             lineNum = 1;
             columnNum = 0;
             ch = '\0';
             prev_ch = '\0';
-            if (printInputSign) std::cout << "\n0> "; // init input prompt
+            if (printInputSign) std::cout << "\n> "; // init input prompt
             printInputSign = true;
 
             while (std::cin.get(ch)) {
                 if (ch == ';') {
-                    if (! token.value.empty()) {
-                        if (token.value[0] != '\"') {
+                    if (! tokenBuffer.value.empty()) {
+                        if (tokenBuffer.value[0] != '\"') {
                             while (ch != '\n') std::cin.get(ch);
-                            std::cout << "\n1> "; // input prompt be printed when new line encountered
+                            std::cout << "\n> "; // input prompt be printed when new line encountered
                         }
                         else { // in the double-quote
-                            token.value += ch;
+                            tokenBuffer.value += ch;
                             columnNum++;
                         }
                     }
                     else while (std::cin.peek() != '\n') std::cin.get(ch);
                 }
                 else if (isWhiteSpace(ch)) {
-                    if (token.value.empty()) { // between complete tokens
+                    if (tokenBuffer.value.empty()) { // between complete tokens
                         if (ch == '\n') {
                             lineNum = 1;
                             columnNum = 0;
@@ -235,7 +238,7 @@ class S_Exp_Lexer {
                     }
                     else { // incomplete token still inputing
                         if (ch == '\n') {
-                            if (token.value[0] == '\"') {
+                            if (tokenBuffer.value[0] == '\"') {
                                 columnNum++;
                                 throw NoClosingQuote(lineNum, columnNum);
                             }
@@ -243,62 +246,74 @@ class S_Exp_Lexer {
                                 // may have error here
                                 // because still not meat the coressponding ')'
                                 // so only a line-feed, still inputing a double-quote
-                                std::cout << "\n2> " << token.value << "\n"; // output prompt
-                                saveAToken(token);
+                                std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
+                                saveAToken(tokenBuffer);
                                 lineNum++;
-                                std::cout << "\n3> "; // input prompt be printed when new line encountered
+                                std::cout << "\n> "; // input prompt be printed when new line encountered
                             }
                         }
                         else { // ' ' or '\t'
-                            if (token.value[0] != '\"') { // token finished, store and reset
-                                std::cout << "\n4> " << token.value << "\n"; // output prompt
-                                saveAToken(token);
+                            if (tokenBuffer.value[0] != '\"') { // token finished, store and reset
+                                std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
+                                saveAToken(tokenBuffer);
                                 columnNum++; // the position of white space
-                                if (std::cin.peek() == '\n') std::cout << "\n5> "; // input prompt be printed when new line encountered
+                                if (std::cin.peek() == '\n') std::cout << "\n> "; // input prompt be printed when new line encountered
                             }
                             else { // store into double-quote
-                                token.value += ch;
+                                tokenBuffer.value += ch;
                                 columnNum++;
                             }
                         }
                     }
                 }
                 else if (ch == '(') {
-                    if (token.value != "" && token.value[0] == '\"') {
-                        token.value += ch;
-                        columnNum++;
-                    }
-                    else {
-                        //
-                    }
+                    if (! (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"')) parenStack.push(ch); // if not in double-quote
+                    tokenBuffer.value += ch;
+                    columnNum++;
                 }
                 else if (ch == ')') {
-                    if (token.value != "" && token.value[0] == '\"') {
-                        token.value += ch;
+                    if (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"') {
+                        tokenBuffer.value += ch;
                         columnNum++;
                     }
                     else {
-                        //
+                        columnNum++;
+                        if (parenStack.empty()) {
+                            while (std::cin.peek() != '\n') std::cin.get(ch);
+                            throw UnexpectedToken(lineNum, columnNum, ")");
+                        }
+                        else {
+                            parenStack.pop();
+                            if (parenStack.empty()) {
+                                tokenBuffer.value += ch;
+                                std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
+                                saveAToken(tokenBuffer);
+                                if (std::cin.peek() == '\n') std::cout << "\n> "; // input prompt be printed when new line encountered
+                            }
+                            else {
+                                //
+                            }
+                        }
                     }
                 }
-                else if (ch == '\"' && ! token.value.empty()) {
-                    if (token.value[0] == '\"') { // end of double-quote
-                        token.value += ch;
-                        std::cout << "\n6> " << token.value << "\n"; // output prompt
-                        saveAToken(token);
-                       if (std::cin.peek() == '\n') std::cout << "\n7> "; // input prompt be printed when new line encountered
+                else if (ch == '\"' && ! tokenBuffer.value.empty()) {
+                    if (tokenBuffer.value[0] == '\"') { // end of double-quote
+                        tokenBuffer.value += ch;
+                        std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
+                        saveAToken(tokenBuffer);
+                       if (std::cin.peek() == '\n') std::cout << "\n> "; // input prompt be printed when new line encountered
                     }
                     else {
-                        std::cout << "\n8> " << token.value << "\n"; // output prompt
-                        saveAToken(token); // store the token before double-quote, ex. > 4"
-                        token.value += ch;
+                        std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
+                        saveAToken(tokenBuffer); // store the token before double-quote, ex. > 4"
+                        tokenBuffer.value += ch;
                         columnNum++;
                         //if (std::cin.peek() == '\n') std::cout << "\n9> "; // input prompt be printed when new line encountered
                     }
                 }
                 else if (ch == '\'') {
-                    if (token.value != "" && token.value[0] == '\"') {
-                        token.value += ch;
+                    if (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"') {
+                        tokenBuffer.value += ch;
                         columnNum++;
                     }
                     else {
@@ -306,33 +321,48 @@ class S_Exp_Lexer {
                     }
                 }
                 else if (ch == '\\') {
-                    if (token.value != "" && token.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in double-string, escape
+                    if (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in double-string, escape
                         // ch + next_ch = "\t" or "\n" or "\\" or "\""
                         columnNum++; // first backslash
                         ch = std::cin.get();
-                        token.value += escape_map[ch];
+                        tokenBuffer.value += escape_map[ch];
                         columnNum++;
                     }
                     else { // just a normal backslash
-                        token.value += ch;
+                        tokenBuffer.value += ch;
                         columnNum++;
                     }
                 }
                 else if (ch == '+' || ch == '-' || ch == '.') {
-                    if (token.value != "" && token.value[0] == '\"') {
-                        token.value += ch;
-                        columnNum++;
+                    if (tokenBuffer.value != "") {
+                        if (tokenBuffer.value[0] == '\"') {
+                            tokenBuffer.value += ch;
+                            columnNum++;
+                        }
+                        else {
+                            if (ch == '.') {
+                                if (isDigit(tokenBuffer.value[0])) { // float
+                                    tokenBuffer.value += ch;
+                                    columnNum++;
+                                }
+                                else { // symbol
+                                    //
+                                }
+                            }
+                            else {
+                                //
+                            }
+                        }
                     }
                     else {
                         //
                     }
                 }
                 else {
-                    token.value += ch;
+                    tokenBuffer.value += ch;
                     columnNum++;
                 }
             }
-            throw CorrectExit();
         }
 };
 
@@ -352,19 +382,19 @@ int main() {
             std::cout << c.what();
             break;
         } catch (NoMoreInput &e) {
-            std::cerr << e.what();
+            std::cout << e.what();
             break;
         } catch (UnexpectedToken &e) {
-            std::cerr << e.what();
+            std::cout << e.what();
             //break;
         } catch (NoClosingQuote &e) {
-            std::cerr << e.what();
+            std::cout << e.what();
             //break;
         } catch (NoRightParen &e) {
-            std::cerr << e.what();
+            std::cout << e.what();
             //break;
         } catch (...) {
-            std::cerr << "Unknown error" << std::endl;
+            std::cout << "Unknown error" << std::endl;
             //break;
         }
     }

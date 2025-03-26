@@ -11,6 +11,7 @@
     4. Great
     0. Not good
 - Project分數到80可以不用出席
+- WSL路徑: ```/mnt/c/Users/PoHsu/OneDrive/文件/GitHub/CYCU-New-PL```
 
 ## Project 1
 - 位置計算與Errors
