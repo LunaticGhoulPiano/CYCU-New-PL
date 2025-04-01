@@ -197,7 +197,7 @@ class S_Exp_Lexer {
         }
 
         bool isFloat(const std::string &str) {
-            std::regex pattern("^[-+]?((\\d+\\.\\d+)|(\\.\\d+))$");
+            std::regex pattern("^[-+]?((\\d+\\.\\d*)|(\\.\\d+))$");
             return std::regex_match(str, pattern);
         }
 
@@ -218,38 +218,58 @@ class S_Exp_Lexer {
 
         void saveAnAtom(Atom &atom, BufferSExp &buffer) {
             // judge type
-            if (isInt(atom.value)) atom.type = AtomType::INT;
-            else if (isFloat(atom.value)) atom.type = AtomType::FLOAT;
-            else if (atom.value == "(") atom.type = AtomType::LEFT_PAREN;
-            else if (atom.value == ")") atom.type = AtomType::RIGHT_PAREN;
-            else if (atom.value == ".") atom.type = AtomType::DOT;
-            else if (atom.value[0] == '\"' && atom.value[atom.value.length()-1] == '\"') atom.type = AtomType::STRING;
-            else if (atom.value == "\'") atom.type = AtomType::QUOTE;
-            else if (atom.value == "nil" || atom.value == "#f") atom.type = AtomType::NIL;
-            else if (atom.value == "t" || atom.value == "#t") atom.type = AtomType::T;
-            else atom.type = AtomType::SYMBOL;
-
-            // formating int and float, also round float to "%.3f"
-            if (atom.type == AtomType::INT || atom.type == AtomType::FLOAT) {
+            if (isInt(atom.value) || isFloat(atom.value)) {
                 std::istringstream iss(atom.value);
                 std::stringstream oss;
+                // formating int and float, also round float to "%.3f"
                 if (atom.value.find('.') != std::string::npos) {
+                    atom.type = AtomType::FLOAT;
                     double value;
                     iss >> value;
                     oss << std::fixed << std::setprecision(3) << value;
                 }
                 else {
+                    atom.type = AtomType::INT;
                     int value;
                     iss >> value;
                     oss << value;
                 }
                 atom.value = oss.str();
             }
+            else if (atom.value == "(") atom.type = AtomType::LEFT_PAREN;
+            else if (atom.value == ")") {
+                // deal the "()" here
+                if (buffer.tokens.size() > 0 && buffer.tokens[buffer.tokens.size()-1].type == AtomType::LEFT_PAREN) {
+                    buffer.tokens.pop_back();
+                    atom.value = "nil";
+                    atom.type = AtomType::NIL;
+                }
+                else atom.type = AtomType::RIGHT_PAREN;
+            }
+            else if (atom.value == ".") atom.type = AtomType::DOT;
+            else if (atom.value[0] == '\"' && atom.value[atom.value.length()-1] == '\"') atom.type = AtomType::STRING;
+            else if (atom.value == "\'") atom.type = AtomType::QUOTE;
+            else if (atom.value == "nil" || atom.value == "#f") {
+                atom.type = AtomType::NIL;
+                atom.value = "nil";
+            }
+            else if (atom.value == "t" || atom.value == "#t") {
+                atom.type = AtomType::T;
+                atom.value = "#t";
+            }
+            else atom.type = AtomType::SYMBOL;
 
             std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
             printType(atom);
             buffer.tokens.push_back(atom);
             atom.reset();
+
+            // debug
+            std::cout << "Cur tokens:\n";
+            for (int i = 0; i < buffer.tokens.size(); i++) {
+                std::cout << buffer.tokens[i].value << " ";
+                printType(buffer.tokens[i]);
+            }
         }
 
     public:
@@ -363,7 +383,6 @@ class S_Exp_Lexer {
                             parenStack.push(ch);
                             // save an atom
                             atom.value += ch;
-                            //atom.type = AtomType::LEFT_PAREN;
                             saveAnAtom(atom, buffer);
 
                             // set position
@@ -375,7 +394,6 @@ class S_Exp_Lexer {
                         
                         // save an atom
                         atom.value += ch;
-                        //atom.type = AtomType::LEFT_PAREN;
                         saveAnAtom(atom, buffer);
 
                         // set position
@@ -403,7 +421,6 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 // save an atom
                                 atom.value += ch;
-                                //atom.type = AtomType::RIGHT_PAREN;
                                 saveAnAtom(atom, buffer);
 
                                 // set position
@@ -422,7 +439,6 @@ class S_Exp_Lexer {
                             parenStack.pop();
                             // save an atom
                             atom.value += ch;
-                            //atom.type = AtomType::RIGHT_PAREN;
                             saveAnAtom(atom, buffer);
 
                             // set position
@@ -433,7 +449,6 @@ class S_Exp_Lexer {
                 else if (ch == '\"') {
                     if (atom.value == "") { // the start of a string
                         atom.value += ch;
-                        //atom.type = AtomType::STRING;
                         columnNum++;
                     }
                     else {
@@ -454,7 +469,6 @@ class S_Exp_Lexer {
     
                             // set the new starting string's char and position
                             atom.value += ch;
-                            //atom.type = AtomType::STRING;
                             columnNum++;
                         }
                     }
@@ -464,7 +478,6 @@ class S_Exp_Lexer {
                         // save an atom
                         columnNum++;
                         atom.value += ch;
-                        //atom.type = AtomType::QUOTE;
                         saveAnAtom(atom, buffer);
 
                         // set position
@@ -506,7 +519,6 @@ class S_Exp_Lexer {
                                     columnNum++;
                                 }
                                 else { // symbol
-                                    //atom.type = AtomType::SYMBOL;
                                     atom.value += ch;
                                     columnNum++;
                                 }
@@ -517,13 +529,11 @@ class S_Exp_Lexer {
                                     columnNum++;
                                 }
                                 else { // symbol
-                                    //atom.type = AtomType::SYMBOL;
                                     atom.value += ch;
                                     columnNum++;
                                 }
                             }
                             else { // symbol
-                                //atom.type = AtomType::SYMBOL;
                                 atom.value += ch;
                                 columnNum++;
                             }
