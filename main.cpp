@@ -5,11 +5,12 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <regex>
 
 std::string gTestNum; // note that it is int + '\n'
 
-/* Token Types */
-enum class TokenType {
+/* Atom Types */
+enum class AtomType {
     UDF, // undefined
     LEFT_PAREN, // '('
     RIGHT_PAREN, // ')'
@@ -30,10 +31,10 @@ enum class TokenType {
 
 /* ATOM structure */
 struct Atom {
-    TokenType type;
+    AtomType type;
     std::string value;
     void reset() {
-        type = TokenType::UDF;
+        type = AtomType::UDF;
         value = "";
     }
 };
@@ -189,6 +190,39 @@ class S_Exp_Lexer {
             return (isWhiteSpace(ch) || ch == '(' || ch == ')' || ch == '\'' || ch == '\"' || ch == ';');
         }
 
+        bool isInt(const std::string &str) {
+            std::regex pattern("^[-+]?\\d+$");
+            return std::regex_match(str, pattern);
+        }
+
+        bool isFloat(const std::string &str) {
+            std::regex pattern("^[-+]?((\\d+\\.\\d+)|(\\.\\d+))$");
+            return std::regex_match(str, pattern);
+        }
+
+        void printType(Atom atom) {
+            switch(atom.type) {
+                case AtomType::INT: std::cout << "INT"; break;
+                case AtomType::FLOAT: std::cout << "FLOAT"; break;
+                case AtomType::STRING: std::cout << "STRING"; break;
+                case AtomType::SYMBOL: std::cout << "SYMBOL"; break;
+                case AtomType::NIL: std::cout << "NIL"; break;
+                case AtomType::T: std::cout << "T"; break;
+                case AtomType::DOT: std::cout << "DOT"; break;
+                case AtomType::QUOTE: std::cout << "QUOTE"; break;
+                case AtomType::LEFT_PAREN: std::cout << "LEFT_PAREN"; break;
+                case AtomType::RIGHT_PAREN: std::cout << "RIGHT_PAREN"; break;
+                default: std::cout << "UDF";
+            }
+        }
+
+        void saveAnAtom(Atom &atom, BufferSExp &buffer) {
+            std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
+            printType(atom);
+            buffer.tokens.push_back(atom);
+            atom.reset();
+        }
+
     public:
         bool allow_newline_in_token = false;
         
@@ -208,18 +242,15 @@ class S_Exp_Lexer {
             if (! allow_newline_in_token) std::cout << "\nA> "; // init input prompt
 
             while (std::cin.get(ch)) {
-                // std::cout << "_" << ch << "_" << std::endl;
                 if (ch == ';') {
                     if (atom.value != "") {
-                        if (atom.value[0] == '\"') { // in the double-quote
+                        if (atom.value[0] == '\"') { // in string
                             atom.value += ch;
                             columnNum++;
                         }
                         else {
                             // save an atom
-                            std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-                            buffer.tokens.push_back(atom);
-                            atom.reset();
+                            saveAnAtom(atom, buffer);
 
                             // read until new line
                             while (ch != '\n') std::cin.get(ch);
@@ -255,10 +286,8 @@ class S_Exp_Lexer {
                                 throw NoClosingQuote(lineNum, columnNum);
                             }
                             else {
-                                // save a terminal
-                                std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-                                buffer.tokens.push_back(atom);
-                                atom.reset();
+                                // save a atom
+                                saveAnAtom(atom, buffer);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -276,9 +305,7 @@ class S_Exp_Lexer {
                             }
                             else {
                                 // save an atom
-                                std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-                                buffer.tokens.push_back(atom);
-                                atom.reset();
+                                saveAnAtom(atom, buffer);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -291,84 +318,172 @@ class S_Exp_Lexer {
                         }
                     }
                 }
-                else if (ch == '(') { // judge both start of a single-quote or in double-quote
+                else if (ch == '(') { // judge both start of a single-quote or in string
                     if (atom.value != "") {
-                        //
+                        if (atom.value[0] == '\"') { // in string
+                            atom.value += ch;
+                            columnNum++;
+                        }
+                        else {
+                            // save an atom
+                            saveAnAtom(atom, buffer);
+                            // set position
+                            columnNum = 0;
+
+                            // set new parenStack
+                            parenStack.push(ch);
+                            // save an atom
+                            atom.value += ch;
+                            atom.type = AtomType::LEFT_PAREN;
+                            saveAnAtom(atom, buffer);
+
+                            // set position
+                            columnNum = 0;
+                        }
                     }
                     else {
                         parenStack.push(ch);
+                        
                         // save an atom
                         atom.value += ch;
-                        std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-                        buffer.tokens.push_back(atom);
-                        atom.reset();
+                        atom.type = AtomType::LEFT_PAREN;
+                        saveAnAtom(atom, buffer);
 
                         // set position
-                        //
                         columnNum = 0;
                     }
                 }
-                else if (ch == ')') { // judge both end of a single-quote or in double-quote
-                    if (atom.value != "" && atom.value[0] == '\"') {
-                        atom.value += ch;
-                        columnNum++;
+                else if (ch == ')') { // judge both end of a single-quote or in string
+                    if (atom.value != "") {
+                        if (atom.value[0] == '\"') { // in string
+                            atom.value += ch;
+                            columnNum++;
+                        }
+                        else {
+                            // save an atom
+                            saveAnAtom(atom, buffer);
+                            // set position
+                            columnNum = 0;
+
+                            // check parenStack
+                            if (parenStack.empty()) {
+                                while (std::cin.get() != '\n') std::cin.get(ch);
+                                throw UnexpectedToken(lineNum, columnNum, ")");
+                            }
+                            else {
+                                parenStack.pop();
+                                // save an atom
+                                atom.value += ch;
+                                atom.type = AtomType::RIGHT_PAREN;
+                                saveAnAtom(atom, buffer);
+
+                                // set position
+                                columnNum = 0;
+                            }
+                        }
                     }
                     else {
-                        columnNum++;
+                        // check parenStack
                         if (parenStack.empty()) {
+                            columnNum++;
                             while (std::cin.peek() != '\n') std::cin.get(ch);
                             throw UnexpectedToken(lineNum, columnNum, ")");
                         }
                         else {
                             parenStack.pop();
-                            if (parenStack.empty()) {
-                                atom.value += ch;
-                                // save an atom
-                                std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-                                buffer.tokens.push_back(atom);
-                                atom.reset();
+                            // save an atom
+                            atom.value += ch;
+                            atom.type = AtomType::RIGHT_PAREN;
+                            saveAnAtom(atom, buffer);
 
-                                //if (std::cin.peek() == '\n') std::cout << "\n> "; // input prompt be printed when new line encountered
-                            }
-                            else {
-                                //
-                            }
+                            // set position
+                            columnNum = 0;
                         }
                     }
                 }
-                else if (ch == '\"' && atom.value != "") {
-                    if (atom.value[0] == '\"') { // end of a double-quote
-                        // save a atom
+                else if (ch == '\"') {
+                    if (atom.value == "") { // the start of a string
                         atom.value += ch;
-                        std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-                        buffer.tokens.push_back(atom);
-                        atom.reset();
-
-                        // set position
-                        if (allow_newline_in_token) lineNum++;
-                        else lineNum = 1;
-                        columnNum = 0;
-                    }
-                    else { // ex. > "" ""asf"" -> temp = "asf", ch = '\"'
-                        // save an atom
-                        std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-                        buffer.tokens.push_back(atom);
-                        atom.reset();
-                        columnNum = 0;
-
-                        // set the new starting double-quote's char and position
-                        atom.value += ch;
+                        atom.type = AtomType::STRING;
                         columnNum++;
+                    }
+                    else {
+                        if (atom.value[0] == '\"') { // end of a string
+                            // save a atom
+                            atom.value += ch;
+                            saveAnAtom(atom, buffer);
+    
+                            // set position
+                            if (allow_newline_in_token) lineNum++;
+                            else lineNum = 1;
+                            columnNum = 0;
+                        }
+                        else { // ex. > "" ""asf"" -> temp = "asf", ch = '\"'
+                            // save an atom
+                            saveAnAtom(atom, buffer);
+                            columnNum = 0;
+    
+                            // set the new starting string's char and position
+                            atom.value += ch;
+                            atom.type = AtomType::STRING;
+                            columnNum++;
+                        }
                     }
                 }
                 else if (ch == '\'') {
                     //
                 }
                 else if (ch == '\\') {
-                    //
+                    if (atom.value != "" && atom.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in string, escape
+                        // ch + next_ch = "\t" or "\n" or "\\" or "\""
+                        columnNum++; // first backslash
+                        ch = std::cin.get();
+                        atom.value += escape_map[ch];
+                        columnNum++;
+                    }
+                    else { // just a normal backslash
+                        atom.value += ch;
+                        columnNum++;
+                    }
                 }
                 else if (ch == '+' || ch == '-' || ch == '.' || (isDigit(ch) && atom.value == "")) {
-                    //
+                    if (atom.value != "") {
+                        if (atom.value[0] == '\"') { // in string
+                            atom.value += ch;
+                            columnNum++;
+                        }
+                        else {
+                            if (isDigit(ch) && atom.value == "") {
+                                if (isInt(atom.value) || isFloat(atom.value) || atom.value == "+" || atom.value == "-") { // int or float
+                                    atom.value += ch;
+                                    columnNum++;
+                                }
+                                else { // symbol
+                                    atom.value += ch;
+                                    atom.type = AtomType::SYMBOL;
+                                    columnNum++;
+                                }
+                            }
+                            else if (ch == '.') {
+                                if (isInt(atom.value)) { // float
+                                    atom.value += ch;
+                                    columnNum++;
+                                }
+                                else { // symbol
+                                    atom.value += ch;
+                                    columnNum++;
+                                }
+                            }
+                            else { // symbol
+                                atom.value += ch;
+                                columnNum++;
+                            }
+                        }
+                    }
+                    else { // the first char
+                        atom.value += ch;
+                        columnNum++;
+                    }
                 }
                 else {
                     atom.value += ch;
@@ -376,157 +491,6 @@ class S_Exp_Lexer {
                     // should judge / set type here
                 }
             }
-            /*
-            while (std::cin.get(ch)) {
-                if (ch == ';') {
-                    if (! tokenBuffer.value.empty()) {
-                        if (tokenBuffer.value[0] != '\"') {
-                            while (ch != '\n') std::cin.get(ch);
-                            std::cout << "\n> "; // input prompt be printed when new line encountered
-                        }
-                        else { // in the double-quote
-                            tokenBuffer.value += ch;
-                            columnNum++;
-                        }
-                    }
-                    else while (std::cin.peek() != '\n') std::cin.get(ch);
-                }
-                else if (isWhiteSpace(ch)) {
-                    if (tokenBuffer.value.empty()) { // between complete tokens
-                        if (ch == '\n') {
-                            lineNum = 1;
-                            columnNum = 0;
-                        }
-                        else columnNum++; // skip ' ' or '\t'
-                    }
-                    else { // incomplete token still inputing
-                        if (ch == '\n') {
-                            if (tokenBuffer.value[0] == '\"') {
-                                columnNum++;
-                                throw NoClosingQuote(lineNum, columnNum);
-                            }
-                            else {
-                                // may have error here
-                                // because still not meat the coressponding ')'
-                                // so only a line-feed, still inputing a double-quote
-                                std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
-                                saveAToken(tokenBuffer);
-                                lineNum++;
-                                std::cout << "\n> "; // input prompt be printed when new line encountered
-                            }
-                        }
-                        else { // ' ' or '\t'
-                            if (tokenBuffer.value[0] != '\"') { // token finished, store and reset
-                                std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
-                                saveAToken(tokenBuffer);
-                                columnNum++; // the position of white space
-                                if (std::cin.peek() == '\n') std::cout << "\n> "; // input prompt be printed when new line encountered
-                            }
-                            else { // store into double-quote
-                                tokenBuffer.value += ch;
-                                columnNum++;
-                            }
-                        }
-                    }
-                }
-                else if (ch == '(') {
-                    if (! (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"')) parenStack.push(ch); // if not in double-quote
-                    tokenBuffer.value += ch;
-                    columnNum++;
-                }
-                else if (ch == ')') {
-                    if (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"') {
-                        tokenBuffer.value += ch;
-                        columnNum++;
-                    }
-                    else {
-                        columnNum++;
-                        if (parenStack.empty()) {
-                            while (std::cin.peek() != '\n') std::cin.get(ch);
-                            throw UnexpectedToken(lineNum, columnNum, ")");
-                        }
-                        else {
-                            parenStack.pop();
-                            if (parenStack.empty()) {
-                                tokenBuffer.value += ch;
-                                std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
-                                saveAToken(tokenBuffer);
-                                if (std::cin.peek() == '\n') std::cout << "\n> "; // input prompt be printed when new line encountered
-                            }
-                            else {
-                                //
-                            }
-                        }
-                    }
-                }
-                else if (ch == '\"' && ! tokenBuffer.value.empty()) {
-                    if (tokenBuffer.value[0] == '\"') { // end of double-quote
-                        tokenBuffer.value += ch;
-                        std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
-                        saveAToken(tokenBuffer);
-                       if (std::cin.peek() == '\n') std::cout << "\n> "; // input prompt be printed when new line encountered
-                    }
-                    else {
-                        std::cout << "\n> " << tokenBuffer.value << "\n"; // output prompt
-                        saveAToken(tokenBuffer); // store the token before double-quote, ex. > 4"
-                        tokenBuffer.value += ch;
-                        columnNum++;
-                        //if (std::cin.peek() == '\n') std::cout << "\n9> "; // input prompt be printed when new line encountered
-                    }
-                }
-                else if (ch == '\'') {
-                    if (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"') {
-                        tokenBuffer.value += ch;
-                        columnNum++;
-                    }
-                    else {
-                        //
-                    }
-                }
-                else if (ch == '\\') {
-                    if (tokenBuffer.value != "" && tokenBuffer.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in double-string, escape
-                        // ch + next_ch = "\t" or "\n" or "\\" or "\""
-                        columnNum++; // first backslash
-                        ch = std::cin.get();
-                        tokenBuffer.value += escape_map[ch];
-                        columnNum++;
-                    }
-                    else { // just a normal backslash
-                        tokenBuffer.value += ch;
-                        columnNum++;
-                    }
-                }
-                else if (ch == '+' || ch == '-' || ch == '.') {
-                    if (tokenBuffer.value != "") {
-                        if (tokenBuffer.value[0] == '\"') {
-                            tokenBuffer.value += ch;
-                            columnNum++;
-                        }
-                        else {
-                            if (ch == '.') {
-                                if (isDigit(tokenBuffer.value[0])) { // float
-                                    tokenBuffer.value += ch;
-                                    columnNum++;
-                                }
-                                else { // symbol
-                                    //
-                                }
-                            }
-                            else {
-                                //
-                            }
-                        }
-                    }
-                    else {
-                        //
-                    }
-                }
-                else {
-                    tokenBuffer.value += ch;
-                    columnNum++;
-                }
-            }
-            */
         }
 };
 
