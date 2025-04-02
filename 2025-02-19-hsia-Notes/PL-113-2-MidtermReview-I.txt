@@ -1,0 +1,133 @@
+PL 113-2 midterm review Part I
+
+------------------------------------------------------------------
+
+考試style: 
+
+  (1)『惜字如金』(=認為少說少錯＋認為碰到邊總該有點分數)會沒分，
+  (2) 要舉例(whenever possible)。
+
+  #『懂』(that you truly understand it)是要用"適切"的白紙黑字來證明的！
+
+  # 別老想當媽祖、給籤詩！！！你必須講清楚、說明白！
+
+------------------------------------------------------------------
+
+PL期中考內容
+
+1. BNF, parse tree, derivation (rightmost, leftmost), ambiguity,
+
+2. recursive descent parsing
+
+3. OurScheme I/O與the tree that is built
+
+4. 觀念與定義
+
+# (3) 已於上週交代過 ； (1)與(2)則是留到下週Part II ; 本週是談(4)
+
+# 細節請看賴老師的教學影片。
+
+------------------------------------------------------------------
+
+compiler (C/C++) vs. interpreter (Python)
+
+# 注意：C/C++ compiler 並沒『直接』把你的C/C++程式翻譯成機器碼！！！
+
+------------------------------------------------------------------
+
+// The four storage classes of C
+auto int i ;  // used for declaring local variables with automatic storage duration (default)
+register int i ;
+static int i ; // different meaning for local and global ID (= func-name ＋ var-name)
+extern int i ; // only for global ID
+
+// C++
+auto i = 10 ;
+auto i = 2.34 ;
+
+------------------------------------------------------------------
+
+static這個字(三個意思)
+
+static storage allocation vs. dynamic storage allocation
+
+  static allocation : global var. and 三種 'static' variables 
+                      (all put in the heap)
+
+  dynamic allocation : automatic (on the call stack) vs. manual (in the heap)
+
+global/local variables + parameters that are pointers
+pointer and array
+function returning pointer
+
+  int * a = new int[10] ; a[3] = 5 ; *(a+3) = 10 ;
+  int b[10] ;  // DO NOT return 'b' ; it is not allowed anyway
+  int * c = b ;  c[0] == *c == b[0] ; *(c+1) == b[1]
+  // DO NOT return 'c' ; return 'a' is fine
+
+index out of range (a[10] = 5) vs. segmentation fault (*(a = NULL) = 5)
+
+------------------------------------------------------------------
+
+C/C++ :
+  Student * a = new Student ;
+  a->score = 70 ; // explicit dereferencing
+
+Java :
+  Student a = new Student() ;
+  a.score = 70 ;  // implicit dereferencing
+
+Python : // 沒有要考Python！但你可以知道what is actually happening in Python
+  a = Student() // 不用寫'new'但事實上有在"new"
+  a.score = 70  
+  b = 10        // 'b'在Java/C/C++是(所謂)"value"，在Python則(事實上)是pointer
+  b = b + 20    //                                     (或曰object)
+
+------------------------------------------------------------------
+
+# include <stdio.h>
+
+void F( int a, int &b , int c[10] ) {
+  a = 1000 ;
+  b = 2000 ;
+  c[3] = 3000 ;
+} // F()
+
+int main() {
+  int a[10] ;
+  int * b = a ;
+  b[3] = 10 ;
+  printf( "a[3] = %d\n", a[3] ) ; // output : 10
+
+  int a1 = 11, b1 = 22 ;
+
+  F( a1, b1, a ) ;
+  printf( "a1 : %d, b1 : %d, a[3] : %d\n", a1, b1, a[3] ) ;
+  // output : 11, 2000, 3000
+
+  printf( "a1 as a float : %f\n", a1 ) ; // abstraction vs. representation
+  // output : 0.000000 // why not something like 11.0?
+
+  int a2 = 10 ;
+  int b2 = 20 ;
+  printf( "Please enter two integers : " ) ;
+  scanf( "%d%d", &a2, b2 ) ; // why segmentation fault?
+
+} // main()
+
+---------------------------------------------------------------------------------
+
+function overloading (same name, diff. para., either in number or in types) 
+e.g., '+' ; Push()/Pop()/Top() of a stack ; constructor
+// Python的特有哲學 : 可以F(10), F("hi"), 但不能另有def F( a, b )
+
+---------------------------------------------------------------------------------
+
+orthogonal design principle ("Principle of orthogonality") : 
+  基本組件不算多＋組裝的方式也不算多＋只要是組裝出來的都可以當作組件來組裝＋怎麼組裝都可以  
+  # 如此一來，就可以組裝出具有任意複雜度的結構
+  e.g., arith. expression 
+        a structure is also a statement and a structure has statement-parts
+        
+---------------------------------------------------------------------------------
+

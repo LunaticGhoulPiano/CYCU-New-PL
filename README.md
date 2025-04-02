@@ -13,6 +13,9 @@
 - Project分數到80可以不用出席
 - WSL路徑: ```/mnt/c/Users/PoHsu/OneDrive/文件/GitHub/CYCU-New-PL```
 
+## Command
+- Windows Powershell: ```Get-Content input.txt | .\main.exe > output.txt```
+
 ## Project 1
 - 位置計算與Errors
     - 正常的token:

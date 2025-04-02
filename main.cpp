@@ -213,7 +213,6 @@ class S_Exp_Lexer {
             else if (atom.type == AtomType::QUOTE) std::cout << "QUOTE\n";
             else if (atom.type == AtomType::SYMBOL) std::cout << "SYMBOL\n";
             else std::cout << "ERROR_TYPE!\n";
-            return;
         }
 
         void saveAnAtom(Atom &atom, BufferSExp &buffer) {
@@ -265,10 +264,17 @@ class S_Exp_Lexer {
             atom.reset();
 
             // debug
+            int size = buffer.tokens.size();
             std::cout << "Cur tokens:\n";
-            for (int i = 0; i < buffer.tokens.size(); i++) {
+            for (int i = 0; i < size; i++) {
                 std::cout << buffer.tokens[i].value << " ";
                 printType(buffer.tokens[i]);
+            }
+            if (size >= 3 && buffer.tokens[size - 3].value == "(" && buffer.tokens[size - 2].value == "exit" && buffer.tokens[size - 1].value == ")") {
+                std::cout << "\nThanks for using OurScheme!\n";
+                system("pause");
+                system("pause");
+                exit(0);
             }
         }
 
@@ -304,26 +310,35 @@ class S_Exp_Lexer {
                             // read until new line
                             while (ch != '\n') std::cin.get(ch);
 
+                            /*
                             // set position
                             if (allow_newline_in_token) lineNum++;
                             else {
                                 lineNum = 1;
                                 std::cout << "\nB> ";
                             }
+                            */
+                            lineNum++;
                             columnNum = 0;
                         }
                     }
-                    else while (std::cin.peek() != '\n') std::cin.get(ch);
+                    else {
+                        while (std::cin.peek() != '\n') std::cin.get(ch);
+                        columnNum = 0;
+                    }
                 }
                 else if (isWhiteSpace(ch)) {
                     if (atom.value == "") {
                         if (ch == '\n') {
                             // set position
+                            /*
                             if (allow_newline_in_token) lineNum++;
                             else {
                                 lineNum = 1;
                                 std::cout << "\nC> ";
                             }
+                            */
+                            lineNum++;
                             columnNum = 0;
                         }
                         else columnNum++;
@@ -489,7 +504,15 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            //
+                            // save an atom
+                            saveAnAtom(atom, buffer);
+                            columnNum = 0;
+                            
+                            // save an atom
+                            columnNum++;
+                            atom.value += ch;
+                            saveAnAtom(atom, buffer);
+                            columnNum = 0;
                         }
                     }
                 }
@@ -506,45 +529,7 @@ class S_Exp_Lexer {
                         columnNum++;
                     }
                 }
-                else if (ch == '+' || ch == '-' || ch == '.' || isDigit(ch)) {
-                    if (atom.value != "") {
-                        if (atom.value[0] == '\"') { // in string
-                            atom.value += ch;
-                            columnNum++;
-                        }
-                        else {
-                            if (isDigit(ch)) {
-                                if (isInt(atom.value) || isFloat(atom.value) || atom.value == "+" || atom.value == "-") { // currently is int or float (still not set type)
-                                    atom.value += ch;
-                                    columnNum++;
-                                }
-                                else { // symbol
-                                    atom.value += ch;
-                                    columnNum++;
-                                }
-                            }
-                            else if (ch == '.') {
-                                if (isInt(atom.value)) { // currently is float (still not set type)
-                                    atom.value += ch;
-                                    columnNum++;
-                                }
-                                else { // symbol
-                                    atom.value += ch;
-                                    columnNum++;
-                                }
-                            }
-                            else { // symbol
-                                atom.value += ch;
-                                columnNum++;
-                            }
-                        }
-                    }
-                    else { // the first char
-                        atom.value += ch;
-                        columnNum++;
-                    }
-                }
-                else { // symbol
+                else {
                     atom.value += ch;
                     columnNum++;
                 }
@@ -553,7 +538,12 @@ class S_Exp_Lexer {
 };
 
 /* S-Expression Recursive Descent Parser */
-class S_Exp_Parser {};
+class S_Exp_Parser {
+    private:
+        //
+    public:
+        //
+};
 
 /* Main Read-Eval-Print-Loop */
 int main() {
