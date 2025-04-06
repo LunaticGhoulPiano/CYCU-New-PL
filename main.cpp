@@ -11,8 +11,8 @@
 
 std::string gTestNum; // note that it is int + '\n'
 
-/* Atom Types */
-enum class AtomType {
+/* Token types */
+enum class Token_Type {
     LEFT_PAREN, // '('
     RIGHT_PAREN, // ')'
     INT, // e.g., '123', '+123', '-123'
@@ -30,86 +30,15 @@ enum class AtomType {
         // (i.e., uppercase and lowercase are different);
 };
 
-/* ATOM structure */
-struct Atom {
-    AtomType type;
+/* Token structure */
+struct Token {
+    Token_Type type;
     std::string value;
     void reset() {
-        type = static_cast<AtomType>(-1);
+        type = static_cast<Token_Type>(-1);
         value = "";
     }
 };
-
-/* S-Expression structure (while reading into buffer) */
-struct BufferSExp {
-    std::vector<Atom> tokens;
-    void reset() {
-        tokens.clear();
-    }
-};
-
-/* S-Expression Abstract Syntax Tree */
-/*
-class ASTNode {
-    public:
-        virtual ~ASTNode() = default;
-        virtual void print() const = 0;
-};
-
-class AtomNode: public ASTNode {
-    public:
-        Token token;
-
-        explicit AtomNode(const Token &t): token(t) {}
-        void print() const override {
-            // std::cout << token.value;
-        }
-};
-
-class ListNode: public ASTNode {
-    public:
-        std::vector<std::unique_ptr<ASTNode>> elements;
-
-        void add(std::unique_ptr<ASTNode> node) {
-            elements.push_back(std::move(node));
-        }
-        void print() const override { // pretty print
-            std::cout << "( ";
-            for (const auto &e: elements) {
-                e->print();
-                std::cout << " ";
-            }
-            std::cout << ")";
-        }
-};
-
-class QuoteNode: public ASTNode {
-    public:
-        std::unique_ptr<ASTNode> quoted;
-
-        explicit QuoteNode(std::unique_ptr<ASTNode> node): quoted(std::move(node)) {}
-        void print() const override { // pretty print
-            std::cout << "(quote ";
-            quoted->print();
-            std::cout << ")";
-        }
-};
-
-class DotPairNode: public ASTNode {
-    public:
-        std::unique_ptr<ASTNode> before;
-        std::unique_ptr<ASTNode> after;
-    
-        DotPairNode(std::unique_ptr<ASTNode> sub_before, std::unique_ptr<ASTNode> sub_after): before(std::move(sub_before)), after(std::move(sub_after)) {}
-        void print() const override { // pretty print
-            std::cout << "( ";
-            before->print();
-            std::cout << " . ";
-            after->print();
-            std::cout << " )";
-        }
-};
-*/
 
 /* Error Exceptions */
 class BaseException: public std::exception {
@@ -159,15 +88,12 @@ class NoMoreInput: public BaseException {
 };
 
 /* S-Expression Lexer */
-// Syntax of OurScheme:
-// <S-exp> ::= <ATOM> | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | QUOTE <S-exp>
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Lexer {
     
     private:
         char ch, prev_ch;
         int lineNum = 1, columnNum = 0;
-        std::vector<BufferSExp> sexps;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
 
         bool isWhiteSpace(char ch) {
@@ -201,81 +127,95 @@ class S_Exp_Lexer {
             return std::regex_match(str, pattern);
         }
 
-        void printType(Atom atom) {
-            if (atom.type == AtomType::LEFT_PAREN) std::cout << "LEFT_PAREN\n";
-            else if (atom.type == AtomType::RIGHT_PAREN) std::cout << "RIGHT_PAREN\n";
-            else if (atom.type == AtomType::INT) std::cout << "INT\n";
-            else if (atom.type == AtomType::STRING) std::cout << "STRING\n";
-            else if (atom.type == AtomType::DOT) std::cout << "DOT\n";
-            else if (atom.type == AtomType::FLOAT) std::cout << "FLOAT\n";
-            else if (atom.type == AtomType::NIL) std::cout << "NIL\n";
-            else if (atom.type == AtomType::T) std::cout << "T\n";
-            else if (atom.type == AtomType::QUOTE) std::cout << "QUOTE\n";
-            else if (atom.type == AtomType::SYMBOL) std::cout << "SYMBOL\n";
+        void printType(Token token) {
+            if (token.type == Token_Type::LEFT_PAREN) std::cout << "LEFT_PAREN\n";
+            else if (token.type == Token_Type::RIGHT_PAREN) std::cout << "RIGHT_PAREN\n";
+            else if (token.type == Token_Type::INT) std::cout << "INT\n";
+            else if (token.type == Token_Type::STRING) std::cout << "STRING\n";
+            else if (token.type == Token_Type::DOT) std::cout << "DOT\n";
+            else if (token.type == Token_Type::FLOAT) std::cout << "FLOAT\n";
+            else if (token.type == Token_Type::NIL) std::cout << "NIL\n";
+            else if (token.type == Token_Type::T) std::cout << "T\n";
+            else if (token.type == Token_Type::QUOTE) std::cout << "QUOTE\n";
+            else if (token.type == Token_Type::SYMBOL) std::cout << "SYMBOL\n";
             else std::cout << "ERROR_TYPE!\n";
         }
 
-        void saveAnAtom(Atom &atom, BufferSExp &buffer) {
-            // judge type
-            if (isInt(atom.value) || isFloat(atom.value)) {
-                std::istringstream iss(atom.value);
+        void judgeType(Token &token, std::vector<Token> &buffer) {
+            if (isInt(token.value) || isFloat(token.value)) {
+                std::istringstream iss(token.value);
                 std::stringstream oss;
                 // formating int and float, also round float to "%.3f"
-                if (atom.value.find('.') != std::string::npos) {
-                    atom.type = AtomType::FLOAT;
+                if (token.value.find('.') != std::string::npos) {
+                    token.type = Token_Type::FLOAT;
                     double value;
                     iss >> value;
                     oss << std::fixed << std::setprecision(3) << value;
                 }
                 else {
-                    atom.type = AtomType::INT;
+                    token.type = Token_Type::INT;
                     int value;
                     iss >> value;
                     oss << value;
                 }
-                atom.value = oss.str();
+                token.value = oss.str();
             }
-            else if (atom.value == "(") atom.type = AtomType::LEFT_PAREN;
-            else if (atom.value == ")") {
+            else if (token.value == "(") token.type = Token_Type::LEFT_PAREN;
+            else if (token.value == ")") {
                 // deal the "()" here
-                if (buffer.tokens.size() > 0 && buffer.tokens[buffer.tokens.size()-1].type == AtomType::LEFT_PAREN) {
-                    buffer.tokens.pop_back();
-                    atom.value = "nil";
-                    atom.type = AtomType::NIL;
+                if (buffer.size() > 0 && buffer[buffer.size()-1].type == Token_Type::LEFT_PAREN) {
+                    buffer.pop_back();
+                    token.value = "nil";
+                    token.type = Token_Type::NIL;
                 }
-                else atom.type = AtomType::RIGHT_PAREN;
+                else token.type = Token_Type::RIGHT_PAREN;
             }
-            else if (atom.value == ".") atom.type = AtomType::DOT;
-            else if (atom.value[0] == '\"' && atom.value[atom.value.length()-1] == '\"') atom.type = AtomType::STRING;
-            else if (atom.value == "\'") atom.type = AtomType::QUOTE;
-            else if (atom.value == "nil" || atom.value == "#f") {
-                atom.type = AtomType::NIL;
-                atom.value = "nil";
+            else if (token.value == ".") token.type = Token_Type::DOT;
+            else if (token.value[0] == '\"' && token.value[token.value.length()-1] == '\"') token.type = Token_Type::STRING;
+            else if (token.value == "\'") token.type = Token_Type::QUOTE;
+            else if (token.value == "nil" || token.value == "#f") {
+                token.type = Token_Type::NIL;
+                token.value = "nil";
             }
-            else if (atom.value == "t" || atom.value == "#t") {
-                atom.type = AtomType::T;
-                atom.value = "#t";
+            else if (token.value == "t" || token.value == "#t") {
+                token.type = Token_Type::T;
+                token.value = "#t";
             }
-            else atom.type = AtomType::SYMBOL;
+            else token.type = Token_Type::SYMBOL;
+        }
 
-            std::cout << "\n> save an atom: ->" << atom.value << "<-\n";
-            printType(atom);
-            buffer.tokens.push_back(atom);
-            atom.reset();
+        void saveAToken(Token &token, std::vector<Token> &buffer) {
+            // judge type
+            judgeType(token, buffer);
+
+            // push into buffer
+            // Should replace the method into build and push a node into tree and parse,
+            // rather then just simply push into a vector.
+            // Should check if tree is empty;
+            // if empty then build tree,
+            // then parse (test) the current atom to match s-expression;
+            // if no match, return false;
+            // else continue, then return true at the end.
+            std::cout << "\n> push a token: ->" << token.value << "<-\n";
+            printType(token);
+            buffer.push_back(token); // should replace to parser.parse(atom);
+            token.reset();
 
             // debug
-            int size = buffer.tokens.size();
+            int size = buffer.size();
             std::cout << "Cur tokens:\n";
             for (int i = 0; i < size; i++) {
-                std::cout << buffer.tokens[i].value << " ";
-                printType(buffer.tokens[i]);
+                std::cout << buffer[i].value << " ";
+                printType(buffer[i]);
             }
-            if (size >= 3 && buffer.tokens[size - 3].value == "(" && buffer.tokens[size - 2].value == "exit" && buffer.tokens[size - 1].value == ")") {
+            if (size >= 3 && buffer[size - 3].value == "(" && buffer[size - 2].value == "exit" && buffer[size - 1].value == ")") {
                 std::cout << "\nThanks for using OurScheme!\n";
                 system("pause");
                 system("pause");
                 exit(0);
             }
+
+            // return if a S-exp end
         }
 
     public:
@@ -286,9 +226,9 @@ class S_Exp_Lexer {
             prev_ch = '\0';
         }
 
-        void read() {
-            BufferSExp buffer; // to store single token
-            Atom atom;
+        void readAndTokenize() {
+            std::vector<Token> buffer; // to store single token
+            Token token;
             std::stack<char> parenStack;
             lineNum = 1;
             columnNum = 0;
@@ -298,14 +238,14 @@ class S_Exp_Lexer {
 
             while (std::cin.get(ch)) {
                 if (ch == ';') {
-                    if (atom.value != "") {
-                        if (atom.value[0] == '\"') { // in string
-                            atom.value += ch;
+                    if (token.value != "") {
+                        if (token.value[0] == '\"') { // in string
+                            token.value += ch;
                             columnNum++;
                         }
                         else {
-                            // save an atom
-                            saveAnAtom(atom, buffer);
+                            // save a token
+                            saveAToken(token, buffer);
 
                             // read until new line
                             while (ch != '\n') std::cin.get(ch);
@@ -328,7 +268,7 @@ class S_Exp_Lexer {
                     }
                 }
                 else if (isWhiteSpace(ch)) {
-                    if (atom.value == "") {
+                    if (token.value == "") {
                         if (ch == '\n') {
                             // set position
                             /*
@@ -345,13 +285,13 @@ class S_Exp_Lexer {
                     }
                     else { // incomplete token still inputing
                         if (ch == '\n') {
-                            if (atom.value[0] == '\"') {
+                            if (token.value[0] == '\"') {
                                 columnNum++;
                                 throw NoClosingQuote(lineNum, columnNum);
                             }
                             else {
-                                // save a atom
-                                saveAnAtom(atom, buffer);
+                                // save a token
+                                saveAToken(token, buffer);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -363,13 +303,13 @@ class S_Exp_Lexer {
                             }
                         }
                         else {
-                            if (atom.value[0] == '\"') {
-                                atom.value += ch;
+                            if (token.value[0] == '\"') {
+                                token.value += ch;
                                 columnNum++;
                             }
                             else {
-                                // save an atom
-                                saveAnAtom(atom, buffer);
+                                // save a token
+                                saveAToken(token, buffer);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -383,22 +323,22 @@ class S_Exp_Lexer {
                     }
                 }
                 else if (ch == '(') { // judge both start of a single-quote or in string
-                    if (atom.value != "") {
-                        if (atom.value[0] == '\"') { // in string
-                            atom.value += ch;
+                    if (token.value != "") {
+                        if (token.value[0] == '\"') { // in string
+                            token.value += ch;
                             columnNum++;
                         }
                         else {
-                            // save an atom
-                            saveAnAtom(atom, buffer);
+                            // save an token
+                            saveAToken(token, buffer);
                             // set position
                             columnNum = 0;
 
                             // set new parenStack
                             parenStack.push(ch);
-                            // save an atom
-                            atom.value += ch;
-                            saveAnAtom(atom, buffer);
+                            // save a token
+                            token.value += ch;
+                            saveAToken(token, buffer);
 
                             // set position
                             columnNum = 0;
@@ -407,23 +347,23 @@ class S_Exp_Lexer {
                     else {
                         parenStack.push(ch);
                         
-                        // save an atom
-                        atom.value += ch;
-                        saveAnAtom(atom, buffer);
+                        // save a token
+                        token.value += ch;
+                        saveAToken(token, buffer);
 
                         // set position
                         columnNum = 0;
                     }
                 }
                 else if (ch == ')') { // judge both end of a single-quote or in string
-                    if (atom.value != "") {
-                        if (atom.value[0] == '\"') { // in string
-                            atom.value += ch;
+                    if (token.value != "") {
+                        if (token.value[0] == '\"') { // in string
+                            token.value += ch;
                             columnNum++;
                         }
                         else {
-                            // save an atom
-                            saveAnAtom(atom, buffer);
+                            // save a token
+                            saveAToken(token, buffer);
                             // set position
                             columnNum = 0;
 
@@ -434,9 +374,9 @@ class S_Exp_Lexer {
                             }
                             else {
                                 parenStack.pop();
-                                // save an atom
-                                atom.value += ch;
-                                saveAnAtom(atom, buffer);
+                                // save a token
+                                token.value += ch;
+                                saveAToken(token, buffer);
 
                                 // set position
                                 columnNum = 0;
@@ -452,9 +392,9 @@ class S_Exp_Lexer {
                         }
                         else {
                             parenStack.pop();
-                            // save an atom
-                            atom.value += ch;
-                            saveAnAtom(atom, buffer);
+                            // save a token
+                            token.value += ch;
+                            saveAToken(token, buffer);
 
                             // set position
                             columnNum = 0;
@@ -462,15 +402,15 @@ class S_Exp_Lexer {
                     }
                 }
                 else if (ch == '\"') {
-                    if (atom.value == "") { // the start of a string
-                        atom.value += ch;
+                    if (token.value == "") { // the start of a string
+                        token.value += ch;
                         columnNum++;
                     }
                     else {
-                        if (atom.value[0] == '\"') { // end of a string
-                            // save a atom
-                            atom.value += ch;
-                            saveAnAtom(atom, buffer);
+                        if (token.value[0] == '\"') { // end of a string
+                            // save a token
+                            token.value += ch;
+                            saveAToken(token, buffer);
     
                             // set position
                             if (allow_newline_in_token) lineNum++;
@@ -478,71 +418,63 @@ class S_Exp_Lexer {
                             columnNum = 0;
                         }
                         else { // ex. > "" ""asf"" -> temp = "asf", ch = '\"'
-                            // save an atom
-                            saveAnAtom(atom, buffer);
+                            // save a token
+                            saveAToken(token, buffer);
                             columnNum = 0;
     
                             // set the new starting string's char and position
-                            atom.value += ch;
+                            token.value += ch;
                             columnNum++;
                         }
                     }
                 }
                 else if (ch == '\'') {
-                    if (atom.value == "") { // the start of a single-quote
-                        // save an atom
+                    if (token.value == "") { // the start of a single-quote
+                        // save a token
                         columnNum++;
-                        atom.value += ch;
-                        saveAnAtom(atom, buffer);
+                        token.value += ch;
+                        saveAToken(token, buffer);
 
                         // set position
                         columnNum = 0;
                     }
                     else {
-                        if (atom.value[0] == '\"') { // in string
-                            atom.value += ch;
+                        if (token.value[0] == '\"') { // in string
+                            token.value += ch;
                             columnNum++;
                         }
                         else {
-                            // save an atom
-                            saveAnAtom(atom, buffer);
+                            // save a token
+                            saveAToken(token, buffer);
                             columnNum = 0;
                             
-                            // save an atom
+                            // save a token
                             columnNum++;
-                            atom.value += ch;
-                            saveAnAtom(atom, buffer);
+                            token.value += ch;
+                            saveAToken(token, buffer);
                             columnNum = 0;
                         }
                     }
                 }
                 else if (ch == '\\') {
-                    if (atom.value != "" && atom.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in string, escape
+                    if (token.value != "" && token.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in string, escape
                         // ch + next_ch = "\t" or "\n" or "\\" or "\""
                         columnNum++; // first backslash
                         ch = std::cin.get();
-                        atom.value += escape_map[ch];
+                        token.value += escape_map[ch];
                         columnNum++;
                     }
                     else { // just a normal backslash
-                        atom.value += ch;
+                        token.value += ch;
                         columnNum++;
                     }
                 }
                 else {
-                    atom.value += ch;
+                    token.value += ch;
                     columnNum++;
                 }
             }
         }
-};
-
-/* S-Expression Recursive Descent Parser */
-class S_Exp_Parser {
-    private:
-        //
-    public:
-        //
 };
 
 /* Main Read-Eval-Print-Loop */
@@ -550,10 +482,9 @@ int main() {
     std::getline(std::cin, gTestNum);
     std::cout << "Welcome to OurScheme!" << std::endl;
     S_Exp_Lexer lexer;
-    S_Exp_Parser parser;
     while (true) {
         try {
-            lexer.read();
+            lexer.readAndTokenize();
         } catch (CorrectExit &c) {
             std::cout << c.what();
             break;
