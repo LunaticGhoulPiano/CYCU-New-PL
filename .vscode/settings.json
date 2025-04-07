@@ -59,6 +59,7 @@
         "xloctime": "cpp",
         "optional": "cpp",
         "array": "cpp",
-        "functional": "cpp"
+        "functional": "cpp",
+        "*.tcc": "cpp"
     }
 }

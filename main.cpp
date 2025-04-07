@@ -13,6 +13,7 @@ std::string gTestNum; // note that it is int + '\n'
 
 /* Token types */
 enum class Token_Type {
+    UDF,
     LEFT_PAREN, // '('
     RIGHT_PAREN, // ')'
     INT, // e.g., '123', '+123', '-123'
@@ -35,7 +36,7 @@ struct Token {
     Token_Type type;
     std::string value;
     void reset() {
-        type = static_cast<Token_Type>(-1);
+        type = Token_Type::UDF;
         value = "";
     }
 };
@@ -87,8 +88,71 @@ class NoMoreInput: public BaseException {
         NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\n") {}
 };
 
+/* AST structure */
+struct AST_Node {
+    Token token; // if terminal then have value
+    bool end = true; // to judge a <S-exp> end; if Top-down, start = false
+    std::vector<std::unique_ptr<AST_Node>> children; // <S-exp>s
+};
+
+/* S-Expression Parser */
+// <S-exp> ::= <ATOM>
+//             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
+//             | QUOTE <S-exp>
+         
+// <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
+//             | NIL | T | LEFT-PAREN RIGHT-PAREN
+class S_Exp_Parser { // Bottom-up
+    private:
+    public:
+        std::vector<std::unique_ptr<AST_Node>> tree_roots; // to store the root of each complete <S-exp> ASTs
+
+        S_Exp_Parser() {
+            tree_roots.clear();
+        }
+
+        void destroyCurrentTree() {
+            tree_roots.pop_back(); // delete self
+        }
+
+        void prettyPrint() {
+            //
+        }
+        
+        void parse_and_build_AST(AST_Node &cur, Token token) {
+            // init empty tree
+            if (cur.children.size() == 0 && cur.end) {
+                cur.end = true; // entry
+                cur.children.push_back(std::make_unique<AST_Node>()); // empty node
+            }
+            // parse
+            if (cur.children.size() == 1) { // <S-exp>
+                if (token.type == Token_Type::LEFT_PAREN) { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
+                    // set the first starter: LEFT-PAREN
+                    cur.children[0]->end = true; // LEFT-PAREN itself is a terminal
+                    cur.children[0]->token = token;
+                    // make next node, should be <S-exp>
+                    cur.children.push_back(std::make_unique<AST_Node>()); // empty node
+                }
+                else if (token.type == Token_Type::QUOTE) { // <S-exp> ::= QUOTE <S-exp>
+                    // set the first starter: QTUOE
+                    cur.children[0]->end = true; // QUOTE itself is a terminal
+                    cur.children[0]->token = token;
+                    // make next node, should be <S-exp>
+                    cur.children.push_back(std::make_unique<AST_Node>()); // empty node
+                }
+                else { // <S-exp> ::= <ATOM>
+                    cur.end = true;
+                    cur.token = token;
+                }
+            }
+            else {
+
+            }
+        }
+};
+
 /* S-Expression Lexer */
-// <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Lexer {
     
     private:
@@ -138,7 +202,8 @@ class S_Exp_Lexer {
             else if (token.type == Token_Type::T) std::cout << "T\n";
             else if (token.type == Token_Type::QUOTE) std::cout << "QUOTE\n";
             else if (token.type == Token_Type::SYMBOL) std::cout << "SYMBOL\n";
-            else std::cout << "ERROR_TYPE!\n";
+            else if (token.type == Token_Type::UDF) std::cout << "UDF\n";
+            else std::cout << "ERROR: didn't judged!\n";
         }
 
         void judgeType(Token &token, std::vector<Token> &buffer) {
@@ -163,12 +228,15 @@ class S_Exp_Lexer {
             else if (token.value == "(") token.type = Token_Type::LEFT_PAREN;
             else if (token.value == ")") {
                 // deal the "()" here
+                /*
                 if (buffer.size() > 0 && buffer[buffer.size()-1].type == Token_Type::LEFT_PAREN) {
                     buffer.pop_back();
                     token.value = "nil";
                     token.type = Token_Type::NIL;
                 }
                 else token.type = Token_Type::RIGHT_PAREN;
+                */
+                token.type = Token_Type::RIGHT_PAREN;
             }
             else if (token.value == ".") token.type = Token_Type::DOT;
             else if (token.value[0] == '\"' && token.value[token.value.length()-1] == '\"') token.type = Token_Type::STRING;
@@ -184,7 +252,7 @@ class S_Exp_Lexer {
             else token.type = Token_Type::SYMBOL;
         }
 
-        void saveAToken(Token &token, std::vector<Token> &buffer) {
+        void saveAToken(Token &token, std::vector<Token> &buffer, S_Exp_Parser &parser) {
             // judge type
             judgeType(token, buffer);
 
@@ -196,26 +264,34 @@ class S_Exp_Lexer {
             // then parse (test) the current atom to match s-expression;
             // if no match, return false;
             // else continue, then return true at the end.
-            std::cout << "\n> push a token: ->" << token.value << "<-\n";
-            printType(token);
+            // std::cout << "\n> push a token: ->" << token.value << "<-\n";
+            // printType(token);
             buffer.push_back(token); // should replace to parser.parse(atom);
             token.reset();
 
             // debug
             int size = buffer.size();
+            
             std::cout << "Cur tokens:\n";
             for (int i = 0; i < size; i++) {
                 std::cout << buffer[i].value << " ";
                 printType(buffer[i]);
             }
+            
             if (size >= 3 && buffer[size - 3].value == "(" && buffer[size - 2].value == "exit" && buffer[size - 1].value == ")") {
-                std::cout << "\nThanks for using OurScheme!\n";
-                system("pause");
-                system("pause");
+                /*
+                for (int i = 0; i < size - 3; i++) {
+                    std::cout << "> " << buffer[i].value << "\n\n";
+                    //std::cout << buffer[i].value << " ";
+                    //printType(buffer[i]);
+                }
+                */
+                
+                std::cout << "> \nThanks for using OurScheme!";
                 exit(0);
             }
 
-            // return if a S-exp end
+            // clear buffer if a S-exp end
         }
 
     public:
@@ -226,7 +302,7 @@ class S_Exp_Lexer {
             prev_ch = '\0';
         }
 
-        void readAndTokenize() {
+        void readAndTokenize(S_Exp_Parser &parser) {
             std::vector<Token> buffer; // to store single token
             Token token;
             std::stack<char> parenStack;
@@ -234,9 +310,11 @@ class S_Exp_Lexer {
             columnNum = 0;
             ch = '\0';
             prev_ch = '\0';
+            bool start = false;
             if (! allow_newline_in_token) std::cout << "\nA> "; // init input prompt
 
             while (std::cin.get(ch)) {
+                start = true;
                 if (ch == ';') {
                     if (token.value != "") {
                         if (token.value[0] == '\"') { // in string
@@ -245,7 +323,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
 
                             // read until new line
                             while (ch != '\n') std::cin.get(ch);
@@ -291,13 +369,13 @@ class S_Exp_Lexer {
                             }
                             else {
                                 // save a token
-                                saveAToken(token, buffer);
+                                saveAToken(token, buffer, parser);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
                                 else {
                                     lineNum = 1;
-                                    std::cout << "\nD> ";
+                                    //std::cout << "\nD> ";
                                 }
                                 columnNum = 0;
                             }
@@ -309,13 +387,13 @@ class S_Exp_Lexer {
                             }
                             else {
                                 // save a token
-                                saveAToken(token, buffer);
+                                saveAToken(token, buffer, parser);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
                                 else {
                                     lineNum = 1;
-                                    std::cout << "\nE> ";
+                                    //std::cout << "\nE> ";
                                 }
                                 columnNum = 0;
                             }
@@ -330,7 +408,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save an token
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
                             // set position
                             columnNum = 0;
 
@@ -338,7 +416,7 @@ class S_Exp_Lexer {
                             parenStack.push(ch);
                             // save a token
                             token.value += ch;
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
 
                             // set position
                             columnNum = 0;
@@ -349,7 +427,7 @@ class S_Exp_Lexer {
                         
                         // save a token
                         token.value += ch;
-                        saveAToken(token, buffer);
+                        saveAToken(token, buffer, parser);
 
                         // set position
                         columnNum = 0;
@@ -363,7 +441,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
                             // set position
                             columnNum = 0;
 
@@ -376,7 +454,7 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 // save a token
                                 token.value += ch;
-                                saveAToken(token, buffer);
+                                saveAToken(token, buffer, parser);
 
                                 // set position
                                 columnNum = 0;
@@ -394,7 +472,7 @@ class S_Exp_Lexer {
                             parenStack.pop();
                             // save a token
                             token.value += ch;
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
 
                             // set position
                             columnNum = 0;
@@ -410,7 +488,7 @@ class S_Exp_Lexer {
                         if (token.value[0] == '\"') { // end of a string
                             // save a token
                             token.value += ch;
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
     
                             // set position
                             if (allow_newline_in_token) lineNum++;
@@ -419,7 +497,7 @@ class S_Exp_Lexer {
                         }
                         else { // ex. > "" ""asf"" -> temp = "asf", ch = '\"'
                             // save a token
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
                             columnNum = 0;
     
                             // set the new starting string's char and position
@@ -433,7 +511,7 @@ class S_Exp_Lexer {
                         // save a token
                         columnNum++;
                         token.value += ch;
-                        saveAToken(token, buffer);
+                        saveAToken(token, buffer, parser);
 
                         // set position
                         columnNum = 0;
@@ -445,13 +523,13 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
                             columnNum = 0;
                             
                             // save a token
                             columnNum++;
                             token.value += ch;
-                            saveAToken(token, buffer);
+                            saveAToken(token, buffer, parser);
                             columnNum = 0;
                         }
                     }
@@ -474,17 +552,20 @@ class S_Exp_Lexer {
                     columnNum++;
                 }
             }
+
+            if (! start) throw NoMoreInput();
         }
 };
 
 /* Main Read-Eval-Print-Loop */
 int main() {
     std::getline(std::cin, gTestNum);
-    std::cout << "Welcome to OurScheme!" << std::endl;
+    std::cout << "Welcome to OurScheme!\n" << std::endl;
     S_Exp_Lexer lexer;
+    S_Exp_Parser parser;
     while (true) {
         try {
-            lexer.readAndTokenize();
+            lexer.readAndTokenize(parser);
         } catch (CorrectExit &c) {
             std::cout << c.what();
             break;
