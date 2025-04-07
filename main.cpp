@@ -13,7 +13,7 @@ std::string gTestNum; // note that it is int + '\n'
 
 /* Token types */
 enum class Token_Type {
-    UDF,
+    UDF, // to avoid undefined enum, set this to constructor and reset
     LEFT_PAREN, // '('
     RIGHT_PAREN, // ')'
     INT, // e.g., '123', '+123', '-123'
@@ -33,12 +33,8 @@ enum class Token_Type {
 
 /* Token structure */
 struct Token {
-    Token_Type type;
-    std::string value;
-    void reset() {
-        type = Token_Type::UDF;
-        value = "";
-    }
+    Token_Type type = Token_Type::UDF;
+    std::string value = "";
 };
 
 /* Error Exceptions */
@@ -267,25 +263,19 @@ class S_Exp_Lexer {
             // std::cout << "\n> push a token: ->" << token.value << "<-\n";
             // printType(token);
             buffer.push_back(token); // should replace to parser.parse(atom);
-            token.reset();
+            std::cout << "> " << token.value << "\n\n";
+            token = Token(); // reset
 
             // debug
             int size = buffer.size();
             
-            std::cout << "Cur tokens:\n";
-            for (int i = 0; i < size; i++) {
-                std::cout << buffer[i].value << " ";
-                printType(buffer[i]);
-            }
-            
             if (size >= 3 && buffer[size - 3].value == "(" && buffer[size - 2].value == "exit" && buffer[size - 1].value == ")") {
-                /*
+                
                 for (int i = 0; i < size - 3; i++) {
                     std::cout << "> " << buffer[i].value << "\n\n";
                     //std::cout << buffer[i].value << " ";
                     //printType(buffer[i]);
                 }
-                */
                 
                 std::cout << "> \nThanks for using OurScheme!";
                 exit(0);
@@ -407,11 +397,87 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
+                            std::cout << "in a\n";
                             // save an token
                             saveAToken(token, buffer, parser);
-                            // set position
-                            columnNum = 0;
 
+                            // check nil
+                            char tch = '\0';
+                            int shift_line = 0, shift_column = 0;
+                            std::stack<char> peekStack;
+                            std::cin.get(tch);
+                            peekStack.push(tch);
+                            while (isWhiteSpace(tch)) {
+                                if (tch == '\n') {
+                                    shift_column = 0;
+                                    shift_line++;
+                                }
+                                else shift_column++;
+                                std::cin.get(tch);
+                                peekStack.push(tch);
+                            }
+
+                            if (tch == ')') { // nil
+                                token.value = "nil";
+                                // save a token
+                                saveAToken(token, buffer, parser);
+                                
+                                // set position
+                                lineNum += shift_line;
+                                columnNum = shift_column;
+                            }
+                            else {
+                                // put back
+                                while (! peekStack.empty()) {
+                                    std::cin.putback(peekStack.top());
+                                    peekStack.pop();
+                                }
+
+                                // set new parenStack
+                                parenStack.push(ch);
+                                
+                                // save a token
+                                token.value += ch;
+                                saveAToken(token, buffer, parser);
+
+                                // set position
+                                columnNum = 0;
+                            }
+                        }
+                    }
+                    else {
+                        // chekck nil
+                        char tch = '\0';
+                        int shift_line = 0, shift_column = 0;
+                        std::stack<char> peekStack;
+                        std::cin.get(tch);
+                        peekStack.push(tch);
+                        while (isWhiteSpace(tch)) {
+                            if (tch == '\n') {
+                                shift_column = 0;
+                                shift_line++;
+                            }
+                            else shift_column++;
+                            std::cin.get(tch);
+                            peekStack.push(tch);
+                        }
+
+                        if (tch == ')') { // nil
+                            token.value = "nil";
+                            // save a token
+                            saveAToken(token, buffer, parser);
+                            
+                            // set position
+                            lineNum += shift_line;
+                            columnNum = shift_column;
+                        }
+                        else {
+                            // put back
+                            while (! peekStack.empty()) {
+                                std::cin.putback(peekStack.top());
+                                peekStack.pop();
+                            }
+                            
                             // set new parenStack
                             parenStack.push(ch);
                             // save a token
@@ -421,16 +487,6 @@ class S_Exp_Lexer {
                             // set position
                             columnNum = 0;
                         }
-                    }
-                    else {
-                        parenStack.push(ch);
-                        
-                        // save a token
-                        token.value += ch;
-                        saveAToken(token, buffer, parser);
-
-                        // set position
-                        columnNum = 0;
                     }
                 }
                 else if (ch == ')') { // judge both end of a single-quote or in string
