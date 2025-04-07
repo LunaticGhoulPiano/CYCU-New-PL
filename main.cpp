@@ -58,30 +58,30 @@ class CorrectExit: public BaseException {
 class UnexpectedToken: public BaseException {
     public:
         UnexpectedToken(int line, int column, const std::string &token):
-            BaseException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
+            BaseException("> ERROR (unexpected token) : atom or '(' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n\n") {}
 };
 
 // ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
 class NoRightParen: public BaseException {
     public:
         NoRightParen(int line, int column, const std::string &token):
-            BaseException("\n> ERROR (unexpected token) : ')' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
+            BaseException("> ERROR (unexpected token) : ')' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n\n") {}
 };
 
 // ERROR (no closing quote) : END-OF-LINE encountered at Line X Column Y
 class NoClosingQuote: public BaseException {
     public:
         NoClosingQuote(int line, int column):
-            BaseException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + "\n") {}
+            BaseException("> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + "\n\n") {}
 };
 
 // ERROR (no more input) : END-OF-FILE encountered
 class NoMoreInput: public BaseException {
     public:
-        NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\n") {}
+        NoMoreInput(): BaseException("> ERROR (no more input) : END-OF-FILE encountered\n\n") {}
 };
 
 /* AST structure */
@@ -263,7 +263,7 @@ class S_Exp_Lexer {
             // std::cout << "\n> push a token: ->" << token.value << "<-\n";
             // printType(token);
             buffer.push_back(token); // should replace to parser.parse(atom);
-            std::cout << "> " << token.value << "\n\n";
+            std::cout << "\n> " << token.value << "\n\n";
             token = Token(); // reset
 
             // debug
@@ -301,7 +301,7 @@ class S_Exp_Lexer {
             ch = '\0';
             prev_ch = '\0';
             bool start = false;
-            if (! allow_newline_in_token) std::cout << "\nA> "; // init input prompt
+            if (! allow_newline_in_token) std::cout << "> "; // init input prompt
 
             while (std::cin.get(ch)) {
                 start = true;
@@ -397,89 +397,12 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            std::cout << "in a\n";
                             // save an token
                             saveAToken(token, buffer, parser);
 
-                            // check nil
-                            char tch = '\0';
-                            int shift_line = 0, shift_column = 0;
-                            std::stack<char> peekStack;
-                            std::cin.get(tch);
-                            peekStack.push(tch);
-                            while (isWhiteSpace(tch)) {
-                                if (tch == '\n') {
-                                    shift_column = 0;
-                                    shift_line++;
-                                }
-                                else shift_column++;
-                                std::cin.get(tch);
-                                peekStack.push(tch);
-                            }
-
-                            if (tch == ')') { // nil
-                                token.value = "nil";
-                                // save a token
-                                saveAToken(token, buffer, parser);
-                                
-                                // set position
-                                lineNum += shift_line;
-                                columnNum = shift_column;
-                            }
-                            else {
-                                // put back
-                                while (! peekStack.empty()) {
-                                    std::cin.putback(peekStack.top());
-                                    peekStack.pop();
-                                }
-
-                                // set new parenStack
-                                parenStack.push(ch);
-                                
-                                // save a token
-                                token.value += ch;
-                                saveAToken(token, buffer, parser);
-
-                                // set position
-                                columnNum = 0;
-                            }
-                        }
-                    }
-                    else {
-                        // chekck nil
-                        char tch = '\0';
-                        int shift_line = 0, shift_column = 0;
-                        std::stack<char> peekStack;
-                        std::cin.get(tch);
-                        peekStack.push(tch);
-                        while (isWhiteSpace(tch)) {
-                            if (tch == '\n') {
-                                shift_column = 0;
-                                shift_line++;
-                            }
-                            else shift_column++;
-                            std::cin.get(tch);
-                            peekStack.push(tch);
-                        }
-
-                        if (tch == ')') { // nil
-                            token.value = "nil";
-                            // save a token
-                            saveAToken(token, buffer, parser);
-                            
-                            // set position
-                            lineNum += shift_line;
-                            columnNum = shift_column;
-                        }
-                        else {
-                            // put back
-                            while (! peekStack.empty()) {
-                                std::cin.putback(peekStack.top());
-                                peekStack.pop();
-                            }
-                            
                             // set new parenStack
                             parenStack.push(ch);
+                            
                             // save a token
                             token.value += ch;
                             saveAToken(token, buffer, parser);
@@ -487,6 +410,16 @@ class S_Exp_Lexer {
                             // set position
                             columnNum = 0;
                         }
+                    }
+                    else {
+                        // set new parenStack
+                        parenStack.push(ch);
+                        // save a token
+                        token.value += ch;
+                        saveAToken(token, buffer, parser);
+
+                        // set position
+                        columnNum = 0;
                     }
                 }
                 else if (ch == ')') { // judge both end of a single-quote or in string
@@ -499,11 +432,12 @@ class S_Exp_Lexer {
                             // save a token
                             saveAToken(token, buffer, parser);
                             // set position
-                            columnNum = 0;
+                            columnNum = 1;
 
                             // check parenStack
                             if (parenStack.empty()) {
-                                while (std::cin.get() != '\n') std::cin.get(ch);
+                                std::string s;
+                                std::getline(std::cin, s);
                                 throw UnexpectedToken(lineNum, columnNum, ")");
                             }
                             else {
@@ -521,7 +455,8 @@ class S_Exp_Lexer {
                         // check parenStack
                         if (parenStack.empty()) {
                             columnNum++;
-                            while (std::cin.peek() != '\n') std::cin.get(ch);
+                            std::string s;
+                            std::getline(std::cin, s);
                             throw UnexpectedToken(lineNum, columnNum, ")");
                         }
                         else {
@@ -616,7 +551,7 @@ class S_Exp_Lexer {
 /* Main Read-Eval-Print-Loop */
 int main() {
     std::getline(std::cin, gTestNum);
-    std::cout << "Welcome to OurScheme!\n" << std::endl;
+    std::cout << "Welcome to OurScheme!\n\n";
     S_Exp_Lexer lexer;
     S_Exp_Parser parser;
     while (true) {
