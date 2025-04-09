@@ -101,55 +101,6 @@ struct AST {
          
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
 //             | NIL | T | LEFT-PAREN RIGHT-PAREN
-/*
-class S_Exp_Parser { // Bottom-up
-    private:
-        bool isAtom(Token token) {
-            return (token.type == Token_Type::SYMBOL || token.type == Token_Type::INT
-                    || token.type == Token_Type::FLOAT || token.type == Token_Type::STRING
-                    || token.type == Token_Type::NIL || token.type == Token_Type::T);
-        }
-
-        std::string getStringType(Token token) {
-            if (token.type == Token_Type::LEFT_PAREN) return "LEFT_PAREN";
-            else if (token.type == Token_Type::RIGHT_PAREN) return "RIGHT_PAREN";
-            else if (token.type == Token_Type::INT) return "INT";
-            else if (token.type == Token_Type::STRING) return "STRING";
-            else if (token.type == Token_Type::DOT) return "DOT";
-            else if (token.type == Token_Type::FLOAT) return "FLOAT";
-            else if (token.type == Token_Type::NIL) return "NIL";
-            else if (token.type == Token_Type::T) return "T";
-            else if (token.type == Token_Type::QUOTE) return "QUOTE";
-            else if (token.type == Token_Type::SYMBOL) return "SYMBOL";
-            else if (token.type == Token_Type::UDF) return "UDF";
-            else return "ERROR";
-        }
-    
-    public:
-        int tp = 0; // currrent tree position
-        std::vector<AST> trees; // to store the root of each complete <S-exp> ASTs
-
-        S_Exp_Parser() {
-        }
-
-        void prettyPrint(int cur_tree_pos) {
-        }
-
-        void printTrees() {
-        }
-
-        void reduceDOT() {
-            // reduce DOTs to one in nested <S-Exp>s
-        }
-
-        void parse(const Token &token) {
-            
-        }
-
-        void build() {}
-};
-*/
-
 class S_Exp_Parser {
     private:
         enum class Mode { NORMAL, WAIT_DOT_CDR };
@@ -361,9 +312,6 @@ class S_Exp_Lexer {
         }
 
         void saveAToken(Token &token, S_Exp_Parser &parser) {
-            if (exit_buffer.size() >= 3 && exit_buffer[exit_buffer.size() - 3].value == "(" && exit_buffer[exit_buffer.size() - 2].value == "exit" && exit_buffer[exit_buffer.size() - 1].value == ")") {
-                throw CorrectExit();
-            }
             exit_buffer.push_back(token);
             // judge type
             judgeType(token);
@@ -384,6 +332,9 @@ class S_Exp_Lexer {
             std::cout << "\n> " << token.value << "\n\n";
             */
             token = Token(); // reset
+            if (exit_buffer.size() >= 3 && exit_buffer[exit_buffer.size() - 3].value == "(" && exit_buffer[exit_buffer.size() - 2].value == "exit" && exit_buffer[exit_buffer.size() - 1].value == ")") {
+                throw CorrectExit();
+            }
         }
 
     public:
