@@ -94,6 +94,7 @@ struct AST {
     AST(Token t) : isAtom(true), atom(std::move(t)) {}
     AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
 };
+
 /* S-Expression Parser */
 // <S-exp> ::= <ATOM>
 //             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
@@ -103,112 +104,114 @@ struct AST {
 //             | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Parser {
     private:
-        enum class Mode { NORMAL, WAIT_DOT_CDR };
+        enum class LIST_MODE {
+            NO_DOT,
+            WITH_DOT
+        };
     
-        std::stack<std::vector<std::shared_ptr<AST>>> list_stack;
-        std::stack<Mode> mode_stack;
-        std::shared_ptr<AST> current;
+        std::stack<std::vector<std::shared_ptr<AST>>> lists;
+        std::stack<LIST_MODE> lists_mode;
     
     public:
+        std::vector<std::shared_ptr<AST>> tree_roots;
 
-        void parse(const Token &token) {
-            if (token.type == Token_Type::LEFT_PAREN) {
-                list_stack.push({});
-                mode_stack.push(Mode::NORMAL);
-            } else if (token.type == Token_Type::RIGHT_PAREN) {
-                if (list_stack.empty()) {
-                    std::cerr << "Unmatched )\n";
-                    return;
-                }
-                auto nodes = list_stack.top(); list_stack.pop();
-                auto mode = mode_stack.top(); mode_stack.pop();
-    
-                std::shared_ptr<AST> ast = nullptr;
-                if (mode == Mode::WAIT_DOT_CDR) {
-                    if (nodes.size() < 2) {
-                        std::cerr << "Invalid dotted pair\n";
-                        return;
-                    }
-                    auto cdr = nodes.back();  // 最後一個是 dot 後的 cdr
-                    nodes.pop_back();         // 剩下的是 list 的部分
-                    ast = makeDottedList(nodes, cdr);
-                } else {
-                    ast = makeList(nodes);
-                }
-    
-                if (!list_stack.empty()) {
-                    list_stack.top().push_back(ast);
-                } else {
-                    current = ast;
-                    printAST(current);
-                }
-            } else if (token.type == Token_Type::DOT) {
-                if (mode_stack.empty() || mode_stack.top() != Mode::NORMAL) {
-                    std::cerr << "Unexpected dot\n";
-                    return;
-                }
-                mode_stack.top() = Mode::WAIT_DOT_CDR;
-            } else {
-                auto node = std::make_shared<AST>(token);
-                if (!list_stack.empty()) {
-                    list_stack.top().push_back(node);
-                } else {
-                    current = node;
-                    printAST(current);
-                }
-            }
-        }
-    
-        std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>>& nodes) {
-            std::shared_ptr<AST> nil = std::make_shared<AST>(Token{Token_Type::NIL, "nil"});
-            std::shared_ptr<AST> res = nil;
-            for (int i = static_cast<int>(nodes.size()) - 1; i >= 0; --i) {
-                res = std::make_shared<AST>(nodes[i], res);
-            }
-            return res;
-        }
-    
-        std::shared_ptr<AST> makeDottedList(const std::vector<std::shared_ptr<AST>>& nodes, const std::shared_ptr<AST>& cdr) {
+        std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
+            const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{Token_Type::NIL, "nil"})) { // the part after DOT (cdr)
             std::shared_ptr<AST> res = cdr;
-            for (int i = static_cast<int>(nodes.size()) - 1; i >= 0; --i) {
-                res = std::make_shared<AST>(nodes[i], res);
-            }
+            for (int i = static_cast<int>(tree_root.size()) - 1; i >= 0; --i) res = std::make_shared<AST>(tree_root[i], res);
             return res;
         }
-    
-        void printAST(const std::shared_ptr<AST>& node, int indent = 0, bool isRoot = true) {
+
+        void checkExit(const std::shared_ptr<AST> &tree_root) {
+            if (! tree_root || tree_root->isAtom) return;
+            if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == Token_Type::SYMBOL && tree_root->left->atom.value == "exit"
+                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == Token_Type::NIL))) throw CorrectExit();
+        }
+
+        void parse(const Token &token, int lineNum, int columnNum) {
+            if (token.type == Token_Type::LEFT_PAREN) {
+                // push a new list into stack
+                lists.push({});
+                lists_mode.push(LIST_MODE::NO_DOT);
+            }
+            else if (token.type == Token_Type::RIGHT_PAREN) {
+                if (lists.empty()) throw UnexpectedToken(lineNum, columnNum, token.value);
+                
+                // get the current dealing list
+                auto cur_list = lists.top();
+                lists.pop();
+                auto cur_list_mode = lists_mode.top();
+                lists_mode.pop();
+                
+                // build AST
+                std::shared_ptr<AST> tree_root = nullptr;
+                if (cur_list_mode == LIST_MODE::NO_DOT) tree_root = makeList(cur_list); // cdr is nil
+                else { // (cons car cdr)
+                    if (cur_list.size() < 2) throw UnexpectedToken(lineNum, columnNum, token.value);
+                    
+                    // get cdr (part after DOT)
+                    auto cdr = cur_list.back();
+                    cur_list.pop_back();
+                    // make dotted pair
+                    tree_root = makeList(cur_list, cdr);
+                }
+                
+                checkExit(tree_root); // check if car == "exit" && cdr == "nil"
+
+                // end a dotted-pair
+                if (! lists.empty()) lists.top().push_back(tree_root);
+                else { // <S-exp> end
+                    std::cout << "> "; // prompt
+                    printAST(tree_root);
+                    tree_roots.push_back(tree_root);
+                    std::cout << "\n" << std::endl;
+                }
+            }
+            else if (token.type == Token_Type::DOT) {
+                if (lists_mode.empty() || lists_mode.top() != LIST_MODE::NO_DOT) throw UnexpectedToken(lineNum, columnNum, token.value);
+                lists_mode.top() = LIST_MODE::WITH_DOT;
+            }
+            //else if (token.type == Token_Type::QUOTE) {}
+            else {
+                auto tree_root = std::make_shared<AST>(token); // <ATOM>
+                if (! lists.empty()) lists.top().push_back(tree_root);
+                else { // <S-exp> end
+                    checkExit(tree_root); // check if car == "exit" && cdr == "nil"
+                    
+                    std::cout << "\n" << "> "; // prompt
+                    printAST(tree_root);
+                    tree_roots.push_back(tree_root);
+                    std::cout << std::endl;
+                }
+            }
+        }
+
+        void printAST(const std::shared_ptr<AST> &tree_root, int indent = 0, bool isRoot = true) { // recursively print
             std::string pad(indent * 2, ' ');
-            if (node == nullptr) return;
-    
-            if (node->isAtom) {
-                std::cout << pad << node->atom.value << "\n";
+            if (tree_root == nullptr) return;
+            if (tree_root->isAtom) {
+                std::cout << pad << tree_root->atom.value << "\n";
                 return;
             }
-    
             if (isRoot) std::cout << pad << "(\n";
-            printAST(node->left, indent + 1, true);
+            printAST(tree_root->left, indent + 1, true);
     
-            if (node->right && node->right->isAtom && node->right->atom.type != Token_Type::NIL) {
+            if (tree_root->right && tree_root->right->isAtom && tree_root->right->atom.type != Token_Type::NIL) {
                 std::cout << std::string((indent + 1) * 2, ' ') << ".\n";
-                printAST(node->right, indent + 1, true);
+                printAST(tree_root->right, indent + 1, true);
                 std::cout << pad << ")\n";
-            } else if (node->right && !node->right->isAtom) {
-                printAST(node->right, indent, false);
+            } else if (tree_root->right && ! tree_root->right->isAtom) {
+                printAST(tree_root->right, indent, false);
                 if (isRoot) std::cout << pad << ")\n";
-            } else if (!node->right || node->right->atom.type == Token_Type::NIL) {
+            } else if (! tree_root->right || tree_root->right->atom.type == Token_Type::NIL) {
                 if (isRoot) std::cout << pad << ")\n";
             } else {
                 std::cout << std::string((indent + 1) * 2, ' ') << ".\n";
-                printAST(node->right, indent + 1, true);
+                printAST(tree_root->right, indent + 1, true);
                 std::cout << pad << ")\n";
             }
         }
-    
-        std::shared_ptr<AST> getResult() const {
-            return current;
-        }
-};
-    
+};    
 
 /* S-Expression Lexer */
 class S_Exp_Lexer {
@@ -216,12 +219,10 @@ class S_Exp_Lexer {
     private:
         char ch, prev_ch;
         int lineNum = 1, columnNum = 0;
-        std::vector<Token> exit_buffer;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
 
         bool isWhiteSpace(char ch) {
             return (ch == ' ' || ch == '\t' || ch == '\n');
-            //return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r');
         }
 
         bool isDigit(char ch) {
@@ -285,18 +286,7 @@ class S_Exp_Lexer {
                 token.value = oss.str();
             }
             else if (token.value == "(") token.type = Token_Type::LEFT_PAREN;
-            else if (token.value == ")") {
-                // deal the "()" here
-                /*
-                if (buffer.size() > 0 && buffer[buffer.size()-1].type == Token_Type::LEFT_PAREN) {
-                    buffer.pop_back();
-                    token.value = "nil";
-                    token.type = Token_Type::NIL;
-                }
-                else token.type = Token_Type::RIGHT_PAREN;
-                */
-                token.type = Token_Type::RIGHT_PAREN;
-            }
+            else if (token.value == ")") token.type = Token_Type::RIGHT_PAREN;
             else if (token.value == ".") token.type = Token_Type::DOT;
             else if (token.value[0] == '\"' && token.value[token.value.length()-1] == '\"') token.type = Token_Type::STRING;
             else if (token.value == "\'") token.type = Token_Type::QUOTE;
@@ -311,30 +301,13 @@ class S_Exp_Lexer {
             else token.type = Token_Type::SYMBOL;
         }
 
-        void saveAToken(Token &token, S_Exp_Parser &parser) {
-            exit_buffer.push_back(token);
+        void saveAToken(Token &token, S_Exp_Parser &parser, int lineNum, int columnNum) {
             // judge type
             judgeType(token);
-
-            // push into buffer
-            // Should replace the method into build and push a node into tree and parse,
-            // rather then just simply push into a vector.
-            // Should check if tree is empty;
-            // if empty then build tree,
-            // then parse (test) the current atom to match s-expression;
-            // if no match, return false;
-            // else continue, then return true at the end.
-            // std::cout << "\n> push a token: ->" << token.value << "<-\n";
-            // printType(token);
-            parser.parse(token);
-            /*
-            buffer.push_back(token); // should replace to parser.parse(atom);
-            std::cout << "\n> " << token.value << "\n\n";
-            */
-            token = Token(); // reset
-            if (exit_buffer.size() >= 3 && exit_buffer[exit_buffer.size() - 3].value == "(" && exit_buffer[exit_buffer.size() - 2].value == "exit" && exit_buffer[exit_buffer.size() - 1].value == ")") {
-                throw CorrectExit();
-            }
+            // parse
+            parser.parse(token, lineNum, columnNum);
+            // reset
+            token = Token();
         }
 
     public:
@@ -365,7 +338,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
 
                             // read until new line
                             while (ch != '\n') std::cin.get(ch);
@@ -411,7 +384,7 @@ class S_Exp_Lexer {
                             }
                             else {
                                 // save a token
-                                saveAToken(token, parser);
+                                saveAToken(token, parser, lineNum, columnNum);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -429,7 +402,7 @@ class S_Exp_Lexer {
                             }
                             else {
                                 // save a token
-                                saveAToken(token, parser);
+                                saveAToken(token, parser, lineNum, columnNum);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -450,14 +423,14 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save an token
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
 
                             // set new parenStack
                             parenStack.push(ch);
                             
                             // save a token
                             token.value += ch;
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
 
                             // set position
                             columnNum = 0;
@@ -468,7 +441,7 @@ class S_Exp_Lexer {
                         parenStack.push(ch);
                         // save a token
                         token.value += ch;
-                        saveAToken(token, parser);
+                        saveAToken(token, parser, lineNum, columnNum);
 
                         // set position
                         columnNum = 0;
@@ -482,7 +455,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
                             // set position
                             columnNum = 1;
 
@@ -496,7 +469,7 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 // save a token
                                 token.value += ch;
-                                saveAToken(token, parser);
+                                saveAToken(token, parser, lineNum, columnNum);
 
                                 // set position
                                 columnNum = 0;
@@ -515,7 +488,7 @@ class S_Exp_Lexer {
                             parenStack.pop();
                             // save a token
                             token.value += ch;
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
 
                             // set position
                             columnNum = 0;
@@ -531,7 +504,7 @@ class S_Exp_Lexer {
                         if (token.value[0] == '\"') { // end of a string
                             // save a token
                             token.value += ch;
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
     
                             // set position
                             if (allow_newline_in_token) lineNum++;
@@ -540,7 +513,7 @@ class S_Exp_Lexer {
                         }
                         else { // ex. > "" ""asf"" -> temp = "asf", ch = '\"'
                             // save a token
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
                             columnNum = 0;
     
                             // set the new starting string's char and position
@@ -554,7 +527,7 @@ class S_Exp_Lexer {
                         // save a token
                         columnNum++;
                         token.value += ch;
-                        saveAToken(token, parser);
+                        saveAToken(token, parser, lineNum, columnNum);
 
                         // set position
                         columnNum = 0;
@@ -566,13 +539,13 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
                             columnNum = 0;
                             
                             // save a token
                             columnNum++;
                             token.value += ch;
-                            saveAToken(token, parser);
+                            saveAToken(token, parser, lineNum, columnNum);
                             columnNum = 0;
                         }
                     }
