@@ -33,10 +33,10 @@ enum class Token_Type {
 
 /* Token structure */
 struct Token {
-    Token_Type type = Token_Type::UDF;
+    Token_Type type = Token_Type::NIL;
     std::string value = "";
-    int s_exp_pos = -1;
-    Token() = default;
+    Token() : type(Token_Type::NIL), value("") {}
+    Token(Token_Type t, const std::string& v) : type(t), value(v) {}
 };
 
 /* Error Exceptions */
@@ -87,12 +87,13 @@ class NoMoreInput: public BaseException {
 };
 
 /* AST structure */
-struct AST_Node {
-    int cur_sexps_pos = -1;
-    std::vector<Token> sexps;
-    AST_Node() = default;
+struct AST {
+    bool isAtom = false;
+    Token atom;
+    std::shared_ptr<AST> left = nullptr, right = nullptr;
+    AST(Token t) : isAtom(true), atom(std::move(t)) {}
+    AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
 };
-
 /* S-Expression Parser */
 // <S-exp> ::= <ATOM>
 //             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
@@ -100,50 +101,163 @@ struct AST_Node {
          
 // <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
 //             | NIL | T | LEFT-PAREN RIGHT-PAREN
+/*
 class S_Exp_Parser { // Bottom-up
     private:
         bool isAtom(Token token) {
-            return (token.type == Token_Type::SYMBOL || token.type == Token_Type::INT || token.type == Token_Type::FLOAT || token.type == Token_Type::STRING || token.type == Token_Type::NIL || token.type == Token_Type::T);
+            return (token.type == Token_Type::SYMBOL || token.type == Token_Type::INT
+                    || token.type == Token_Type::FLOAT || token.type == Token_Type::STRING
+                    || token.type == Token_Type::NIL || token.type == Token_Type::T);
+        }
+
+        std::string getStringType(Token token) {
+            if (token.type == Token_Type::LEFT_PAREN) return "LEFT_PAREN";
+            else if (token.type == Token_Type::RIGHT_PAREN) return "RIGHT_PAREN";
+            else if (token.type == Token_Type::INT) return "INT";
+            else if (token.type == Token_Type::STRING) return "STRING";
+            else if (token.type == Token_Type::DOT) return "DOT";
+            else if (token.type == Token_Type::FLOAT) return "FLOAT";
+            else if (token.type == Token_Type::NIL) return "NIL";
+            else if (token.type == Token_Type::T) return "T";
+            else if (token.type == Token_Type::QUOTE) return "QUOTE";
+            else if (token.type == Token_Type::SYMBOL) return "SYMBOL";
+            else if (token.type == Token_Type::UDF) return "UDF";
+            else return "ERROR";
         }
     
     public:
-        std::vector<AST_Node> trees; // to store the root of each complete <S-exp> ASTs
+        int tp = 0; // currrent tree position
+        std::vector<AST> trees; // to store the root of each complete <S-exp> ASTs
 
         S_Exp_Parser() {
-            trees.clear();
-            trees.push_back(AST_Node()); // push empty tree
         }
 
-        void prettyPrint() {
-            // control by Token::s_exp_pos
+        void prettyPrint(int cur_tree_pos) {
+        }
+
+        void printTrees() {
         }
 
         void reduceDOT() {
             // reduce DOTs to one in nested <S-Exp>s
         }
 
-        void parse_and_build(Token token) {
-            int cur_tree_pos = trees.size() - 1; // the current tree will always be the last (i.e. latest) one
-            if (token.type == Token_Type::LEFT_PAREN || token.type == Token_Type::QUOTE || isAtom(token)) {
-                trees[cur_tree_pos].cur_sexps_pos++;
-                token.s_exp_pos = trees[cur_tree_pos].cur_sexps_pos;
-                trees[cur_tree_pos].sexps.push_back(token);
-            }
-            else if (token.type == Token_Type::DOT) {
-                // should check the num of DOT in the current sesps here
-                token.s_exp_pos = trees[cur_tree_pos].cur_sexps_pos;
-                trees[cur_tree_pos].sexps.push_back(token);
-            }
-            else if (token.type == Token_Type::RIGHT_PAREN) {
-                token.s_exp_pos = trees[cur_tree_pos].cur_sexps_pos;
-                trees[cur_tree_pos].sexps.push_back(token);
-                if (trees[cur_tree_pos].cur_sexps_pos > 0) trees[cur_tree_pos].cur_sexps_pos--; // the end of a <S-exp>, pos should be 0 not -1
-                else if (trees[cur_tree_pos].cur_sexps_pos == 0) {
+        void parse(const Token &token) {
+            
+        }
 
+        void build() {}
+};
+*/
+
+class S_Exp_Parser {
+    private:
+        enum class Mode { NORMAL, WAIT_DOT_CDR };
+    
+        std::stack<std::vector<std::shared_ptr<AST>>> list_stack;
+        std::stack<Mode> mode_stack;
+        std::shared_ptr<AST> current;
+    
+    public:
+
+        void parse(const Token &token) {
+            if (token.type == Token_Type::LEFT_PAREN) {
+                list_stack.push({});
+                mode_stack.push(Mode::NORMAL);
+            } else if (token.type == Token_Type::RIGHT_PAREN) {
+                if (list_stack.empty()) {
+                    std::cerr << "Unmatched )\n";
+                    return;
+                }
+                auto nodes = list_stack.top(); list_stack.pop();
+                auto mode = mode_stack.top(); mode_stack.pop();
+    
+                std::shared_ptr<AST> ast = nullptr;
+                if (mode == Mode::WAIT_DOT_CDR) {
+                    if (nodes.size() < 2) {
+                        std::cerr << "Invalid dotted pair\n";
+                        return;
+                    }
+                    auto cdr = nodes.back();  // 最後一個是 dot 後的 cdr
+                    nodes.pop_back();         // 剩下的是 list 的部分
+                    ast = makeDottedList(nodes, cdr);
+                } else {
+                    ast = makeList(nodes);
+                }
+    
+                if (!list_stack.empty()) {
+                    list_stack.top().push_back(ast);
+                } else {
+                    current = ast;
+                    printAST(current);
+                }
+            } else if (token.type == Token_Type::DOT) {
+                if (mode_stack.empty() || mode_stack.top() != Mode::NORMAL) {
+                    std::cerr << "Unexpected dot\n";
+                    return;
+                }
+                mode_stack.top() = Mode::WAIT_DOT_CDR;
+            } else {
+                auto node = std::make_shared<AST>(token);
+                if (!list_stack.empty()) {
+                    list_stack.top().push_back(node);
+                } else {
+                    current = node;
+                    printAST(current);
                 }
             }
         }
+    
+        std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>>& nodes) {
+            std::shared_ptr<AST> nil = std::make_shared<AST>(Token{Token_Type::NIL, "nil"});
+            std::shared_ptr<AST> res = nil;
+            for (int i = static_cast<int>(nodes.size()) - 1; i >= 0; --i) {
+                res = std::make_shared<AST>(nodes[i], res);
+            }
+            return res;
+        }
+    
+        std::shared_ptr<AST> makeDottedList(const std::vector<std::shared_ptr<AST>>& nodes, const std::shared_ptr<AST>& cdr) {
+            std::shared_ptr<AST> res = cdr;
+            for (int i = static_cast<int>(nodes.size()) - 1; i >= 0; --i) {
+                res = std::make_shared<AST>(nodes[i], res);
+            }
+            return res;
+        }
+    
+        void printAST(const std::shared_ptr<AST>& node, int indent = 0, bool isRoot = true) {
+            std::string pad(indent * 2, ' ');
+            if (node == nullptr) return;
+    
+            if (node->isAtom) {
+                std::cout << pad << node->atom.value << "\n";
+                return;
+            }
+    
+            if (isRoot) std::cout << pad << "(\n";
+            printAST(node->left, indent + 1, true);
+    
+            if (node->right && node->right->isAtom && node->right->atom.type != Token_Type::NIL) {
+                std::cout << std::string((indent + 1) * 2, ' ') << ".\n";
+                printAST(node->right, indent + 1, true);
+                std::cout << pad << ")\n";
+            } else if (node->right && !node->right->isAtom) {
+                printAST(node->right, indent, false);
+                if (isRoot) std::cout << pad << ")\n";
+            } else if (!node->right || node->right->atom.type == Token_Type::NIL) {
+                if (isRoot) std::cout << pad << ")\n";
+            } else {
+                std::cout << std::string((indent + 1) * 2, ' ') << ".\n";
+                printAST(node->right, indent + 1, true);
+                std::cout << pad << ")\n";
+            }
+        }
+    
+        std::shared_ptr<AST> getResult() const {
+            return current;
+        }
 };
+    
 
 /* S-Expression Lexer */
 class S_Exp_Lexer {
@@ -151,6 +265,7 @@ class S_Exp_Lexer {
     private:
         char ch, prev_ch;
         int lineNum = 1, columnNum = 0;
+        std::vector<Token> exit_buffer;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
 
         bool isWhiteSpace(char ch) {
@@ -199,7 +314,7 @@ class S_Exp_Lexer {
             else std::cout << "ERROR: didn't judged!\n";
         }
 
-        void judgeType(Token &token, std::vector<Token> &buffer) {
+        void judgeType(Token &token) {
             if (isInt(token.value) || isFloat(token.value)) {
                 std::istringstream iss(token.value);
                 std::stringstream oss;
@@ -245,9 +360,13 @@ class S_Exp_Lexer {
             else token.type = Token_Type::SYMBOL;
         }
 
-        void saveAToken(Token &token, std::vector<Token> &buffer, S_Exp_Parser &parser) {
+        void saveAToken(Token &token, S_Exp_Parser &parser) {
+            if (exit_buffer.size() >= 3 && exit_buffer[exit_buffer.size() - 3].value == "(" && exit_buffer[exit_buffer.size() - 2].value == "exit" && exit_buffer[exit_buffer.size() - 1].value == ")") {
+                throw CorrectExit();
+            }
+            exit_buffer.push_back(token);
             // judge type
-            judgeType(token, buffer);
+            judgeType(token);
 
             // push into buffer
             // Should replace the method into build and push a node into tree and parse,
@@ -259,26 +378,12 @@ class S_Exp_Lexer {
             // else continue, then return true at the end.
             // std::cout << "\n> push a token: ->" << token.value << "<-\n";
             // printType(token);
+            parser.parse(token);
+            /*
             buffer.push_back(token); // should replace to parser.parse(atom);
             std::cout << "\n> " << token.value << "\n\n";
+            */
             token = Token(); // reset
-
-            // debug
-            int size = buffer.size();
-            
-            if (size >= 3 && buffer[size - 3].value == "(" && buffer[size - 2].value == "exit" && buffer[size - 1].value == ")") {
-                
-                for (int i = 0; i < size - 3; i++) {
-                    std::cout << "> " << buffer[i].value << "\n\n";
-                    //std::cout << buffer[i].value << " ";
-                    //printType(buffer[i]);
-                }
-                
-                std::cout << "> \nThanks for using OurScheme!";
-                exit(0);
-            }
-
-            // clear buffer if a S-exp end
         }
 
     public:
@@ -290,7 +395,6 @@ class S_Exp_Lexer {
         }
 
         void readAndTokenize(S_Exp_Parser &parser) {
-            std::vector<Token> buffer; // to store single token
             Token token;
             std::stack<char> parenStack;
             lineNum = 1;
@@ -310,7 +414,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
 
                             // read until new line
                             while (ch != '\n') std::cin.get(ch);
@@ -356,7 +460,7 @@ class S_Exp_Lexer {
                             }
                             else {
                                 // save a token
-                                saveAToken(token, buffer, parser);
+                                saveAToken(token, parser);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -374,7 +478,7 @@ class S_Exp_Lexer {
                             }
                             else {
                                 // save a token
-                                saveAToken(token, buffer, parser);
+                                saveAToken(token, parser);
 
                                 // set position
                                 if (allow_newline_in_token) lineNum++;
@@ -395,14 +499,14 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save an token
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
 
                             // set new parenStack
                             parenStack.push(ch);
                             
                             // save a token
                             token.value += ch;
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
 
                             // set position
                             columnNum = 0;
@@ -413,7 +517,7 @@ class S_Exp_Lexer {
                         parenStack.push(ch);
                         // save a token
                         token.value += ch;
-                        saveAToken(token, buffer, parser);
+                        saveAToken(token, parser);
 
                         // set position
                         columnNum = 0;
@@ -427,7 +531,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
                             // set position
                             columnNum = 1;
 
@@ -441,7 +545,7 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 // save a token
                                 token.value += ch;
-                                saveAToken(token, buffer, parser);
+                                saveAToken(token, parser);
 
                                 // set position
                                 columnNum = 0;
@@ -460,7 +564,7 @@ class S_Exp_Lexer {
                             parenStack.pop();
                             // save a token
                             token.value += ch;
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
 
                             // set position
                             columnNum = 0;
@@ -476,7 +580,7 @@ class S_Exp_Lexer {
                         if (token.value[0] == '\"') { // end of a string
                             // save a token
                             token.value += ch;
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
     
                             // set position
                             if (allow_newline_in_token) lineNum++;
@@ -485,7 +589,7 @@ class S_Exp_Lexer {
                         }
                         else { // ex. > "" ""asf"" -> temp = "asf", ch = '\"'
                             // save a token
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
                             columnNum = 0;
     
                             // set the new starting string's char and position
@@ -499,7 +603,7 @@ class S_Exp_Lexer {
                         // save a token
                         columnNum++;
                         token.value += ch;
-                        saveAToken(token, buffer, parser);
+                        saveAToken(token, parser);
 
                         // set position
                         columnNum = 0;
@@ -511,13 +615,13 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save a token
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
                             columnNum = 0;
                             
                             // save a token
                             columnNum++;
                             token.value += ch;
-                            saveAToken(token, buffer, parser);
+                            saveAToken(token, parser);
                             columnNum = 0;
                         }
                     }
