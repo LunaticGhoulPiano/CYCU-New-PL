@@ -1,0 +1,23 @@
+1
+( a b ( c . ( ) ) . d )
+(a b (c.()).d)
+( a b ( c . () ) . d )
+( a b ( c . nil) . d )
+( a b ( c . () ) . d )
+( a b ( c . (    ) ) . d )
+( a b (
+       c . ()
+      )
+  . d )
+( a b (
+       c . nil
+      )
+  . d )
+( a b (
+       c . #f
+      )
+  . d )
+( a b (
+       c . nil
+      )
+  . d )

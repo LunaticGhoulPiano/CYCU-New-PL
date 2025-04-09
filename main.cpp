@@ -35,6 +35,8 @@ enum class Token_Type {
 struct Token {
     Token_Type type = Token_Type::UDF;
     std::string value = "";
+    int s_exp_pos = -1;
+    Token() = default;
 };
 
 /* Error Exceptions */
@@ -86,9 +88,9 @@ class NoMoreInput: public BaseException {
 
 /* AST structure */
 struct AST_Node {
-    Token token; // if terminal then have value
-    bool end = true; // to judge a <S-exp> end; if Top-down, start = false
-    std::vector<std::unique_ptr<AST_Node>> children; // <S-exp>s
+    int cur_sexps_pos = -1;
+    std::vector<Token> sexps;
+    AST_Node() = default;
 };
 
 /* S-Expression Parser */
@@ -100,50 +102,45 @@ struct AST_Node {
 //             | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Parser { // Bottom-up
     private:
+        bool isAtom(Token token) {
+            return (token.type == Token_Type::SYMBOL || token.type == Token_Type::INT || token.type == Token_Type::FLOAT || token.type == Token_Type::STRING || token.type == Token_Type::NIL || token.type == Token_Type::T);
+        }
+    
     public:
-        std::vector<std::unique_ptr<AST_Node>> tree_roots; // to store the root of each complete <S-exp> ASTs
+        std::vector<AST_Node> trees; // to store the root of each complete <S-exp> ASTs
 
         S_Exp_Parser() {
-            tree_roots.clear();
-        }
-
-        void destroyCurrentTree() {
-            tree_roots.pop_back(); // delete self
+            trees.clear();
+            trees.push_back(AST_Node()); // push empty tree
         }
 
         void prettyPrint() {
-            //
+            // control by Token::s_exp_pos
         }
-        
-        void parse_and_build_AST(AST_Node &cur, Token token) {
-            // init empty tree
-            if (cur.children.size() == 0 && cur.end) {
-                cur.end = true; // entry
-                cur.children.push_back(std::make_unique<AST_Node>()); // empty node
-            }
-            // parse
-            if (cur.children.size() == 1) { // <S-exp>
-                if (token.type == Token_Type::LEFT_PAREN) { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
-                    // set the first starter: LEFT-PAREN
-                    cur.children[0]->end = true; // LEFT-PAREN itself is a terminal
-                    cur.children[0]->token = token;
-                    // make next node, should be <S-exp>
-                    cur.children.push_back(std::make_unique<AST_Node>()); // empty node
-                }
-                else if (token.type == Token_Type::QUOTE) { // <S-exp> ::= QUOTE <S-exp>
-                    // set the first starter: QTUOE
-                    cur.children[0]->end = true; // QUOTE itself is a terminal
-                    cur.children[0]->token = token;
-                    // make next node, should be <S-exp>
-                    cur.children.push_back(std::make_unique<AST_Node>()); // empty node
-                }
-                else { // <S-exp> ::= <ATOM>
-                    cur.end = true;
-                    cur.token = token;
-                }
-            }
-            else {
 
+        void reduceDOT() {
+            // reduce DOTs to one in nested <S-Exp>s
+        }
+
+        void parse_and_build(Token token) {
+            int cur_tree_pos = trees.size() - 1; // the current tree will always be the last (i.e. latest) one
+            if (token.type == Token_Type::LEFT_PAREN || token.type == Token_Type::QUOTE || isAtom(token)) {
+                trees[cur_tree_pos].cur_sexps_pos++;
+                token.s_exp_pos = trees[cur_tree_pos].cur_sexps_pos;
+                trees[cur_tree_pos].sexps.push_back(token);
+            }
+            else if (token.type == Token_Type::DOT) {
+                // should check the num of DOT in the current sesps here
+                token.s_exp_pos = trees[cur_tree_pos].cur_sexps_pos;
+                trees[cur_tree_pos].sexps.push_back(token);
+            }
+            else if (token.type == Token_Type::RIGHT_PAREN) {
+                token.s_exp_pos = trees[cur_tree_pos].cur_sexps_pos;
+                trees[cur_tree_pos].sexps.push_back(token);
+                if (trees[cur_tree_pos].cur_sexps_pos > 0) trees[cur_tree_pos].cur_sexps_pos--; // the end of a <S-exp>, pos should be 0 not -1
+                else if (trees[cur_tree_pos].cur_sexps_pos == 0) {
+
+                }
             }
         }
 };
