@@ -114,6 +114,7 @@ class S_Exp_Parser {
     
     public:
         std::vector<std::shared_ptr<AST>> tree_roots;
+        std::stack<bool> quote_stack;
 
         std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
             const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{Token_Type::NIL, "nil"})) { // the part after DOT (cdr)
@@ -129,7 +130,8 @@ class S_Exp_Parser {
         }
 
         void parse(const Token &token, int lineNum, int columnNum) {
-            if (token.type == Token_Type::LEFT_PAREN) {
+            if (token.type == Token_Type::QUOTE) quote_stack.push(true);
+            else if (token.type == Token_Type::LEFT_PAREN) {
                 // push a new list into stack
                 lists.push({});
                 lists_mode.push(LIST_MODE::NO_DOT);
@@ -156,6 +158,12 @@ class S_Exp_Parser {
                     tree_root = makeList(cur_list, cdr);
                 }
                 
+                // check quote
+                if (! quote_stack.empty() && quote_stack.top() ) {
+                    quote_stack.pop();
+                    tree_root = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), tree_root});
+                }
+                
                 checkExit(tree_root); // check if car == "exit" && cdr == "nil"
 
                 // end a dotted-pair
@@ -171,11 +179,14 @@ class S_Exp_Parser {
                 if (lists_mode.empty() || lists_mode.top() != LIST_MODE::NO_DOT) throw UnexpectedToken(lineNum, columnNum, token.value);
                 lists_mode.top() = LIST_MODE::WITH_DOT;
             }
-            else if (token.type == Token_Type::QUOTE) {
-                //
-            }
             else {
                 auto tree_root = std::make_shared<AST>(token); // <ATOM>
+                // check quote
+                if (! quote_stack.empty() && quote_stack.top() ) {
+                    quote_stack.pop();
+                    tree_root = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), tree_root});
+                }
+
                 if (! lists.empty()) lists.top().push_back(tree_root);
                 else { // <S-exp> end
                     checkExit(tree_root); // check if car == "exit" && cdr == "nil"
@@ -188,29 +199,40 @@ class S_Exp_Parser {
             }
         }
 
-        void printAST(const std::shared_ptr<AST> &tree_root, int indent = 0, bool isRoot = true) { // recursively print
-            std::string pad(indent * 2, ' ');
-            if (tree_root == nullptr) return;
-            if (tree_root->isAtom) {
-                std::cout << pad << tree_root->atom.value << "\n";
+        void printAST(const std::shared_ptr<AST> &cur, bool isRoot = true, int depth = 0, bool isFirstTokenOfLine = true) { // recursively print
+            if (cur == nullptr) return;
+            // ATOM
+            if (cur->isAtom) {
+                if (cur->atom.type == Token_Type::QUOTE) std::cout << std::string(depth * 2, ' ') << "quote\n";
+                else std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << cur->atom.value << "\n";
                 return;
             }
-            if (isRoot) std::cout << pad << "(\n";
-            printAST(tree_root->left, indent + 1, true);
-    
-            if (tree_root->right && tree_root->right->isAtom && tree_root->right->atom.type != Token_Type::NIL) {
-                std::cout << std::string((indent + 1) * 2, ' ') << ".\n";
-                printAST(tree_root->right, indent + 1, true);
-                std::cout << pad << ")\n";
-            } else if (tree_root->right && ! tree_root->right->isAtom) {
-                printAST(tree_root->right, indent, false);
-                if (isRoot) std::cout << pad << ")\n";
-            } else if (! tree_root->right || tree_root->right->atom.type == Token_Type::NIL) {
-                if (isRoot) std::cout << pad << ")\n";
-            } else {
-                std::cout << std::string((indent + 1) * 2, ' ') << ".\n";
-                printAST(tree_root->right, indent + 1, true);
-                std::cout << pad << ")\n";
+            // LP: new list started
+            if (isRoot) {
+                std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << "(";
+                depth++;
+                isFirstTokenOfLine = false;
+            }
+            // car
+            printAST(cur->left, true, depth, isFirstTokenOfLine);
+            // cdr
+            if (cur->right && cur->right->isAtom && cur->right->atom.type != Token_Type::NIL) {
+                std::cout << std::string(depth * 2, ' ') << ".\n";
+                printAST(cur->right, true, depth);
+            }
+            else if (cur->right && ! cur->right->isAtom) {
+                printAST(cur->right, false, depth);
+            }
+            else if (! cur->right || cur->right->atom.type == Token_Type::NIL) {
+            }
+            else {
+                std::cout << std::string(depth * 2, ' ') << ".\n";
+                printAST(cur->right, true, depth);
+            }
+            // RP: cur list ended
+            if (isRoot) {
+                depth--;
+                std::cout << std::string(depth * 2, ' ') << ")\n";
             }
         }
 };    
