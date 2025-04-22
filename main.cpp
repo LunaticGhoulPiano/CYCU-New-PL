@@ -171,7 +171,9 @@ class S_Exp_Parser {
                 if (lists_mode.empty() || lists_mode.top() != LIST_MODE::NO_DOT) throw UnexpectedToken(lineNum, columnNum, token.value);
                 lists_mode.top() = LIST_MODE::WITH_DOT;
             }
-            //else if (token.type == Token_Type::QUOTE) {}
+            else if (token.type == Token_Type::QUOTE) {
+                //
+            }
             else {
                 auto tree_root = std::make_shared<AST>(token); // <ATOM>
                 if (! lists.empty()) lists.top().push_back(tree_root);
@@ -302,11 +304,8 @@ class S_Exp_Lexer {
         }
 
         void saveAToken(Token &token, S_Exp_Parser &parser, int lineNum, int columnNum) {
-            // judge type
             judgeType(token);
-            // parse
             parser.parse(token, lineNum, columnNum);
-            // reset
             token = Token();
         }
 
