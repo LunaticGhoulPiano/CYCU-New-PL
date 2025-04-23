@@ -110,8 +110,10 @@ class S_Exp_Parser {
             QUOTE
         };
     
-        std::stack<std::vector<std::shared_ptr<AST>>> lists;
-        std::stack<LIST_MODE> lists_mode;
+        // store list modes and lists
+        std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>> lists_info; // first: mode, second: list
+        // check num of <S-exp> after DOT
+        std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
 
         std::string getType(Token token) {
             if (token.type == Token_Type::LEFT_PAREN) return "LEFT_PAREN";
@@ -175,80 +177,74 @@ class S_Exp_Parser {
         }
 
         void parse(const Token &token, int lineNum, int columnNum) {
-            if (token.type == Token_Type::QUOTE) {
-                lists.push({std::make_shared<AST>(Token{Token_Type::QUOTE, ""})});
-                lists_mode.push(LIST_MODE::QUOTE);
+            if (token.type == Token_Type::QUOTE) lists_info.push({LIST_MODE::QUOTE, {std::make_shared<AST>(Token{Token_Type::QUOTE, ""})}});
+            else if (token.type == Token_Type::DOT) {
+                if (lists_info.empty() || lists_info.top().first != LIST_MODE::NO_DOT) throw UnexpectedToken(lineNum, columnNum, token.value);
+                lists_info.top().first = LIST_MODE::WITH_DOT;
             }
-            else if (token.type == Token_Type::LEFT_PAREN) {
-                // push a new list into stack
-                lists.push({});
-                lists_mode.push(LIST_MODE::NO_DOT);
-            }
+            else if (token.type == Token_Type::LEFT_PAREN) lists_info.push({LIST_MODE::NO_DOT, {}}); // push a new list into stack
             else if (token.type == Token_Type::RIGHT_PAREN) {
-                if (lists.empty()) throw UnexpectedToken(lineNum, columnNum, token.value);
+                if (lists_info.empty()) throw UnexpectedToken(lineNum, columnNum, token.value);
                 
-                // get the current dealing list
-                auto cur_list = lists.top();
-                lists.pop();
-                auto cur_list_mode = lists_mode.top();
-                lists_mode.pop();
-                
+                // get current list
+                auto [cur_list_mode, cur_list] = lists_info.top();
+                lists_info.pop();
+
                 // build AST
-                std::shared_ptr<AST> tree_root = nullptr;
-                if (cur_list_mode == LIST_MODE::NO_DOT) tree_root = makeList(cur_list); // cdr is nil
+                std::shared_ptr<AST> cur_node = nullptr;
+                if (cur_list_mode == LIST_MODE::NO_DOT) cur_node = makeList(cur_list); // (cons car nil)
                 else { // (cons car cdr)
-                    if (cur_list.size() < 2) throw UnexpectedToken(lineNum, columnNum, token.value);
-                    
                     // get cdr (part after DOT)
                     auto cdr = cur_list.back();
                     cur_list.pop_back();
                     // make dotted pair
-                    tree_root = makeList(cur_list, cdr);
+                    cur_node = makeList(cur_list, cdr);
                 }
                 
                 // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                if (! lists_mode.empty() && lists_mode.top() == LIST_MODE::QUOTE) {
-                    // pop
-                    lists_mode.pop();
-                    lists.pop();
+                if (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
+                    // get quote
+                    auto quote_list = std::move(lists_info.top().second);
+                    lists_info.pop();
                     // make quote
-                    tree_root = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), tree_root});
+                    cur_node = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), cur_node});
                 }
-                
-                checkExit(tree_root); // check if car == "exit" && cdr == "nil"
+
+                checkExit(cur_node); // check if car == "exit" && cdr == "nil"
 
                 // end a dotted-pair
-                if (! lists.empty()) lists.top().push_back(tree_root);
-                else { // <S-exp> end
-                    std::cout << "> "; // prompt
-                    printAST(tree_root);
-                    tree_roots.push_back(tree_root);
-                    std::cout << "\n" << std::endl;
+                if (!lists_info.empty()) {
+                    // should check dot here
+                    lists_info.top().second.push_back(cur_node);
                 }
-            }
-            else if (token.type == Token_Type::DOT) {
-                if (lists_mode.empty() || lists_mode.top() != LIST_MODE::NO_DOT) throw UnexpectedToken(lineNum, columnNum, token.value);
-                lists_mode.top() = LIST_MODE::WITH_DOT;
+                else { // <S-exp> ended
+                    std::cout << "> ";
+                    printAST(cur_node);
+                    tree_roots.push_back(cur_node);
+                    std::cout << std::endl;
+                }
             }
             else {
-                auto tree_root = std::make_shared<AST>(token); // <ATOM>
+                auto cur_node = std::make_shared<AST>(token); // <ATOM>
 
                 // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                if (! lists_mode.empty() && lists_mode.top() == LIST_MODE::QUOTE) {
-                    // pop
-                    lists_mode.pop();
-                    lists.pop();
+                if (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
+                    // get quote
+                    auto quote_list = std::move(lists_info.top().second);
+                    lists_info.pop();
                     // make quote
-                    tree_root = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), tree_root});
+                    cur_node = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), cur_node});
                 }
-
-                if (! lists.empty()) lists.top().push_back(tree_root);
-                else { // <S-exp> end
-                    checkExit(tree_root); // check if car == "exit" && cdr == "nil"
-                    
-                    std::cout << "\n" << "> "; // prompt
-                    printAST(tree_root);
-                    tree_roots.push_back(tree_root);
+        
+                if (! lists_info.empty()) {
+                    // should check dot here
+                    lists_info.top().second.push_back(cur_node);
+                }
+                else { // <S-exp> ended
+                    checkExit(cur_node); // check if car == "exit" && cdr == "nil"
+                    std::cout << "\n> ";
+                    printAST(cur_node);
+                    tree_roots.push_back(cur_node);
                     std::cout << std::endl;
                 }
             }

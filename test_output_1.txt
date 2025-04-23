@@ -1,14 +1,20 @@
 Welcome to OurScheme!
 
+> 
 > 1.000
+
 
 > "123"
 
+
 > 0.000
+
 
 > -.
 
+
 > 0.397
+
 
 > .aslfn
 
@@ -67,3 +73,6 @@ Welcome to OurScheme!
     going?
   )
 )
+
+> > ERROR (no more input) : END-OF-FILE encountered
+
