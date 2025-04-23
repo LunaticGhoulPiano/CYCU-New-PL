@@ -106,15 +106,60 @@ class S_Exp_Parser {
     private:
         enum class LIST_MODE {
             NO_DOT,
-            WITH_DOT
+            WITH_DOT,
+            QUOTE
         };
     
         std::stack<std::vector<std::shared_ptr<AST>>> lists;
         std::stack<LIST_MODE> lists_mode;
+
+        std::string getType(Token token) {
+            if (token.type == Token_Type::LEFT_PAREN) return "LEFT_PAREN";
+            else if (token.type == Token_Type::RIGHT_PAREN) return "RIGHT_PAREN";
+            else if (token.type == Token_Type::INT) return "INT";
+            else if (token.type == Token_Type::STRING) return "STRING";
+            else if (token.type == Token_Type::DOT) return "DOT";
+            else if (token.type == Token_Type::FLOAT) return "FLOAT";
+            else if (token.type == Token_Type::NIL) return "NIL";
+            else if (token.type == Token_Type::T) return "T";
+            else if (token.type == Token_Type::QUOTE) return "QUOTE";
+            else if (token.type == Token_Type::SYMBOL) return "SYMBOL";
+            else if (token.type == Token_Type::UDF) return "UDF";
+            else return "ERROR: didn't judged!";
+        }
+
+        void printType(Token token) {
+            if (token.type == Token_Type::LEFT_PAREN) std::cout << "LEFT_PAREN\n";
+            else if (token.type == Token_Type::RIGHT_PAREN) std::cout << "RIGHT_PAREN\n";
+            else if (token.type == Token_Type::INT) std::cout << "INT\n";
+            else if (token.type == Token_Type::STRING) std::cout << "STRING\n";
+            else if (token.type == Token_Type::DOT) std::cout << "DOT\n";
+            else if (token.type == Token_Type::FLOAT) std::cout << "FLOAT\n";
+            else if (token.type == Token_Type::NIL) std::cout << "NIL\n";
+            else if (token.type == Token_Type::T) std::cout << "T\n";
+            else if (token.type == Token_Type::QUOTE) std::cout << "QUOTE\n";
+            else if (token.type == Token_Type::SYMBOL) std::cout << "SYMBOL\n";
+            else if (token.type == Token_Type::UDF) std::cout << "UDF\n";
+            else std::cout << "ERROR: didn't judged!\n";
+        }
     
     public:
         std::vector<std::shared_ptr<AST>> tree_roots;
-        std::stack<bool> quote_stack;
+        
+        void debugPrintAST(const std::shared_ptr<AST> node, int depth = 0, const std::string &prefix = "AST_root") {
+            if (!node) return;
+
+            std::string indent(depth * 2, ' ');
+            std::cout << indent << prefix;
+
+            if (node->isAtom) {
+                std::cout << " (isAtom = true, atom = \"" << node->atom.value << "\", type = " << getType(node->atom) << ")\n";
+            } else {
+                std::cout << " (isAtom = false)\n";
+                debugPrintAST(node->left, depth + 1, "|--- left  -> ");
+                debugPrintAST(node->right, depth + 1, "|--- right -> ");
+            }
+        }
 
         std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
             const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{Token_Type::NIL, "nil"})) { // the part after DOT (cdr)
@@ -130,7 +175,10 @@ class S_Exp_Parser {
         }
 
         void parse(const Token &token, int lineNum, int columnNum) {
-            if (token.type == Token_Type::QUOTE) quote_stack.push(true);
+            if (token.type == Token_Type::QUOTE) {
+                lists.push({std::make_shared<AST>(Token{Token_Type::QUOTE, ""})});
+                lists_mode.push(LIST_MODE::QUOTE);
+            }
             else if (token.type == Token_Type::LEFT_PAREN) {
                 // push a new list into stack
                 lists.push({});
@@ -158,9 +206,12 @@ class S_Exp_Parser {
                     tree_root = makeList(cur_list, cdr);
                 }
                 
-                // check quote
-                if (! quote_stack.empty() && quote_stack.top() ) {
-                    quote_stack.pop();
+                // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
+                if (! lists_mode.empty() && lists_mode.top() == LIST_MODE::QUOTE) {
+                    // pop
+                    lists_mode.pop();
+                    lists.pop();
+                    // make quote
                     tree_root = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), tree_root});
                 }
                 
@@ -181,9 +232,13 @@ class S_Exp_Parser {
             }
             else {
                 auto tree_root = std::make_shared<AST>(token); // <ATOM>
-                // check quote
-                if (! quote_stack.empty() && quote_stack.top() ) {
-                    quote_stack.pop();
+
+                // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
+                if (! lists_mode.empty() && lists_mode.top() == LIST_MODE::QUOTE) {
+                    // pop
+                    lists_mode.pop();
+                    lists.pop();
+                    // make quote
                     tree_root = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), tree_root});
                 }
 
@@ -203,7 +258,7 @@ class S_Exp_Parser {
             if (cur == nullptr) return;
             // ATOM
             if (cur->isAtom) {
-                if (cur->atom.type == Token_Type::QUOTE) std::cout << std::string(depth * 2, ' ') << "quote\n";
+                if (cur->atom.type == Token_Type::QUOTE) std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << "quote\n";
                 else std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << cur->atom.value << "\n";
                 return;
             }
