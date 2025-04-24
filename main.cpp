@@ -115,7 +115,7 @@ class S_Exp_Parser {
         // check num of <S-exp> after DOT
         std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
 
-        std::string getType(Token token) {
+        std::string getType(Token token) { // for debug
             if (token.type == Token_Type::LEFT_PAREN) return "LEFT_PAREN";
             else if (token.type == Token_Type::RIGHT_PAREN) return "RIGHT_PAREN";
             else if (token.type == Token_Type::INT) return "INT";
@@ -130,7 +130,7 @@ class S_Exp_Parser {
             else return "ERROR: didn't judged!";
         }
 
-        void printType(Token token) {
+        void printType(Token token) { // for debug
             if (token.type == Token_Type::LEFT_PAREN) std::cout << "LEFT_PAREN\n";
             else if (token.type == Token_Type::RIGHT_PAREN) std::cout << "RIGHT_PAREN\n";
             else if (token.type == Token_Type::INT) std::cout << "INT\n";
@@ -148,19 +148,23 @@ class S_Exp_Parser {
     public:
         std::vector<std::shared_ptr<AST>> tree_roots;
         
-        void debugPrintAST(const std::shared_ptr<AST> node, int depth = 0, const std::string &prefix = "AST_root") {
-            if (!node) return;
+        void debugPrintAST(const std::shared_ptr<AST> node, int depth = 0, const std::string &prefix = "AST_root") { // for debug
+            if (! node) return;
 
             std::string indent(depth * 2, ' ');
             std::cout << indent << prefix;
 
-            if (node->isAtom) {
-                std::cout << " (isAtom = true, atom = \"" << node->atom.value << "\", type = " << getType(node->atom) << ")\n";
-            } else {
+            if (node->isAtom) std::cout << " (isAtom = true, atom = \"" << node->atom.value << "\", type = " << getType(node->atom) << ")\n";    
+            else {
                 std::cout << " (isAtom = false)\n";
                 debugPrintAST(node->left, depth + 1, "|--- left  -> ");
                 debugPrintAST(node->right, depth + 1, "|--- right -> ");
             }
+        }
+
+        void resetInfos() { // when a <S-exp> ended or error encountered
+            lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
+            dot_info = std::stack<std::pair<bool, int>>();
         }
 
         std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
@@ -176,19 +180,33 @@ class S_Exp_Parser {
                 && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == Token_Type::NIL))) throw CorrectExit();
         }
 
-        void parse(const Token &token, int lineNum, int columnNum) {
+        void parse(const Token &token, int lineNum, int columnNum) { // TODO: fix multi-quote, ex. ''f
+            // check token after DOT
+            if (! dot_info.empty() && dot_info.top().first && dot_info.top().second == 1 && token.type != Token_Type::RIGHT_PAREN) {
+                resetInfos();
+                throw NoRightParen(lineNum, columnNum, token.value);
+            }
+            // process token
             if (token.type == Token_Type::QUOTE) lists_info.push({LIST_MODE::QUOTE, {std::make_shared<AST>(Token{Token_Type::QUOTE, ""})}});
             else if (token.type == Token_Type::DOT) {
-                if (lists_info.empty() || lists_info.top().first != LIST_MODE::NO_DOT) throw UnexpectedToken(lineNum, columnNum, token.value);
+                if (lists_info.empty() || lists_info.top().first != LIST_MODE::NO_DOT) {
+                    resetInfos();
+                    throw UnexpectedToken(lineNum, columnNum, token.value);
+                }
                 lists_info.top().first = LIST_MODE::WITH_DOT;
+                dot_info.push({true, 0}); // start DOT, no <S-exp> currently
             }
             else if (token.type == Token_Type::LEFT_PAREN) lists_info.push({LIST_MODE::NO_DOT, {}}); // push a new list into stack
             else if (token.type == Token_Type::RIGHT_PAREN) {
-                if (lists_info.empty()) throw UnexpectedToken(lineNum, columnNum, token.value);
+                if (lists_info.empty()) {
+                    resetInfos();
+                    throw UnexpectedToken(lineNum, columnNum, token.value);
+                }
                 
                 // get current list
                 auto [cur_list_mode, cur_list] = lists_info.top();
                 lists_info.pop();
+                if (cur_list_mode == LIST_MODE::WITH_DOT) dot_info.pop();
 
                 // build AST
                 std::shared_ptr<AST> cur_node = nullptr;
@@ -213,9 +231,9 @@ class S_Exp_Parser {
                 checkExit(cur_node); // check if car == "exit" && cdr == "nil"
 
                 // end a dotted-pair
-                if (!lists_info.empty()) {
-                    // should check dot here
+                if (! lists_info.empty()) {
                     lists_info.top().second.push_back(cur_node);
+                    if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
                 }
                 else { // <S-exp> ended
                     std::cout << "> ";
@@ -237,8 +255,8 @@ class S_Exp_Parser {
                 }
         
                 if (! lists_info.empty()) {
-                    // should check dot here
                     lists_info.top().second.push_back(cur_node);
+                    if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
                 }
                 else { // <S-exp> ended
                     checkExit(cur_node); // check if car == "exit" && cdr == "nil"
@@ -271,11 +289,8 @@ class S_Exp_Parser {
                 std::cout << std::string(depth * 2, ' ') << ".\n";
                 printAST(cur->right, true, depth);
             }
-            else if (cur->right && ! cur->right->isAtom) {
-                printAST(cur->right, false, depth);
-            }
-            else if (! cur->right || cur->right->atom.type == Token_Type::NIL) {
-            }
+            else if (cur->right && ! cur->right->isAtom) printAST(cur->right, false, depth);
+            else if (! cur->right || cur->right->atom.type == Token_Type::NIL) ; // nothing
             else {
                 std::cout << std::string(depth * 2, ' ') << ".\n";
                 printAST(cur->right, true, depth);

@@ -74,5 +74,33 @@ Welcome to OurScheme!
   )
 )
 
-> > ERROR (no more input) : END-OF-FILE encountered
+> ( ";ksjeg tset"
+  .
+  "a)"
+)
 
+> ( a
+  b
+  "wi o o    gpos9dug posu og "
+  ""
+  ""
+  ""
+  c
+)
+
+> ( a
+  3128.000
+  ( quote
+    nil
+  )
+)
+
+
+> ""
+
+> ( quote
+  ( exit
+  )
+)
+
+Thanks for using OurScheme!

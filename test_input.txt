@@ -24,3 +24,17 @@
                           ; '.' and '('
            How is it going?))
            )
+(";ksjeg tset"."a)")
+(a . (b "wi o o    gpos9dug posu og " """""" . (c)))
+;l as f     
+(;
+a
+3128.000000005
+'(
+)
+.
+nil
+)
+""
+'(exit)
+(exit)
