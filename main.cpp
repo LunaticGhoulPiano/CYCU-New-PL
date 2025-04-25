@@ -220,7 +220,7 @@ class S_Exp_Parser {
                 }
                 
                 // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                if (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
+                while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
                     // get quote
                     auto quote_list = std::move(lists_info.top().second);
                     lists_info.pop();
@@ -246,7 +246,7 @@ class S_Exp_Parser {
                 auto cur_node = std::make_shared<AST>(token); // <ATOM>
 
                 // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                if (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
+                while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
                     // get quote
                     auto quote_list = std::move(lists_info.top().second);
                     lists_info.pop();
