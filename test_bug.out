@@ -24,4 +24,9 @@ Welcome to OurScheme!
 )
 
 > "t"
-Thanks for using OurScheme!
+
+> a
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 2 Column 3 is >>.<<
+
+> Thanks for using OurScheme!
