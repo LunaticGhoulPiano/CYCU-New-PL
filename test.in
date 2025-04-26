@@ -1,28 +1,10 @@
 1
-"123"
-(1 .2)
-"
-(1 2 . ;
-34 ) ; See?
-'(1 2 3) .25
-       '(Hi
-           .
-           (there  .(     ; note that there may be no space between
-                          ; '.' and '('
-           How is it going?))
-           )
-           ;;;;;;;;;;;;;;;;;;;;;;svlisudhblviubhlsiufnblk svlisudhblviubhlsiufnblk
-(1 2 
-   3) (4 5
-( 1
-  2
-  3
-)
-
-       6 . 8)
-       '(
-S
-nil() #f
-. t)
-'(exit)
+"" ""asf""(""
+.:)
+' (a(
+b nil).
+   ;intp
+'
+#t
+)"t"
 (exit)

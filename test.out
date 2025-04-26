@@ -1,69 +1,27 @@
 Welcome to OurScheme!
 
 > 
-> "123"
+> ""
 
-> ( 1
-  0.200
-)
+> ""
 
-> ERROR (no closing quote) : END-OF-LINE encountered at Line 2 Column 2
+> asf
 
-> > ( 1
-  2
-  .
-  34
-)
+> ""
 
-> ( quote
-  ( 1
-    2
-    3
-  )
-)
-
-
-> 0.250
-
-> ( quote
-  ( Hi
-    there
-    How
-    is
-    it
-    going?
-  )
-)
-
-> ( 1
-  2
-  3
-)
-
-> ( 4
-  5
-  ( 1
-    2
-    3
-  )
-  6
-  .
-  8
+> ( ""
+  .:
 )
 
 > ( quote
-  ( S
-    nil
-    nil
-    nil
-    .
+  ( a
+    ( b
+      nil
+    )
+    quote
     #t
   )
 )
 
-> ( quote
-  ( exit
-  )
-)
-
+> "t"
 Thanks for using OurScheme!

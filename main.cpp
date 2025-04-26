@@ -463,9 +463,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             if (token.value[0] == '\"') token.value += ch; // add into current token
-                            else {
-                                s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // save the previous token
-                            }
+                            else s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // save the previous token
 
                             // set position
                             columnNum++;
