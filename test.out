@@ -28,5 +28,291 @@ Welcome to OurScheme!
 
 > ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 2 is >>.<<
 
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c.
+    nil
+  )
+  .d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> 123
+
+> 456
+
+> 789
+
+> ( 234
+  .
+  6
+)
+
+> ( 77.900
+  +
+  6
+)
+
+> ( ( ( nil
+      nil
+      nil
+    )
+  )
+)
+
+> ( 123
+  ""
+)
+
+> ( quote
+  ( 1
+    2
+    3
+  )
+)
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 2 is >>)<<
+
+> ( quote
+  ( 1
+    2
+    3
+  )
+)
+
+> 0.250
+
+> ( Hi
+  there
+)
+
+> ( How
+  are
+  you
+)
+
+> ( Hi!
+  ( How
+    about
+    using
+    Lisp
+    ( instead
+      of
+      .
+      C?
+    )
+  )
+)
+
+> ( ( ( 1
+      .
+      2
+    )
+    ( 3
+      4
+    )
+    5
+    .
+    6
+  )
+  7
+  .
+  8
+)
+
+> a
+
+> 3
+
+> 23.560
+
+> 3
+
+> 3.230
+
+> 1.556
+
+> ( cons
+  3
+  5
+)
+
+> ( ( Hi
+    "!"
+    How
+    .
+    "are you?"
+  )
+  "Fine.  Thank you."
+)
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 4 Column 10 is >>.<<
+
+> ( 1
+  2
+)
+
+> ( 3
+  4
+)
+
+> 5
+
+> a
+
+> 3
+
+> ( cons
+  3
+  5
+)
+
+> ( ( Hi
+    "!"
+    How
+    .
+    "are you?"
+  )
+  "Fine.  Thank you."
+)
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 4 Column 8 is >>.<<
+
+> ( 1
+  2
+)
+
+> ( 3
+  4
+)
+
+> 5
+
+> ( ( ( 1
+      .
+      2
+    )
+    ( 3
+      4
+    )
+    5
+    .
+    6
+  )
+  7
+  .
+  8
+)
+
+> ( ( ( 1
+      .
+      "ICE CYCU"
+    )
+    ( THIS
+      is
+      ( 41
+        42
+        .
+        43
+      )
+    )
+    Chung
+    .
+    Yuan
+  )
+  7
+  .
+  8
+)
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 3 Column 1 is >>)<<
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 3 Column 4 is >>.<<
+
+> ERROR (unexpected token) : ')' expected when token at Line 2 Column 4 is >>56<<
+
+> ERROR (no closing quote) : END-OF-LINE encountered at Line 4 Column 21
+
+> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 23
+
+> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
+
+> ( exit
+  0
+)
+
 > 
 Thanks for using OurScheme!
