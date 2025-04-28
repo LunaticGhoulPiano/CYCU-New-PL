@@ -301,12 +301,10 @@ Welcome to OurScheme!
   8
 )
 
-> ( 1
-  .
-  2
-)
+> ERROR (unexpected token) : atom or '(' expected when token at Line 10 Column 1 is >>)<<
 
-> ERROR (unexpected token) : atom or '(' expected when token at Line 11 Column 1 is >>.<<
+> 
+> ERROR (unexpected token) : atom or '(' expected when token at Line 2 Column 1 is >>.<<
 
 > 
 > ERROR (unexpected token) : atom or '(' expected when token at Line 3 Column 4 is >>.<<

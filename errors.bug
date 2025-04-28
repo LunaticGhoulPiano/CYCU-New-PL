@@ -1,0 +1,411 @@
+Welcome to OurScheme!
+
+> 	----> ch = _(_ at prev (1, 0), s_exp_ended = 0, call count = 0
+	----> ch = _1_ at prev (1, 1), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (1, 2), s_exp_ended = 0, call count = 1
+	----> ch = _2_ at prev (1, 3), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (1, 4), s_exp_ended = 0, call count = 2
+	----> ch = _._ at prev (1, 5), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (1, 6), s_exp_ended = 0, call count = 3
+	----> ch = _;_ at prev (1, 7), s_exp_ended = 0, call count = 4
+	----> ch = _3_ at prev (2, 0), s_exp_ended = 0, call count = 4
+	----> ch = _4_ at prev (2, 1), s_exp_ended = 0, call count = 4
+	----> ch = _ _ at prev (2, 2), s_exp_ended = 0, call count = 4
+	----> ch = _5_ at prev (2, 3), s_exp_ended = 0, call count = 5
+	----> ch = _6_ at prev (2, 4), s_exp_ended = 0, call count = 5
+	----> ch = _7_ at prev (2, 5), s_exp_ended = 0, call count = 5
+	----> ch = _8_ at prev (2, 6), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (2, 7), s_exp_ended = 0, call count = 5
+
+> ERROR (unexpected token) : ')' expected when token at Line 2 Column 4 is >>5678<<
+
+> 	----> ch = _(_ at prev (1, 0), s_exp_ended = 0, call count = 0
+	----> ch = _1_ at prev (1, 1), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (1, 2), s_exp_ended = 0, call count = 1
+	----> ch = _._ at prev (1, 3), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (1, 4), s_exp_ended = 0, call count = 2
+	----> ch = _5_ at prev (1, 5), s_exp_ended = 0, call count = 3
+	----> ch = _)_ at prev (1, 6), s_exp_ended = 0, call count = 3
+
+> ( 1
+  .
+  5
+)
+	----> ch = _
+_ at prev (1, 7), s_exp_ended = 0, call count = 0
+here
+	----> ch = _(_ at prev (2, 0), s_exp_ended = 0, call count = 0
+	----> ch = _._ at prev (2, 1), s_exp_ended = 0, call count = 1
+	----> ch = _
+_ at prev (2, 2), s_exp_ended = 0, call count = 1
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 2 Column 2 is >>.<<
+
+> 	----> ch = _"_ at prev (1, 0), s_exp_ended = 0, call count = 0
+	----> ch = _"_ at prev (1, 1), s_exp_ended = 0, call count = 0
+
+> ""
+	----> ch = _ _ at prev (1, 0), s_exp_ended = 1, call count = 1
+	----> ch = _"_ at prev (1, 1), s_exp_ended = 1, call count = 1
+	----> ch = _"_ at prev (1, 2), s_exp_ended = 1, call count = 1
+
+> ""
+	----> ch = _a_ at prev (1, 0), s_exp_ended = 0, call count = 0
+	----> ch = _s_ at prev (1, 1), s_exp_ended = 0, call count = 0
+	----> ch = _f_ at prev (1, 2), s_exp_ended = 0, call count = 0
+	----> ch = _"_ at prev (1, 3), s_exp_ended = 0, call count = 0
+
+> asf
+	----> ch = _"_ at prev (1, 1), s_exp_ended = 1, call count = 1
+
+> ""
+	----> ch = _
+_ at prev (1, 0), s_exp_ended = 0, call count = 0
+here
+	----> ch = _._ at prev (2, 0), s_exp_ended = 0, call count = 0
+	----> ch = _
+_ at prev (2, 1), s_exp_ended = 0, call count = 0
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 2 Column 1 is >>.<<
+
+> 	----> ch = _'_ at prev (1, 0), s_exp_ended = 0, call count = 0
+	----> ch = _(_ at prev (1, 1), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (1, 2), s_exp_ended = 0, call count = 2
+	----> ch = _5_ at prev (1, 3), s_exp_ended = 0, call count = 2
+	----> ch = _6_ at prev (1, 4), s_exp_ended = 0, call count = 2
+	----> ch = _7_ at prev (1, 5), s_exp_ended = 0, call count = 2
+	----> ch = _8_ at prev (1, 6), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (1, 7), s_exp_ended = 0, call count = 2
+	----> ch = _._ at prev (1, 8), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (1, 9), s_exp_ended = 0, call count = 3
+	----> ch = _(_ at prev (1, 10), s_exp_ended = 0, call count = 4
+	----> ch = _
+_ at prev (1, 11), s_exp_ended = 0, call count = 5
+here
+	----> ch = _3_ at prev (2, 0), s_exp_ended = 0, call count = 5
+	----> ch = _4_ at prev (2, 1), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (2, 2), s_exp_ended = 0, call count = 5
+	----> ch = _._ at prev (2, 3), s_exp_ended = 0, call count = 6
+	----> ch = _ _ at prev (2, 4), s_exp_ended = 0, call count = 6
+	----> ch = _9_ at prev (2, 5), s_exp_ended = 0, call count = 7
+	----> ch = _0_ at prev (2, 6), s_exp_ended = 0, call count = 7
+	----> ch = _5_ at prev (2, 7), s_exp_ended = 0, call count = 7
+	----> ch = _2_ at prev (2, 8), s_exp_ended = 0, call count = 7
+	----> ch = _4_ at prev (2, 9), s_exp_ended = 0, call count = 7
+	----> ch = _4_ at prev (2, 10), s_exp_ended = 0, call count = 7
+	----> ch = _3_ at prev (2, 11), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (2, 12), s_exp_ended = 0, call count = 7
+	----> ch = _8_ at prev (2, 13), s_exp_ended = 0, call count = 8
+	----> ch = _9_ at prev (2, 14), s_exp_ended = 0, call count = 8
+	----> ch = _7_ at prev (2, 15), s_exp_ended = 0, call count = 8
+	----> ch = _4_ at prev (2, 16), s_exp_ended = 0, call count = 8
+	----> ch = _5_ at prev (2, 17), s_exp_ended = 0, call count = 8
+	----> ch = _6_ at prev (2, 18), s_exp_ended = 0, call count = 8
+	----> ch = _8_ at prev (2, 19), s_exp_ended = 0, call count = 8
+	----> ch = _(_ at prev (2, 20), s_exp_ended = 0, call count = 8
+
+> ERROR (unexpected token) : ')' expected when token at Line 2 Column 14 is >>8974568<<
+
+> 	----> ch = _
+_ at prev (1, 0), s_exp_ended = 0, call count = 0
+here
+	----> ch = _ _ at prev (2, 0), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (2, 1), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (2, 2), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (2, 3), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (2, 4), s_exp_ended = 0, call count = 0
+	----> ch = _
+_ at prev (2, 5), s_exp_ended = 0, call count = 0
+here
+	----> ch = _
+_ at prev (3, 0), s_exp_ended = 0, call count = 0
+here
+	----> ch = _ _ at prev (4, 0), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 1), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 2), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 3), s_exp_ended = 0, call count = 0
+	----> ch = _a_ at prev (4, 4), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 5), s_exp_ended = 0, call count = 0
+
+> a
+	----> ch = _ _ at prev (4, 1), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (4, 2), s_exp_ended = 1, call count = 1
+	----> ch = _;_ at prev (4, 3), s_exp_ended = 1, call count = 1
+	----> ch = _3_ at prev (1, 0), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (1, 1), s_exp_ended = 1, call count = 1
+
+> 3
+	----> ch = _ _ at prev (1, 1), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (1, 2), s_exp_ended = 0, call count = 0
+	----> ch = _;_ at prev (1, 3), s_exp_ended = 0, call count = 0
+	----> ch = _(_ at prev (2, 0), s_exp_ended = 0, call count = 0
+	----> ch = _c_ at prev (2, 1), s_exp_ended = 0, call count = 1
+	----> ch = _o_ at prev (2, 2), s_exp_ended = 0, call count = 1
+	----> ch = _n_ at prev (2, 3), s_exp_ended = 0, call count = 1
+	----> ch = _s_ at prev (2, 4), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (2, 5), s_exp_ended = 0, call count = 1
+	----> ch = _3_ at prev (2, 6), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (2, 7), s_exp_ended = 0, call count = 2
+	----> ch = _5_ at prev (2, 8), s_exp_ended = 0, call count = 3
+	----> ch = _)_ at prev (2, 9), s_exp_ended = 0, call count = 3
+
+> ( cons
+  3
+  5
+)
+	----> ch = _ _ at prev (2, 10), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (2, 11), s_exp_ended = 0, call count = 0
+	----> ch = _;_ at prev (2, 12), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 0), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 1), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 2), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 3), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 4), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 5), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 6), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 7), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 8), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 9), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 10), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (3, 11), s_exp_ended = 0, call count = 0
+	----> ch = _;_ at prev (3, 12), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 0), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 1), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 2), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 3), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 4), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 5), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 6), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 7), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 8), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 9), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 10), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 11), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 12), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (4, 13), s_exp_ended = 0, call count = 0
+	----> ch = _;_ at prev (4, 14), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (5, 0), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (5, 1), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (5, 2), s_exp_ended = 0, call count = 0
+	----> ch = _(_ at prev (5, 3), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (5, 4), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (5, 5), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (5, 6), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (5, 7), s_exp_ended = 0, call count = 1
+	----> ch = _(_ at prev (5, 8), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (5, 9), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (5, 10), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (5, 11), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (5, 12), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (5, 13), s_exp_ended = 0, call count = 2
+	----> ch = _;_ at prev (5, 14), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 0), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 1), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 2), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 3), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 4), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 5), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 6), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 7), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 8), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 9), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 10), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 11), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 12), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (6, 13), s_exp_ended = 0, call count = 2
+	----> ch = _;_ at prev (6, 14), s_exp_ended = 0, call count = 2
+	----> ch = _H_ at prev (7, 0), s_exp_ended = 0, call count = 2
+	----> ch = _i_ at prev (7, 1), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (7, 2), s_exp_ended = 0, call count = 2
+	----> ch = _"_ at prev (7, 3), s_exp_ended = 0, call count = 3
+	----> ch = _!_ at prev (7, 4), s_exp_ended = 0, call count = 3
+	----> ch = _"_ at prev (7, 5), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (7, 6), s_exp_ended = 0, call count = 4
+	----> ch = _H_ at prev (7, 7), s_exp_ended = 0, call count = 4
+	----> ch = _o_ at prev (7, 8), s_exp_ended = 0, call count = 4
+	----> ch = _w_ at prev (7, 9), s_exp_ended = 0, call count = 4
+	----> ch = _ _ at prev (7, 10), s_exp_ended = 0, call count = 4
+	----> ch = _ _ at prev (7, 11), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (7, 12), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (7, 13), s_exp_ended = 0, call count = 5
+	----> ch = _;_ at prev (7, 14), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 0), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 1), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 2), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 3), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 4), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 5), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 6), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 7), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 8), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 9), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 10), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 11), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 12), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (8, 13), s_exp_ended = 0, call count = 5
+	----> ch = _;_ at prev (8, 14), s_exp_ended = 0, call count = 5
+	----> ch = _._ at prev (9, 0), s_exp_ended = 0, call count = 5
+	----> ch = _ _ at prev (9, 1), s_exp_ended = 0, call count = 5
+	----> ch = _"_ at prev (9, 2), s_exp_ended = 0, call count = 6
+	----> ch = _a_ at prev (9, 3), s_exp_ended = 0, call count = 6
+	----> ch = _r_ at prev (9, 4), s_exp_ended = 0, call count = 6
+	----> ch = _e_ at prev (9, 5), s_exp_ended = 0, call count = 6
+	----> ch = _ _ at prev (9, 6), s_exp_ended = 0, call count = 6
+	----> ch = _y_ at prev (9, 7), s_exp_ended = 0, call count = 6
+	----> ch = _o_ at prev (9, 8), s_exp_ended = 0, call count = 6
+	----> ch = _u_ at prev (9, 9), s_exp_ended = 0, call count = 6
+	----> ch = _?_ at prev (9, 10), s_exp_ended = 0, call count = 6
+	----> ch = _"_ at prev (9, 11), s_exp_ended = 0, call count = 6
+	----> ch = _ _ at prev (9, 12), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (9, 13), s_exp_ended = 0, call count = 7
+	----> ch = _;_ at prev (9, 14), s_exp_ended = 0, call count = 7
+	----> ch = _
+_ at prev (10, 0), s_exp_ended = 0, call count = 7
+here
+	----> ch = _ _ at prev (11, 0), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (11, 1), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (11, 2), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (11, 3), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (11, 4), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (11, 5), s_exp_ended = 0, call count = 7
+	----> ch = _)_ at prev (11, 6), s_exp_ended = 0, call count = 7
+	----> ch = _ _ at prev (11, 7), s_exp_ended = 0, call count = 8
+	----> ch = _ _ at prev (11, 8), s_exp_ended = 0, call count = 8
+	----> ch = _ _ at prev (11, 9), s_exp_ended = 0, call count = 8
+	----> ch = _"_ at prev (11, 10), s_exp_ended = 0, call count = 8
+	----> ch = _F_ at prev (11, 11), s_exp_ended = 0, call count = 8
+	----> ch = _i_ at prev (11, 12), s_exp_ended = 0, call count = 8
+	----> ch = _n_ at prev (11, 13), s_exp_ended = 0, call count = 8
+	----> ch = _e_ at prev (11, 14), s_exp_ended = 0, call count = 8
+	----> ch = _._ at prev (11, 15), s_exp_ended = 0, call count = 8
+	----> ch = _ _ at prev (11, 16), s_exp_ended = 0, call count = 8
+	----> ch = _ _ at prev (11, 17), s_exp_ended = 0, call count = 8
+	----> ch = _T_ at prev (11, 18), s_exp_ended = 0, call count = 8
+	----> ch = _h_ at prev (11, 19), s_exp_ended = 0, call count = 8
+	----> ch = _a_ at prev (11, 20), s_exp_ended = 0, call count = 8
+	----> ch = _n_ at prev (11, 21), s_exp_ended = 0, call count = 8
+	----> ch = _k_ at prev (11, 22), s_exp_ended = 0, call count = 8
+	----> ch = _ _ at prev (11, 23), s_exp_ended = 0, call count = 8
+	----> ch = _y_ at prev (11, 24), s_exp_ended = 0, call count = 8
+	----> ch = _o_ at prev (11, 25), s_exp_ended = 0, call count = 8
+	----> ch = _u_ at prev (11, 26), s_exp_ended = 0, call count = 8
+	----> ch = _._ at prev (11, 27), s_exp_ended = 0, call count = 8
+	----> ch = _"_ at prev (11, 28), s_exp_ended = 0, call count = 8
+	----> ch = _
+_ at prev (11, 29), s_exp_ended = 0, call count = 9
+here
+	----> ch = _ _ at prev (12, 0), s_exp_ended = 0, call count = 9
+	----> ch = _ _ at prev (12, 1), s_exp_ended = 0, call count = 9
+	----> ch = _ _ at prev (12, 2), s_exp_ended = 0, call count = 9
+	----> ch = _ _ at prev (12, 3), s_exp_ended = 0, call count = 9
+	----> ch = _ _ at prev (12, 4), s_exp_ended = 0, call count = 9
+	----> ch = _ _ at prev (12, 5), s_exp_ended = 0, call count = 9
+	----> ch = _
+_ at prev (12, 6), s_exp_ended = 0, call count = 9
+here
+	----> ch = _ _ at prev (13, 0), s_exp_ended = 0, call count = 9
+	----> ch = _)_ at prev (13, 1), s_exp_ended = 0, call count = 9
+
+> ( ( Hi
+    "!"
+    How
+    .
+    "are you?"
+  )
+  "Fine.  Thank you."
+)
+	----> ch = _ _ at prev (13, 2), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (13, 3), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (13, 4), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (13, 5), s_exp_ended = 0, call count = 0
+	----> ch = _(_ at prev (13, 6), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (13, 7), s_exp_ended = 0, call count = 1
+	----> ch = _3_ at prev (13, 8), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (13, 9), s_exp_ended = 0, call count = 1
+	----> ch = _._ at prev (13, 10), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (13, 11), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (13, 12), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (13, 13), s_exp_ended = 0, call count = 3
+	----> ch = _;_ at prev (13, 14), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 0), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 1), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 2), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 3), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 4), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 5), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 6), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 7), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 8), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 9), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 10), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (14, 11), s_exp_ended = 0, call count = 3
+	----> ch = _;_ at prev (14, 12), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 0), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 1), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 2), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 3), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 4), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 5), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 6), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 7), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 8), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 9), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 10), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 11), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 12), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (15, 13), s_exp_ended = 0, call count = 3
+	----> ch = _;_ at prev (15, 14), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 0), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 1), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 2), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 3), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 4), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 5), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 6), s_exp_ended = 0, call count = 3
+	----> ch = _._ at prev (16, 7), s_exp_ended = 0, call count = 3
+	----> ch = _ _ at prev (16, 8), s_exp_ended = 0, call count = 3
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 16 Column 8 is >>.<<
+
+> 	----> ch = _(_ at prev (1, 0), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (1, 1), s_exp_ended = 0, call count = 1
+	----> ch = _1_ at prev (1, 2), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (1, 3), s_exp_ended = 0, call count = 1
+	----> ch = _2_ at prev (1, 4), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (1, 5), s_exp_ended = 0, call count = 2
+	----> ch = _)_ at prev (1, 6), s_exp_ended = 0, call count = 3
+
+> ( 1
+  2
+)
+	----> ch = _ _ at prev (1, 7), s_exp_ended = 0, call count = 0
+	----> ch = _(_ at prev (1, 8), s_exp_ended = 0, call count = 0
+	----> ch = _ _ at prev (1, 9), s_exp_ended = 0, call count = 1
+	----> ch = _3_ at prev (1, 10), s_exp_ended = 0, call count = 1
+	----> ch = _ _ at prev (1, 11), s_exp_ended = 0, call count = 1
+	----> ch = _4_ at prev (1, 12), s_exp_ended = 0, call count = 2
+	----> ch = _ _ at prev (1, 13), s_exp_ended = 0, call count = 2
+	----> ch = _)_ at prev (1, 14), s_exp_ended = 0, call count = 3
+
+> ( 3
+  4
+)
+	----> ch = _ _ at prev (1, 15), s_exp_ended = 0, call count = 0
+	----> ch = _5_ at prev (1, 16), s_exp_ended = 0, call count = 0
+	----> ch = _
+_ at prev (1, 17), s_exp_ended = 0, call count = 0
+
+> 5
+	----> ch = _;_ at prev (1, 0), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (1, 0), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (1, 1), s_exp_ended = 1, call count = 1
+	----> ch = _;_ at prev (1, 2), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (1, 0), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (1, 1), s_exp_ended = 1, call count = 1
+	----> ch = _;_ at prev (1, 2), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (1, 0), s_exp_ended = 1, call count = 1
+	----> ch = _ _ at prev (1, 1), s_exp_ended = 1, call count = 1
+	----> ch = _;_ at prev (1, 2), s_exp_ended = 1, call count = 1
+> 
+> ERROR (no more input) : END-OF-FILE encountered
+

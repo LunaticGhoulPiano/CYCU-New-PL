@@ -184,12 +184,14 @@ class S_Exp_Parser {
             // check number of <S-exp> after DOT
             if (! dot_info.empty() && dot_info.top().first && dot_info.top().second == 1 && token.type != Token_Type::RIGHT_PAREN) {
                 resetInfos();
-                throw NoRightParen(lineNum, columnNum, token.value);
+                throw NoRightParen(lineNum, columnNum - token.value.length() + 1, token.value); // columnNum: the first char's pos of the token
             }
             // process token
             if (token.type == Token_Type::QUOTE) lists_info.push({LIST_MODE::QUOTE, {std::make_shared<AST>(Token{Token_Type::QUOTE, ""})}});
             else if (token.type == Token_Type::DOT) {
-                if (lists_info.empty() || lists_info.top().first != LIST_MODE::NO_DOT) {
+                if (lists_info.empty() // start with DOT
+                    || lists_info.top().first != LIST_MODE::NO_DOT // QUOTE + DOT or DOT + DOT
+                    || lists_info.top().second.empty()) { // no <S-exp> before DOT, ex. > (.
                     resetInfos();
                     throw UnexpectedToken(lineNum, columnNum, token.value);
                 }
@@ -198,7 +200,8 @@ class S_Exp_Parser {
             }
             else if (token.type == Token_Type::LEFT_PAREN) lists_info.push({LIST_MODE::NO_DOT, {}}); // push a new list into stack
             else if (token.type == Token_Type::RIGHT_PAREN) {
-                if (lists_info.empty()) {
+                if (lists_info.empty() ||
+                    (lists_info.top().first == LIST_MODE::WITH_DOT && ! dot_info.empty() && dot_info.top().first && dot_info.top().second == 0)) {
                     resetInfos();
                     throw UnexpectedToken(lineNum, columnNum, token.value);
                 }
@@ -232,10 +235,12 @@ class S_Exp_Parser {
 
                 // end a dotted-pair
                 if (! lists_info.empty()) {
+                    //std::cout << "not_empty_RP\n";
                     lists_info.top().second.push_back(cur_node);
                     if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
                 }
                 else { // <S-exp> ended
+                    //std::cout << "empty_RP\n";
                     std::cout << "\n> ";
                     printAST(cur_node);
                     tree_roots.push_back(cur_node);
@@ -255,10 +260,12 @@ class S_Exp_Parser {
                 }
         
                 if (! lists_info.empty()) {
+                    //std::cout << "not_empty_ATOM\n";
                     lists_info.top().second.push_back(cur_node);
                     if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
                 }
                 else { // <S-exp> ended
+                    //std::cout << "empty_ATOM\n";
                     checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                     std::cout << "\n> ";
                     printAST(cur_node);
@@ -393,11 +400,26 @@ class S_Exp_Lexer {
             else token.type = Token_Type::SYMBOL;
         }
 
-        bool saveAToken(Token &token, S_Exp_Parser &parser, int lineNum, int columnNum) {
-            judgeType(token);
-            bool res = parser.parseAndBuildAST(token, lineNum, columnNum);
-            token = Token();
-            return res;
+        void eatALine() {
+            std::string useless_line;
+            std::getline(std::cin, useless_line);
+        }
+
+        bool saveAToken(Token &token, S_Exp_Parser &parser, int lineNum, int columnNum, bool eat = true) {
+            try {
+                judgeType(token);
+                bool res = parser.parseAndBuildAST(token, lineNum, columnNum);
+                token = Token(); // reset
+                return res;
+            }
+            catch (CorrectExit &e) { // no need to eat a line
+                throw;
+            }
+            catch (BaseException &e) {
+                parser.resetInfos();
+                if (eat) eatALine(); // eat: if need to eat a line when error encountered
+                throw;
+            }
         }
 
     public:
@@ -413,6 +435,7 @@ class S_Exp_Lexer {
             std::stack<char> parenStack;
             lineNum = 1;
             columnNum = 0;
+            int call_saveAToken_count = 0;
             ch = '\0';
             prev_ch = '\0';
             bool start = false;
@@ -420,206 +443,204 @@ class S_Exp_Lexer {
 
             while (std::cin.get(ch)) {
                 start = true;
+                /*
+                if (call_saveAToken_count > 1 && s_exp_ended) {
+                    s_exp_ended = false;
+                    call_saveAToken_count = 0;
+                }
+                */
+
+                std::cout << "\t----> ch = _" << ch << "_ at prev (" << lineNum << ", " << columnNum << "), s_exp_ended = " << s_exp_ended;
+                std::cout << ", call count = " << call_saveAToken_count << "\n";
+                // TODO: print newline and prompt
                 if (ch == ';') {
-                    if (token.value != "") {
-                        if (token.value[0] == '\"') { // in string
-                            // add into current token
+                    if (token.value == "") {
+                        eatALine();
+                        if (s_exp_ended) lineNum = 1;
+                        else lineNum++;
+                        columnNum = 0;
+                    }
+                    else {
+                        if (token.value[0] == '\"') { // in STRING
                             token.value += ch;
                             columnNum++;
                         }
                         else {
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // save the previous token
-                            while (ch != '\n') std::cin.get(ch); // read until new line
-                            // set position
+                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            call_saveAToken_count++;
                             if (s_exp_ended) lineNum = 1;
                             else lineNum++;
                             columnNum = 0;
                         }
                     }
-                    else while (std::cin.peek() != '\n') std::cin.get(ch);
                 }
                 else if (isWhiteSpace(ch)) {
-                    if (token.value == "") {
-                        if (ch == '\n') {
-                            lineNum++;
+                    if (ch == '\n') {
+                        if (token.value == "") {
+                            std::cout << "here\n";
+                            if (s_exp_ended) lineNum = 1;
+                            else lineNum++;
                             columnNum = 0;
                         }
-                        else columnNum++;
-                    }
-                    else { // incomplete token still inputing
-                        if (ch == '\n') {
-                            if (token.value[0] == '\"') {
+                        else {
+                            if (token.value[0] == '\"') { // newline while in STRING
                                 columnNum++;
+                                parser.resetInfos();
                                 throw NoClosingQuote(lineNum, columnNum);
                             }
                             else {
-                                // save the previous token
-                                s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                                // set position
+                                s_exp_ended = saveAToken(token, parser, lineNum, columnNum, false);
+                                call_saveAToken_count++;
                                 if (s_exp_ended) lineNum = 1;
                                 else lineNum++;
                                 columnNum = 0;
                             }
                         }
-                        else {
-                            if (token.value[0] == '\"') token.value += ch; // add into current token
-                            else s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // save the previous token
-
-                            // set position
-                            columnNum++;
-                        }
                     }
-                }
-                else if (ch == '(') { // judge both start of a single-quote or in string
-                    if (token.value != "") {
-                        if (token.value[0] == '\"') { // in string
-                            // add into current token
-                            token.value += ch;
-                            columnNum++;
-                        }
+                    else { // ' ' or '\t'
+                        if (token.value == "") columnNum++;
                         else {
-                            // save the previous token
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            // set position
-                            columnNum = 1; // 1 for "("
-
-                            // save the token LEFT_PAREN
-                            parenStack.push(ch);
-                            token.value += ch;
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            // set position
-                            columnNum = 0;
-                        }
-                    }
-                    else {
-                        // save the token LEFT_PAREN
-                        parenStack.push(ch);
-                        columnNum++;
-                        token.value += ch;
-                        s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                        // set position
-                        columnNum = 0;
-                    }
-                }
-                else if (ch == ')') { // judge both end of a single-quote or in string
-                    if (token.value != "") {
-                        if (token.value[0] == '\"') { // in string
-                            // add into current token
-                            token.value += ch;
-                            columnNum++;
-                        }
-                        else {
-                            // save the previous token
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            // set position
-                            columnNum = 1; // 1 for ")"
-
-                            // check parenStack
-                            if (parenStack.empty()) {
-                                std::string eat_error_line;
-                                std::getline(std::cin, eat_error_line);
-                                throw UnexpectedToken(lineNum, columnNum, ")");
+                            if (token.value[0] == '\"') { // in STRING
+                                token.value += ch;
+                                columnNum++;
                             }
                             else {
-                                // save the token RIGHT_PAREN
-                                parenStack.pop();
-                                token.value += ch;
                                 s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                                // set position
-                                columnNum = 0;
+                                call_saveAToken_count++;
+                                if (s_exp_ended) columnNum = 1; // 1 for ' ' or '\t'
+                                else columnNum++;
                             }
                         }
                     }
+                }
+                else if (ch == '(') {
+                    if (token.value == "") {
+                        parenStack.push(ch);
+                        token.value += ch; // "("
+                        columnNum++; // ex. "   f   (((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 7 is >>.<<
+                        s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                        call_saveAToken_count++;
+                    }
                     else {
-                        columnNum++; // ++ for ")"
-
-                        // check parenStack
-                        if (parenStack.empty()) {
-                            std::string eat_error_line;
-                            std::getline(std::cin, eat_error_line);
+                        if (token.value[0] == '\"') { // in STRING
+                            token.value += ch;
+                            columnNum++;
+                        }
+                        else {
+                            // save previous
+                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            call_saveAToken_count++;
+                            // save current
+                            parenStack.push(ch);
+                            token.value += ch; // "("
+                            columnNum++; // ex. "123A((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 3 is >>.<<
+                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                            call_saveAToken_count++;
+                        }
+                    }
+                }
+                else if (ch == ')') {
+                    if (token.value == "") {
+                        if (parenStack.empty()) { // no LP before RP
+                            eatALine();
+                            columnNum++;
+                            parser.resetInfos();
                             throw UnexpectedToken(lineNum, columnNum, ")");
                         }
                         else {
-                            // save the token RIGHT_PAREN
                             parenStack.pop();
-                            token.value += ch;
+                            token.value += ch; // ")"
+                            columnNum++;
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            // set position
-                            columnNum = 0;
+                            call_saveAToken_count++;
                         }
-                    }
-                }
-                else if (ch == '\"') {
-                    if (token.value == "") { // the start of a string
-                        // add into current token
-                        token.value += ch;
-                        columnNum++;
                     }
                     else {
-                        if (token.value[0] == '\"') { // end of a string
-                            // save the token STRING
-                            token.value += ch;
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            // set position
-                            if (s_exp_ended) lineNum = 1;
-                            else lineNum++;
-                            columnNum = 0;
-                        }
-                        else { // ex. > "" ""asf"" -> temp = "asf", ch = '\"'
-                            // save the previous token
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            // set position
-                            columnNum = 1; // 1 for "\""
-
-                            // add into current token
-                            token.value += ch;
-                        }
-                    }
-                }
-                else if (ch == '\'') {
-                    if (token.value == "") { // the start of a single-quote
-                        // save the token QUOTE
-                        columnNum++;
-                        token.value += ch;
-                        s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                    }
-                    else {
-                        if (token.value[0] == '\"') { // in string
-                            // add into current token
+                        if (token.value[0] == '\"') { // in STRING
                             token.value += ch;
                             columnNum++;
                         }
                         else {
-                            // save the previous token
+                            // save previous
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            // set position
-                            columnNum = 1; // 1 for "\'"
-                            
-                            // save the token QUOTE
-                            token.value += ch;
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            call_saveAToken_count++;
+                            // save current
+                            if (parenStack.empty()) { // no LP before RP
+                                eatALine();
+                                columnNum++;
+                                parser.resetInfos();
+                                throw UnexpectedToken(lineNum, columnNum, ")");
+                            }
+                            else {
+                                parenStack.pop();
+                                token.value += ch; // ")"
+                                columnNum++;
+                                s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                                call_saveAToken_count++;
+                            }
                         }
                     }
                 }
                 else if (ch == '\\') {
-                    if (token.value != "" && token.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in string, escape
-                        // ch + next ch = "\t" or "\n" or "\\" or "\""
-                        columnNum++; // set pooisition for first backslash
-                        
-                        // get the char after escape
-                        ch = std::cin.get();
-                        // add into current token
+                    if (token.value != "" && token.value[0] == '\"' && escape_map.count(std::cin.peek())) { // in STRING and legal escape
+                        columnNum++; // first backslash
+                        ch = std::cin.get(); // legal escape mode after backslash: 't' or 'n' or '\\' or '\"'
                         token.value += escape_map[ch];
                         columnNum++;
                     }
-                    else { // just a normal backslash
-                        // add into current token
+                    else {
                         token.value += ch;
                         columnNum++;
                     }
                 }
+                else if (ch == '\'') {
+                    if (token.value == "") {
+                        token.value += ch;
+                        columnNum++;
+                        s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                        call_saveAToken_count++;
+                    }
+                    else {
+                        if (token.value[0] == '\"') { // in STRING
+                            token.value += ch;
+                            columnNum++;
+                        }
+                        else {
+                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            call_saveAToken_count++;
+                            token.value += ch; // "\'"
+                            if (s_exp_ended) columnNum = 1;
+                            else columnNum++;
+                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            call_saveAToken_count++;
+                        }
+                    }
+                }
+                else if (ch == '\"') {
+                    if (token.value == "") { // the start of a STRING
+                        token.value += ch;
+                        columnNum++; // cuz may have whitespace before so use ++ not set to 1
+                    }
+                    else {
+                        if (token.value[0] == '\"') { // the end of a STRING
+                            token.value += ch;
+                            columnNum++;
+                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            call_saveAToken_count++;
+                            if (s_exp_ended) columnNum = 0;
+                        }
+                        else { // token + STRING, with no whitespace ex. > asf"
+                            // save previous
+                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            call_saveAToken_count++;
+                            // the start of a STRING
+                            token.value += ch;
+                            if (s_exp_ended) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
+                            else columnNum++; // ex. > (asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 6
+                        }
+                    }
+                }
                 else {
-                    // add into current token
                     token.value += ch;
                     columnNum++;
                 }
