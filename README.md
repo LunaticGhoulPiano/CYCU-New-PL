@@ -7,15 +7,7 @@
 - 線上測試系統：
     - [互動式測試](https://cycu-ice-pl.github.io/website/#/OurScheme)
     - [合法S-Expression建立抽象語法樹的可視化](https://cycu-ice-pl.github.io/website/#/Visualize)
-- 系統只吃一個檔案，所以要全部塞在同一檔案中
-- 平時分數計算：每堂課會有4分
-    1. 出席分
-    2. So so
-    3. Ok
-    4. Great
-    0. Not good
-- Project分數到80可以不用出席
-- 使用Discord bot測試
+- 主要使用Discord bot測試與計分
     - 系統只會使用output測試，當有```std::cout```沒換行後接```std::cin```時應該不會吃，也因此我的Interactive I/O在印```> ```時會有問題，但使用指令輸出是正確的
     - [Discord bot 連結](https://discord.com/oauth2/authorize?client_id=1265725772094767149)
     - Discord bot 應用程式ID: ```1265725772094767149```
@@ -25,6 +17,14 @@
         - Project 3: 12
         - Project 4: 10
         - 每題都會有三個測資檔
+- 系統只吃一個檔案，所以要全部塞在同一檔案中
+- 平時分數計算：每堂課會有4分
+    1. 出席分
+    2. So so
+    3. Ok
+    4. Great
+    0. Not good
+- Project分數到80可以不用出席
 
 ## Command
 - Windows Powershell:
