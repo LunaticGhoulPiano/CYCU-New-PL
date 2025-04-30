@@ -1,5 +1,6 @@
 # CYCU-New-PL (中原資工程式語言project - OurScheme)
 ## 資料與備註
+- 本人修大四畢業班，夏老大授課，計分方式與大三不同
 - [Project 1 的簡報](https://www.canva.com/design/DAGemJ7sLQI/X3aeWBckMJEJuJ5ks3dF7w/edit)
 - 老大的上傳系統：
     - [設定密碼](https://pai.lab715.uk:5001/ChangePassword/)
