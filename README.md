@@ -111,8 +111,7 @@ CYCU-New-PL
             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
             | QUOTE <S-exp>
                 
-    <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
-                | NIL | T | LEFT-PAREN RIGHT-PAREN
+    <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
     ```
 - 我的設計
     - ```gTestNum```:
