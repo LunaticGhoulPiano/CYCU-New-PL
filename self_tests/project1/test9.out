@@ -1,0 +1,48 @@
+Welcome to OurScheme!
+
+> ( ( ( 1
+      .
+      -+2
+    )
+    ( "You need to handle >>\<<"
+      .
+      "You also need to handle >>"<<"
+    )
+    ( exit
+    )
+    .
+    6
+  )
+  7
+  .
+  8
+)
+
+> ( exit
+  0
+)
+
+> ( ( ( 1
+      .
+      -+2
+    )
+    ( "You need to handle >>\<<"
+      .
+      "You also need to handle >>"<<"
+    )
+    ( exit
+    )
+    .
+    6
+  )
+  7
+  .
+  8
+)
+
+> ( exit
+  0
+)
+
+> 
+Thanks for using OurScheme!

@@ -53,7 +53,7 @@ class BaseException: public std::exception {
 class CorrectExit: public BaseException {
     public:
         CorrectExit():
-            BaseException("Thanks for using OurScheme!") {}
+            BaseException("\n> \nThanks for using OurScheme!") {}
 };
 
 // ERROR (unexpected token) : atom or '(' expected when token at Line X Column Y is >>...<<
@@ -61,7 +61,7 @@ class UnexpectedToken: public BaseException {
     public:
         UnexpectedToken(int line, int column, const std::string &token):
             BaseException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n\n") {}
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
 // ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
@@ -69,7 +69,7 @@ class NoRightParen: public BaseException {
     public:
         NoRightParen(int line, int column, const std::string &token):
             BaseException("\n> ERROR (unexpected token) : ')' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n\n") {}
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
 // ERROR (no closing quote) : END-OF-LINE encountered at Line X Column Y
@@ -77,13 +77,13 @@ class NoClosingQuote: public BaseException {
     public:
         NoClosingQuote(int line, int column):
             BaseException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + "\n\n") {}
+                + std::to_string(line) + " Column " + std::to_string(column) + "\n") {}
 };
 
 // ERROR (no more input) : END-OF-FILE encountered
 class NoMoreInput: public BaseException {
     public:
-        NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\n\n") {}
+        NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!") {}
 };
 
 /* AST structure */
@@ -231,8 +231,6 @@ class S_Exp_Parser {
                     cur_node = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), cur_node});
                 }
 
-                checkExit(cur_node); // check if car == "exit" && cdr == "nil"
-
                 // end a dotted-pair
                 if (! lists_info.empty()) {
                     //std::cout << "not_empty_RP\n";
@@ -241,6 +239,7 @@ class S_Exp_Parser {
                 }
                 else { // <S-exp> ended
                     //std::cout << "empty_RP\n";
+                    checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                     std::cout << "\n> ";
                     printAST(cur_node);
                     tree_roots.push_back(cur_node);
@@ -439,13 +438,9 @@ class S_Exp_Lexer {
             prev_ch = '\0';
             bool start = false;
             s_exp_ended = false;
-            std::cout << "> ";
 
             while (std::cin.get(ch)) {
                 start = true;
-
-                //std::cout << "\t----> ch = _" << ch << "_ at prev (" << lineNum << ", " << columnNum << "), s_exp_ended = " << (s_exp_ended ? "t\n" : "f\n");
-                // TODO: print newline and prompt
                 if (ch == ';') {
                     if (token.value == "") {
                         eatALine();
@@ -463,7 +458,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-
+                            eatALine();
                             if (s_exp_ended) {
                                 lineNum = 1;
                                 s_exp_ended = false;
@@ -666,7 +661,7 @@ class S_Exp_Lexer {
 /* Main Read-Eval-Print-Loop */
 int main() {
     std::getline(std::cin, gTestNum);
-    std::cout << "Welcome to OurScheme!\n\n";
+    std::cout << "Welcome to OurScheme!\n";
     S_Exp_Lexer lexer;
     S_Exp_Parser parser;
     while (true) {
