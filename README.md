@@ -106,13 +106,16 @@ CYCU-New-PL
     - QUOTE: ```'```
     - SYMBOL: 以上皆非的, ```3.25a```, ```a.b```, ```#fa```, ```\```, ```..```, ..., etc.
 - 文法
-    ```EBNF
-    <S-exp> ::= <ATOM> 
-            | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
-            | QUOTE <S-exp>
-                
-    <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
-    ```
+    - 使用[擴展巴科斯范式(Extended Backus-Naur Form, EBNF)](https://hackmd.io/@ShenTengTu/HJzCM3aDr)表示法
+    - ```{}```表示重複零次或多次
+    - ```[]```表示可有可無
+    - 文法：
+        ```EBNF
+        <ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
+        <S-exp> ::= <ATOM> 
+                | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
+                | QUOTE <S-exp>
+        ```
 - 我的設計
     - ```gTestNum```:
         - 直接用```std::string```讀掉整行，以避免還要讀```\n```
@@ -302,6 +305,7 @@ CYCU-New-PL
                 - 注意檢查時機：只有當**一個完整的```<S-exp>```完全等於```(exit)```時**才要檢查並退出
             - ```bool parseAndBuildAST(const Token &token, int lineNum, int columnNum) {}```:
                 - **並非recursive descending parsing，而是將樹的概念扁平化成stack進行parse，當```<S-exp>```結束時才加入樹**
+                - 為**Top-Down parsing**
                 - **每次在tokenizer切出一個token時被呼叫**，即每個獨立的token都會跑一次
                 - 回傳**目前的完整```<S-exp>```是否結束```**
             - ```printAST(const std::shared_ptr<AST> &cur, bool isRoot = true, int depth = 0, bool isFirstTokenOfLine = true) {}```:
