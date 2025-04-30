@@ -29,9 +29,21 @@
 
 ## Command
 - Windows Powershell:
-    ```powershell
-    Get-Content .\test.in | .\main.exe > .\test.out
-    ```
+    - 編譯：
+        ```powershell
+        g++ ./main.cpp -std=c++2a -o ./main
+        ```
+    - 執行：
+        - Interactive I/O:
+            ```powershell
+            ./main.exe
+            ```
+        - Batch I/O:
+            - 在```./self_tests./*./```底下的```.in```檔是輸入，```.out```檔是正確輸出，而我習慣以```.bug```檔做為自己程式的輸出
+            - 以```./self_tests./project1./test10.in```為例：
+                ```powershell
+                Get-Content ./self_tests./project1./test10.in | ./main.exe > ./self_tests./project1./test10.bug
+                ```
 
 ## Structure
 ```
