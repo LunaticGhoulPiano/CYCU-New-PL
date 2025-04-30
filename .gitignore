@@ -1,2 +1,3 @@
 *.exe
 **/.vscode/
+self_tests/**/*.bug

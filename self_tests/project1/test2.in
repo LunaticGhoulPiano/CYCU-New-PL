@@ -70,7 +70,7 @@ a   ; a line-comment starts with a ';', and continues until end-of-line
             ; user also starts another input, then the
                 ; system also starts processing the second input,
          .      ; but will print the output for the first input first
-( 1 2 ) ( 3 4 ) 5
+( 1 2 ) ( 3 4 ) 5()(abc)
 a   ; a line-comment starts with a ';', and continues until end-of-line
 3   ; your system should be able to skip all line-comments
 (cons 3 5)  ; once it prints the output, it prints a blank line
@@ -124,3 +124,4 @@ Hi "!" How    ; note that the principle of "longest match preferred"
     (exit     ; this is the way to get out of user-system dialog ;
               ; below, there is a LINE-ENTER preceding 'Thanks' and
    )          ; two LINE-ENTER following '!'
+3 4 5

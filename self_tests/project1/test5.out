@@ -1,20 +1,14 @@
 Welcome to OurScheme!
 
-> 
 > 1.000
-
 
 > "123"
 
-
 > 0.000
-
 
 > -.
 
-
 > 0.397
-
 
 > .aslfn
 
@@ -95,7 +89,6 @@ Welcome to OurScheme!
   )
 )
 
-
 > ""
 
 > ( quote
@@ -103,4 +96,5 @@ Welcome to OurScheme!
   )
 )
 
+> 
 Thanks for using OurScheme!

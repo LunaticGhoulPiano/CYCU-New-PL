@@ -1,6 +1,6 @@
 Welcome to OurScheme!
 
-> > ( a
+> ( a
   b
   ( c
   )
@@ -80,5 +80,4 @@ Welcome to OurScheme!
   d
 )
 
-> > ERROR (no more input) : END-OF-FILE encountered
-
+> ERROR (no more input) : END-OF-FILE encountered
