@@ -12,8 +12,7 @@
 std::string gTestNum; // note that it is int + '\n'
 
 /* Token types */
-enum class Token_Type {
-    UDF, // to avoid undefined enum, set this to constructor and reset
+enum class TokenType {
     LEFT_PAREN, // '('
     RIGHT_PAREN, // ')'
     INT, // e.g., '123', '+123', '-123'
@@ -33,10 +32,10 @@ enum class Token_Type {
 
 /* Token structure */
 struct Token {
-    Token_Type type = Token_Type::NIL;
+    TokenType type = TokenType::NIL;
     std::string value = "";
-    Token() : type(Token_Type::NIL), value("") {}
-    Token(Token_Type t, const std::string& v) : type(t), value(v) {}
+    Token() : type(TokenType::NIL), value("") {}
+    Token(TokenType t, const std::string& v) : type(t), value(v) {}
 };
 
 /* AST structure */
@@ -68,7 +67,7 @@ class CorrectExit: public BaseException {
 // ERROR (unexpected token) : atom or '(' expected when token at Line X Column Y is >>...<<
 class UnexpectedToken: public BaseException {
     public:
-        UnexpectedToken(int line, int column, const std::string &token):
+        UnexpectedToken(int line, int column, const std::string token):
             BaseException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
@@ -76,7 +75,7 @@ class UnexpectedToken: public BaseException {
 // ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
 class NoRightParen: public BaseException {
     public:
-        NoRightParen(int line, int column, const std::string &token):
+        NoRightParen(int line, int column, const std::string token):
             BaseException("\n> ERROR (unexpected token) : ')' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
@@ -124,7 +123,7 @@ class S_Exp_Parser {
         }
 
         std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
-            const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{Token_Type::NIL, "nil"})) { // the part after DOT (cdr)
+            const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{TokenType::NIL, "nil"})) { // the part after DOT (cdr)
             std::shared_ptr<AST> res = cdr;
             for (int i = static_cast<int>(tree_root.size()) - 1; i >= 0; --i) res = std::make_shared<AST>(tree_root[i], res);
             return res;
@@ -132,19 +131,19 @@ class S_Exp_Parser {
 
         void checkExit(const std::shared_ptr<AST> &tree_root) {
             if (! tree_root || tree_root->isAtom) return;
-            if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == Token_Type::SYMBOL && tree_root->left->atom.value == "exit"
-                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == Token_Type::NIL))) throw CorrectExit();
+            if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == TokenType::SYMBOL && tree_root->left->atom.value == "exit"
+                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw CorrectExit();
         }
 
         bool parseAndBuildAST(const Token &token, int lineNum, int columnNum) {
             // check number of <S-exp> after DOT
-            if (! dot_info.empty() && dot_info.top().first && dot_info.top().second == 1 && token.type != Token_Type::RIGHT_PAREN) {
+            if (! dot_info.empty() && dot_info.top().first && dot_info.top().second == 1 && token.type != TokenType::RIGHT_PAREN) {
                 resetInfos();
                 throw NoRightParen(lineNum, columnNum - token.value.length() + 1, token.value); // columnNum: the first char's pos of the token
             }
             // process token
-            if (token.type == Token_Type::QUOTE) lists_info.push({LIST_MODE::QUOTE, {std::make_shared<AST>(Token{Token_Type::QUOTE, ""})}});
-            else if (token.type == Token_Type::DOT) {
+            if (token.type == TokenType::QUOTE) lists_info.push({LIST_MODE::QUOTE, {std::make_shared<AST>(Token{TokenType::QUOTE, ""})}});
+            else if (token.type == TokenType::DOT) {
                 if (lists_info.empty() // start with DOT
                     || lists_info.top().first != LIST_MODE::NO_DOT // QUOTE + DOT or DOT + DOT
                     || lists_info.top().second.empty()) { // no <S-exp> before DOT, ex. > (.
@@ -154,8 +153,8 @@ class S_Exp_Parser {
                 lists_info.top().first = LIST_MODE::WITH_DOT;
                 dot_info.push({true, 0}); // start counting <S-exp> after DOT
             }
-            else if (token.type == Token_Type::LEFT_PAREN) lists_info.push({LIST_MODE::NO_DOT, {}}); // push a new list into stack
-            else if (token.type == Token_Type::RIGHT_PAREN) {
+            else if (token.type == TokenType::LEFT_PAREN) lists_info.push({LIST_MODE::NO_DOT, {}}); // push a new list into stack
+            else if (token.type == TokenType::RIGHT_PAREN) {
                 if (lists_info.empty() ||
                     (lists_info.top().first == LIST_MODE::WITH_DOT && ! dot_info.empty() && dot_info.top().first && dot_info.top().second == 0)) {
                     resetInfos();
@@ -184,7 +183,7 @@ class S_Exp_Parser {
                     auto quote_list = std::move(lists_info.top().second);
                     lists_info.pop();
                     // make quote
-                    cur_node = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), cur_node});
+                    cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
                 }
 
                 // end a dotted-pair
@@ -209,7 +208,7 @@ class S_Exp_Parser {
                     auto quote_list = std::move(lists_info.top().second);
                     lists_info.pop();
                     // make quote
-                    cur_node = makeList({std::make_shared<AST>(Token{Token_Type::QUOTE, ""}), cur_node});
+                    cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
                 }
         
                 if (! lists_info.empty()) {
@@ -217,7 +216,6 @@ class S_Exp_Parser {
                     if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
                 }
                 else { // <S-exp> ended
-                    checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                     std::cout << "\n> ";
                     printAST(cur_node);
                     tree_roots.push_back(cur_node);
@@ -232,7 +230,7 @@ class S_Exp_Parser {
             if (cur == nullptr) return;
             // ATOM
             if (cur->isAtom) {
-                if (cur->atom.type == Token_Type::QUOTE) std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << "quote\n";
+                if (cur->atom.type == TokenType::QUOTE) std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << "quote\n";
                 else std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << cur->atom.value << "\n";
                 return;
             }
@@ -245,12 +243,12 @@ class S_Exp_Parser {
             // car
             printAST(cur->left, true, depth, isFirstTokenOfLine);
             // cdr
-            if (cur->right && cur->right->isAtom && cur->right->atom.type != Token_Type::NIL) {
+            if (cur->right && cur->right->isAtom && cur->right->atom.type != TokenType::NIL) {
                 std::cout << std::string(depth * 2, ' ') << ".\n";
                 printAST(cur->right, true, depth);
             }
             else if (cur->right && ! cur->right->isAtom) printAST(cur->right, false, depth);
-            else if (! cur->right || cur->right->atom.type == Token_Type::NIL) ; // nothing
+            else if (! cur->right || cur->right->atom.type == TokenType::NIL) ; // nothing
             else {
                 std::cout << std::string(depth * 2, ' ') << ".\n";
                 printAST(cur->right, true, depth);
@@ -265,9 +263,8 @@ class S_Exp_Parser {
 
 /* S-Expression Lexer */
 class S_Exp_Lexer {
-    
     private:
-        char ch, prev_ch;
+        char ch;
         int lineNum = 1, columnNum = 0;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
 
@@ -287,10 +284,6 @@ class S_Exp_Lexer {
             return (ch == 'n' || ch == '\"' || ch == 't'|| ch == '\\');
         }
 
-        bool isSeperator(char ch) {
-            return (isWhiteSpace(ch) || ch == '(' || ch == ')' || ch == '\'' || ch == '\"' || ch == ';');
-        }
-
         bool isInt(const std::string &str) {
             std::regex pattern("^[-+]?\\d+$");
             return std::regex_match(str, pattern);
@@ -307,33 +300,33 @@ class S_Exp_Lexer {
                 std::stringstream oss;
                 // formating int and float, also round float to "%.3f"
                 if (token.value.find('.') != std::string::npos) {
-                    token.type = Token_Type::FLOAT;
+                    token.type = TokenType::FLOAT;
                     double value;
                     iss >> value;
                     oss << std::fixed << std::setprecision(3) << value;
                 }
                 else {
-                    token.type = Token_Type::INT;
+                    token.type = TokenType::INT;
                     int value;
                     iss >> value;
                     oss << value;
                 }
                 token.value = oss.str();
             }
-            else if (token.value == "(") token.type = Token_Type::LEFT_PAREN;
-            else if (token.value == ")") token.type = Token_Type::RIGHT_PAREN;
-            else if (token.value == ".") token.type = Token_Type::DOT;
-            else if (token.value[0] == '\"' && token.value[token.value.length()-1] == '\"') token.type = Token_Type::STRING;
-            else if (token.value == "\'") token.type = Token_Type::QUOTE;
+            else if (token.value == "(") token.type = TokenType::LEFT_PAREN;
+            else if (token.value == ")") token.type = TokenType::RIGHT_PAREN;
+            else if (token.value == ".") token.type = TokenType::DOT;
+            else if (token.value[0] == '\"' && token.value[token.value.length()-1] == '\"') token.type = TokenType::STRING;
+            else if (token.value == "\'") token.type = TokenType::QUOTE;
             else if (token.value == "nil" || token.value == "#f") {
-                token.type = Token_Type::NIL;
+                token.type = TokenType::NIL;
                 token.value = "nil";
             }
             else if (token.value == "t" || token.value == "#t") {
-                token.type = Token_Type::T;
+                token.type = TokenType::T;
                 token.value = "#t";
             }
-            else token.type = Token_Type::SYMBOL;
+            else token.type = TokenType::SYMBOL;
         }
 
         void eatALine() {
@@ -349,6 +342,7 @@ class S_Exp_Lexer {
                 return res;
             }
             catch (CorrectExit &e) { // no need to eat a line
+                parser.resetInfos();
                 throw;
             }
             catch (BaseException &e) {
@@ -363,7 +357,6 @@ class S_Exp_Lexer {
         
         S_Exp_Lexer() {
             ch = '\0';
-            prev_ch = '\0';
         }
 
         void readAndTokenize(S_Exp_Parser &parser) {
@@ -372,12 +365,12 @@ class S_Exp_Lexer {
             lineNum = 1;
             columnNum = 0;
             ch = '\0';
-            prev_ch = '\0';
             bool start = false;
             s_exp_ended = false;
 
             while (std::cin.get(ch)) {
                 start = true;
+                
                 if (ch == ';') {
                     if (token.value == "") {
                         eatALine();
