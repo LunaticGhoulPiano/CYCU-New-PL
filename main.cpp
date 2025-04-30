@@ -439,18 +439,13 @@ class S_Exp_Lexer {
             ch = '\0';
             prev_ch = '\0';
             bool start = false;
+            s_exp_ended = false;
             std::cout << "> ";
 
             while (std::cin.get(ch)) {
                 start = true;
-                /*
-                if (call_saveAToken_count > 1 && s_exp_ended) {
-                    s_exp_ended = false;
-                    call_saveAToken_count = 0;
-                }
-                */
 
-                std::cout << "\t----> ch = _" << ch << "_ at prev (" << lineNum << ", " << columnNum << "), s_exp_ended = " << s_exp_ended;
+                std::cout << "\t----> ch = _" << ch << "_ at prev (" << lineNum << ", " << columnNum << "), s_exp_ended = " << (s_exp_ended ? "t" : "f");
                 std::cout << ", call count = " << call_saveAToken_count << "\n";
                 // TODO: print newline and prompt
                 if (ch == ';') {
@@ -467,7 +462,10 @@ class S_Exp_Lexer {
                         }
                         else {
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            call_saveAToken_count++;
+                            
+                            if (s_exp_ended) call_saveAToken_count = 0;
+                            else call_saveAToken_count++;
+
                             if (s_exp_ended) lineNum = 1;
                             else lineNum++;
                             columnNum = 0;
@@ -490,7 +488,10 @@ class S_Exp_Lexer {
                             }
                             else {
                                 s_exp_ended = saveAToken(token, parser, lineNum, columnNum, false);
-                                call_saveAToken_count++;
+                                
+                                if (s_exp_ended) call_saveAToken_count = 0;
+                                else call_saveAToken_count++;
+                                
                                 if (s_exp_ended) lineNum = 1;
                                 else lineNum++;
                                 columnNum = 0;
@@ -506,7 +507,10 @@ class S_Exp_Lexer {
                             }
                             else {
                                 s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                                call_saveAToken_count++;
+                                
+                                if (s_exp_ended) call_saveAToken_count = 0;
+                                else call_saveAToken_count++;
+                                
                                 if (s_exp_ended) columnNum = 1; // 1 for ' ' or '\t'
                                 else columnNum++;
                             }
@@ -519,6 +523,7 @@ class S_Exp_Lexer {
                         token.value += ch; // "("
                         columnNum++; // ex. "   f   (((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 7 is >>.<<
                         s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                        
                         call_saveAToken_count++;
                     }
                     else {
@@ -529,7 +534,10 @@ class S_Exp_Lexer {
                         else {
                             // save previous
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            call_saveAToken_count++;
+                            
+                            if (s_exp_ended) call_saveAToken_count = 0;
+                            else call_saveAToken_count++;
+                            
                             // save current
                             parenStack.push(ch);
                             token.value += ch; // "("
@@ -552,7 +560,10 @@ class S_Exp_Lexer {
                             token.value += ch; // ")"
                             columnNum++;
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            call_saveAToken_count++;
+                            
+                            if (s_exp_ended) call_saveAToken_count = 0;
+                            else call_saveAToken_count++;
+                            
                         }
                     }
                     else {
@@ -576,7 +587,10 @@ class S_Exp_Lexer {
                                 token.value += ch; // ")"
                                 columnNum++;
                                 s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                                call_saveAToken_count++;
+                                
+                                if (s_exp_ended) call_saveAToken_count = 0;
+                                else call_saveAToken_count++;
+                                
                             }
                         }
                     }
@@ -598,6 +612,7 @@ class S_Exp_Lexer {
                         token.value += ch;
                         columnNum++;
                         s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                        
                         call_saveAToken_count++;
                     }
                     else {
@@ -607,11 +622,15 @@ class S_Exp_Lexer {
                         }
                         else {
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            call_saveAToken_count++;
+                            
+                            if (s_exp_ended) call_saveAToken_count = 0;
+                            else call_saveAToken_count++;
+                            
                             token.value += ch; // "\'"
                             if (s_exp_ended) columnNum = 1;
                             else columnNum++;
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            
                             call_saveAToken_count++;
                         }
                     }
@@ -626,13 +645,19 @@ class S_Exp_Lexer {
                             token.value += ch;
                             columnNum++;
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            call_saveAToken_count++;
+                            
+                            if (s_exp_ended) call_saveAToken_count = 0;
+                            else call_saveAToken_count++;
+                            
                             if (s_exp_ended) columnNum = 0;
                         }
                         else { // token + STRING, with no whitespace ex. > asf"
                             // save previous
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
-                            call_saveAToken_count++;
+                            
+                            if (s_exp_ended) call_saveAToken_count = 0;
+                            else call_saveAToken_count++;
+                            
                             // the start of a STRING
                             token.value += ch;
                             if (s_exp_ended) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2

@@ -3,6 +3,7 @@
 34 5678 ) ; See?
 (1 . 5)
 (.
+"" ".
 "" ""asf""
 .
 '( 5678 . (
@@ -11,6 +12,13 @@
      
 
     a   ; a line-comment starts with a ';', and continues until end-of-line
+
+
+
+            ; the system first prints '> ', and then starts to get
+              ; the user's input until either an unexpected character
+   (    (     ; i
+   .
 3   ; your system should be able to skip all line-comments
 (cons 3 5)  ; once it prints the output, it prints a blank line
             ; the system first prints '> ', and then starts to get
