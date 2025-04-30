@@ -571,6 +571,10 @@ class S_Exp_Lexer {
                         else {
                             // save previous
                             s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            if (s_exp_ended) {
+                                lineNum = 1;
+                                columnNum = 0;
+                            }
                             // save current
                             if (parenStack.empty()) { // no LP before RP
                                 eatALine();
