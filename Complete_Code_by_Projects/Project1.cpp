@@ -670,6 +670,7 @@ int main() {
         }
         catch (NoMoreInput &e) {
             std::cout << e.what();
+            break;
         }
         catch (UnexpectedToken &e) {
             std::cout << e.what();
