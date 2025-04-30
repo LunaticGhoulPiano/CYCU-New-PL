@@ -39,6 +39,15 @@ struct Token {
     Token(Token_Type t, const std::string& v) : type(t), value(v) {}
 };
 
+/* AST structure */
+struct AST {
+    bool isAtom = false;
+    Token atom;
+    std::shared_ptr<AST> left = nullptr, right = nullptr;
+    AST(Token t) : isAtom(true), atom(std::move(t)) {}
+    AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
+};
+
 /* Error Exceptions */
 class BaseException: public std::exception {
     protected:
@@ -86,15 +95,6 @@ class NoMoreInput: public BaseException {
         NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!") {}
 };
 
-/* AST structure */
-struct AST {
-    bool isAtom = false;
-    Token atom;
-    std::shared_ptr<AST> left = nullptr, right = nullptr;
-    AST(Token t) : isAtom(true), atom(std::move(t)) {}
-    AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
-};
-
 /* S-Expression Parser */
 // <S-exp> ::= <ATOM>
 //             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
@@ -114,53 +114,9 @@ class S_Exp_Parser {
         std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>> lists_info; // first: mode, second: list
         // check num of <S-exp> after DOT
         std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
-
-        std::string getType(Token token) { // for debug
-            if (token.type == Token_Type::LEFT_PAREN) return "LEFT_PAREN";
-            else if (token.type == Token_Type::RIGHT_PAREN) return "RIGHT_PAREN";
-            else if (token.type == Token_Type::INT) return "INT";
-            else if (token.type == Token_Type::STRING) return "STRING";
-            else if (token.type == Token_Type::DOT) return "DOT";
-            else if (token.type == Token_Type::FLOAT) return "FLOAT";
-            else if (token.type == Token_Type::NIL) return "NIL";
-            else if (token.type == Token_Type::T) return "T";
-            else if (token.type == Token_Type::QUOTE) return "QUOTE";
-            else if (token.type == Token_Type::SYMBOL) return "SYMBOL";
-            else if (token.type == Token_Type::UDF) return "UDF";
-            else return "ERROR: didn't judged!";
-        }
-
-        void printType(Token token) { // for debug
-            if (token.type == Token_Type::LEFT_PAREN) std::cout << "LEFT_PAREN\n";
-            else if (token.type == Token_Type::RIGHT_PAREN) std::cout << "RIGHT_PAREN\n";
-            else if (token.type == Token_Type::INT) std::cout << "INT\n";
-            else if (token.type == Token_Type::STRING) std::cout << "STRING\n";
-            else if (token.type == Token_Type::DOT) std::cout << "DOT\n";
-            else if (token.type == Token_Type::FLOAT) std::cout << "FLOAT\n";
-            else if (token.type == Token_Type::NIL) std::cout << "NIL\n";
-            else if (token.type == Token_Type::T) std::cout << "T\n";
-            else if (token.type == Token_Type::QUOTE) std::cout << "QUOTE\n";
-            else if (token.type == Token_Type::SYMBOL) std::cout << "SYMBOL\n";
-            else if (token.type == Token_Type::UDF) std::cout << "UDF\n";
-            else std::cout << "ERROR: didn't judged!\n";
-        }
     
     public:
         std::vector<std::shared_ptr<AST>> tree_roots;
-        
-        void debugPrintAST(const std::shared_ptr<AST> node, int depth = 0, const std::string &prefix = "AST_root") { // for debug
-            if (! node) return;
-
-            std::string indent(depth * 2, ' ');
-            std::cout << indent << prefix;
-
-            if (node->isAtom) std::cout << " (isAtom = true, atom = \"" << node->atom.value << "\", type = " << getType(node->atom) << ")\n";    
-            else {
-                std::cout << " (isAtom = false)\n";
-                debugPrintAST(node->left, depth + 1, "|--- left  -> ");
-                debugPrintAST(node->right, depth + 1, "|--- right -> ");
-            }
-        }
 
         void resetInfos() { // when a <S-exp> ended or error encountered
             lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
@@ -239,7 +195,7 @@ class S_Exp_Parser {
                 else { // <S-exp> ended
                     checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                     std::cout << "\n> ";
-                    printAST(cur_node); // debugPrintAST(cur_node); // if you want to print AST
+                    printAST(cur_node);
                     tree_roots.push_back(cur_node);
                     resetInfos();
                 }
@@ -263,7 +219,7 @@ class S_Exp_Parser {
                 else { // <S-exp> ended
                     checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                     std::cout << "\n> ";
-                    printAST(cur_node); // debugPrintAST(cur_node); // if you want to print AST
+                    printAST(cur_node);
                     tree_roots.push_back(cur_node);
                     resetInfos();
                 }
@@ -343,21 +299,6 @@ class S_Exp_Lexer {
         bool isFloat(const std::string &str) {
             std::regex pattern("^[-+]?((\\d+\\.\\d*)|(\\.\\d+))$");
             return std::regex_match(str, pattern);
-        }
-
-        void printType(Token token) {
-            if (token.type == Token_Type::LEFT_PAREN) std::cout << "LEFT_PAREN\n";
-            else if (token.type == Token_Type::RIGHT_PAREN) std::cout << "RIGHT_PAREN\n";
-            else if (token.type == Token_Type::INT) std::cout << "INT\n";
-            else if (token.type == Token_Type::STRING) std::cout << "STRING\n";
-            else if (token.type == Token_Type::DOT) std::cout << "DOT\n";
-            else if (token.type == Token_Type::FLOAT) std::cout << "FLOAT\n";
-            else if (token.type == Token_Type::NIL) std::cout << "NIL\n";
-            else if (token.type == Token_Type::T) std::cout << "T\n";
-            else if (token.type == Token_Type::QUOTE) std::cout << "QUOTE\n";
-            else if (token.type == Token_Type::SYMBOL) std::cout << "SYMBOL\n";
-            else if (token.type == Token_Type::UDF) std::cout << "UDF\n";
-            else std::cout << "ERROR: didn't judged!\n";
         }
 
         void judgeType(Token &token) {
