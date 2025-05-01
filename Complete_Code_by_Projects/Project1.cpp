@@ -95,7 +95,7 @@ class Debugger {
 Debugger gDebugger;
 
 /* Error Exceptions */
-class ExitException: public std::exception {
+class ExitException: public std::exception { // Common usage
     protected:
         std::string message = "";
     public:
@@ -103,9 +103,17 @@ class ExitException: public std::exception {
         const char *what() const noexcept override {
             return message.c_str();
         }
+
+        static ExitException CorrectExit() { // Exit
+            return ExitException("\n> \nThanks for using OurScheme!");
+        }
+
+        static ExitException NoMoreInput() { // EOF & Exit
+            return ExitException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!");
+        }
 };
 
-class SyntaxException: public std::exception {
+class SyntaxException: public std::exception { // Project 1
     protected:
         std::string message = "";
     public:
@@ -113,42 +121,21 @@ class SyntaxException: public std::exception {
         const char *what() const noexcept override {
             return message.c_str();
         }
-};
 
-class CorrectExit: public ExitException { // Exit (Common usage)
-    public:
-        CorrectExit():
-            ExitException("\n> \nThanks for using OurScheme!") {}
-};
+        static SyntaxException UnexpectedToken(int line, int column, const std::string token) {
+            return SyntaxException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
+        }
 
-// ERROR (no more input) : END-OF-FILE encountered
-class NoMoreInput: public ExitException { // EOF & Exit (Common usage)
-    public:
-        NoMoreInput(): ExitException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!") {}
-};
+        static SyntaxException NoRightParen(int line, int column, const std::string token) {
+            return SyntaxException("\n> ERROR (unexpected token) : ')' expected when token at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
+        }
 
-// ERROR (unexpected token) : atom or '(' expected when token at Line X Column Y is >>...<<
-class UnexpectedToken: public SyntaxException { // Syntax Error (Project 1)
-    public:
-        UnexpectedToken(int line, int column, const std::string token):
-            SyntaxException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
-};
-
-// ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
-class NoRightParen: public SyntaxException { // Syntax Error (Project 1)
-    public:
-        NoRightParen(int line, int column, const std::string token):
-            SyntaxException("\n> ERROR (unexpected token) : ')' expected when token at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
-};
-
-// ERROR (no closing quote) : END-OF-LINE encountered at Line X Column Y
-class NoClosingQuote: public SyntaxException { // Syntax Error (Project 1)
-    public:
-        NoClosingQuote(int line, int column):
-            SyntaxException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
-                + std::to_string(line) + " Column " + std::to_string(column) + "\n") {}
+        static SyntaxException NoClosingQuote(int line, int column) {
+            return SyntaxException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+                + std::to_string(line) + " Column " + std::to_string(column) + "\n");
+        }
 };
 
 /* S-Expression Parser */
@@ -187,7 +174,7 @@ class S_Exp_Parser {
         void checkExit(const std::shared_ptr<AST> &tree_root) {
             if (! tree_root || tree_root->isAtom) return;
             if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == TokenType::SYMBOL && tree_root->left->atom.value == "exit"
-                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw CorrectExit();
+                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
 
         void endSExp(std::shared_ptr<AST> cur_node) {
@@ -201,7 +188,7 @@ class S_Exp_Parser {
             // check number of <S-exp> after DOT
             if (! dot_info.empty() && dot_info.top().first && dot_info.top().second == 1 && token.type != TokenType::RIGHT_PAREN) {
                 resetInfos();
-                throw NoRightParen(lineNum, columnNum - token.value.length() + 1, token.value); // columnNum: the first char's pos of the token
+                throw SyntaxException::NoRightParen(lineNum, columnNum - token.value.length() + 1, token.value); // columnNum: the first char's pos of the token
             }
             // process token
             if (token.type == TokenType::QUOTE) lists_info.push({LIST_MODE::QUOTE, {std::make_shared<AST>(Token{TokenType::QUOTE, ""})}});
@@ -210,7 +197,7 @@ class S_Exp_Parser {
                     || lists_info.top().first != LIST_MODE::NO_DOT // QUOTE + DOT or DOT + DOT
                     || lists_info.top().second.empty()) { // no <S-exp> before DOT, ex. > (.
                     resetInfos();
-                    throw UnexpectedToken(lineNum, columnNum, token.value);
+                    throw SyntaxException::UnexpectedToken(lineNum, columnNum, token.value);
                 }
                 lists_info.top().first = LIST_MODE::WITH_DOT;
                 dot_info.push({true, 0}); // start counting <S-exp> after DOT
@@ -220,7 +207,7 @@ class S_Exp_Parser {
                 if (lists_info.empty() ||
                     (lists_info.top().first == LIST_MODE::WITH_DOT && ! dot_info.empty() && dot_info.top().first && dot_info.top().second == 0)) {
                     resetInfos();
-                    throw UnexpectedToken(lineNum, columnNum, token.value);
+                    throw SyntaxException::UnexpectedToken(lineNum, columnNum, token.value);
                 }
                 
                 // get current list
@@ -468,7 +455,7 @@ class S_Exp_Lexer {
                             if (token.value[0] == '\"') { // newline while in STRING
                                 columnNum++;
                                 parser.resetInfos();
-                                throw NoClosingQuote(lineNum, columnNum);
+                                throw SyntaxException::NoClosingQuote(lineNum, columnNum);
                             }
                             else {
                                 s_exp_ended = saveAToken(token, lineNum, columnNum, false);
@@ -531,7 +518,7 @@ class S_Exp_Lexer {
                             eatALine();
                             columnNum++;
                             parser.resetInfos();
-                            throw UnexpectedToken(lineNum, columnNum, ")");
+                            throw SyntaxException::UnexpectedToken(lineNum, columnNum, ")");
                         }
                         else {
                             parenStack.pop();
@@ -561,7 +548,7 @@ class S_Exp_Lexer {
                                 eatALine();
                                 columnNum++;
                                 parser.resetInfos();
-                                throw UnexpectedToken(lineNum, columnNum, ")");
+                                throw SyntaxException::UnexpectedToken(lineNum, columnNum, ")");
                             }
                             else {
                                 parenStack.pop();
@@ -640,7 +627,7 @@ class S_Exp_Lexer {
                 }
             }
 
-            if (! start) throw NoMoreInput();
+            if (! start) throw ExitException::NoMoreInput();
         }
 };
 
