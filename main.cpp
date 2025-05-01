@@ -99,6 +99,42 @@ class SemanticException: public std::exception { // Project 2
         const char *what() const noexcept override {
             return message.c_str();
         }
+
+        static SemanticException IncorrectNumOfArgs(std::string arg) {
+            return SemanticException("\n> ERROR (incorrect number of arguments) : " + arg + "\n");
+        }
+
+        static SemanticException NonFunction(std::string arg) {
+            return SemanticException("\n> ERROR (attempt to apply non-function) : " + arg + "\n");
+        }
+
+        static SemanticException IncorrectCarArgType(std::string op, std::string arg) {
+            return SemanticException("\n> ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
+        }
+
+        static SemanticException DivisionByZero() {
+            return SemanticException("\n> ERROR (division by zero) : /\n");
+        }
+
+        static SemanticException UnboundSymbol(std::string symbol) {
+            return SemanticException("\n> ERROR (unbound symbol) : " + symbol + "\n");
+        }
+
+        static SemanticException NonList(std::string s_exp) {
+            return SemanticException("\n> ERROR (non-list) : " + s_exp + "\n");
+        }
+
+        static SemanticException NoReturnValue(std::string s_exp) {
+            return SemanticException("\n> ERROR (no return value) : " + s_exp + "\n");
+        }
+
+        static SemanticException DefineFormat(std::string s_exp) {
+            return SemanticException("\n> ERROR (DEFINE format) : " + s_exp + "\n");
+        }
+
+        static SemanticException CondFormat(std::string s_exp) {
+            return SemanticException("\n> ERROR (COND format) : " + s_exp + "\n");
+        }
 };
 
 /* S-Expression Evaluator */
