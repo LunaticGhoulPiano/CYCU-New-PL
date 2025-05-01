@@ -65,17 +65,7 @@ class Debugger {
         }
 
         void printType(Token token) {
-            if (token.type == TokenType::LEFT_PAREN) std::cout << "LEFT_PAREN\n";
-            else if (token.type == TokenType::RIGHT_PAREN) std::cout << "RIGHT_PAREN\n";
-            else if (token.type == TokenType::INT) std::cout << "INT\n";
-            else if (token.type == TokenType::STRING) std::cout << "STRING\n";
-            else if (token.type == TokenType::DOT) std::cout << "DOT\n";
-            else if (token.type == TokenType::FLOAT) std::cout << "FLOAT\n";
-            else if (token.type == TokenType::NIL) std::cout << "NIL\n";
-            else if (token.type == TokenType::T) std::cout << "T\n";
-            else if (token.type == TokenType::QUOTE) std::cout << "QUOTE\n";
-            else if (token.type == TokenType::SYMBOL) std::cout << "SYMBOL\n";
-            else std::cout << "ERROR: didn't judged!\n";
+            std::cout << getType(token) << std::endl;
         }
 
         void debugPrintAST(const std::shared_ptr<AST> node, int depth = 0, const std::string &prefix = "AST_root") {
@@ -177,39 +167,40 @@ class S_Exp_Parser {
                 && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
 
-        std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, bool isRoot = true, int depth = 0, bool isFirstTokenOfLine = true, std::string s_exp = "") { // recursively print
-            if (cur == nullptr) return s_exp;
-            // ATOM
-            if (cur->isAtom) {
-                if (cur->atom.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
-                else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->atom.value + "\n");
-                return s_exp;
+        std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
+            if (cur != nullptr) {
+                if (cur->isAtom) { // <S-exp> ::= <ATOM>
+                    if (cur->atom.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
+                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->atom.value + "\n");
+                }
+                else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
+                    // LP: new list started
+                    if (isRoot) {
+                        s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "(");
+                        depth++;
+                        isFirstTokenOfLine = false;
+                    }
+                    // car
+                    s_exp = prettyWriteSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
+                    // cdr
+                    if (cur->right && cur->right->isAtom && cur->right->atom.type != TokenType::NIL) {
+                        s_exp += (std::string(depth * 2, ' ') + ".\n");
+                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
+                    }
+                    else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, s_exp, depth, false, true);
+                    else if (! cur->right || cur->right->atom.type == TokenType::NIL) ; // nothing
+                    else {
+                        s_exp += (std::string(depth * 2, ' ') + ".\n");
+                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
+                    }
+                    // RP: cur list ended
+                    if (isRoot) {
+                        depth--;
+                        s_exp += (std::string(depth * 2, ' ') + ")\n");
+                    }
+                }
             }
-            // LP: new list started
-            if (isRoot) {
-                s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "(");
-                depth++;
-                isFirstTokenOfLine = false;
-            }
-            // car
-            s_exp = prettyWriteSExp(cur->left, true, depth, isFirstTokenOfLine, s_exp);
-            // cdr
-            if (cur->right && cur->right->isAtom && cur->right->atom.type != TokenType::NIL) {
-                s_exp += (std::string(depth * 2, ' ') + ".\n");
-                s_exp = prettyWriteSExp(cur->right, true, depth, true, s_exp);
-            }
-            else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, false, depth, true, s_exp); //printAST(cur->right, false, depth);
-            else if (! cur->right || cur->right->atom.type == TokenType::NIL) ; // nothing
-            else {
-                s_exp += (std::string(depth * 2, ' ') + ".\n");
-                s_exp = prettyWriteSExp(cur->right, true, depth, true, s_exp);
-            }
-            // RP: cur list ended
-            if (isRoot) {
-                depth--;
-                s_exp += (std::string(depth * 2, ' ') + ")\n");
-            }
-            
+
             return s_exp;
         }
 
