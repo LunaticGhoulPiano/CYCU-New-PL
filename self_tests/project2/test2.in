@@ -18,10 +18,13 @@
         (else 'unknown)))
 
 (define a '(3 4))
+a
 (main a)
 (define a (atom? a))
+a
 (main a)
 (define a (pair? a))
+a
 (main a)
 
 clean-environment
@@ -45,10 +48,13 @@ clean-environment
         (else 'unknown)))
 
 (define a '(3 4))
+a
 (main a)
 (define a (atom? a))
+a
 (main a)
 (define a (pair? a))
+a
 (main a)
 
 (exit)

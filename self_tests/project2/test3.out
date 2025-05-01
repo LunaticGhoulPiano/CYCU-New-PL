@@ -6,13 +6,21 @@ Welcome to OurScheme!
 
 > a defined
 
+> ( 3
+  4
+)
+
 > pair
 
 > a defined
 
+> nil
+
 > atom
 
 > a defined
+
+> nil
 
 > atom
 
@@ -26,13 +34,21 @@ Welcome to OurScheme!
 
 > a defined
 
+> ( 3
+  4
+)
+
 > 222233.020
 
 > a defined
 
+> nil
+
 > 222233.020
 
 > a defined
+
+> nil
 
 > 222233.020
 

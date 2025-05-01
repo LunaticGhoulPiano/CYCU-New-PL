@@ -6,13 +6,21 @@ Welcome to OurScheme!
 
 > a defined
 
+> ( 3
+  4
+)
+
 > pair
 
 > a defined
 
+> nil
+
 > atom
 
 > a defined
+
+> nil
 
 > atom
 
@@ -24,15 +32,23 @@ Welcome to OurScheme!
 
 > a defined
 
+> ( 3
+  4
+)
+
 > ERROR (attempt to apply non-function) : ( 3
   4
 )
 
 > a defined
 
+> nil
+
 > ERROR (attempt to apply non-function) : nil
 
 > a defined
+
+> nil
 
 > ERROR (attempt to apply non-function) : nil
 
