@@ -653,6 +653,9 @@ int main() {
         catch (SyntaxException &e) {
             std::cout << e.what();
         }
+        catch (SemanticException &e) {
+            std::cout << e.what();
+        }
         catch (...) {
             std::cout << "Unknown error" << std::endl;
             break;
