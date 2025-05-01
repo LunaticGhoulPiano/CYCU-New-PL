@@ -95,50 +95,60 @@ class Debugger {
 Debugger gDebugger;
 
 /* Error Exceptions */
-class BaseException: public std::exception {
+class ExitException: public std::exception {
     protected:
         std::string message = "";
     public:
-        explicit BaseException(const std::string &msg): message(msg) {}
+        explicit ExitException(const std::string &msg): message(msg) {}
         const char *what() const noexcept override {
             return message.c_str();
         }
 };
 
-class CorrectExit: public BaseException {
+class SyntaxException: public std::exception {
+    protected:
+        std::string message = "";
+    public:
+        explicit SyntaxException(const std::string &msg): message(msg) {}
+        const char *what() const noexcept override {
+            return message.c_str();
+        }
+};
+
+class CorrectExit: public ExitException { // Exit (Common usage)
     public:
         CorrectExit():
-            BaseException("\n> \nThanks for using OurScheme!") {}
+            ExitException("\n> \nThanks for using OurScheme!") {}
+};
+
+// ERROR (no more input) : END-OF-FILE encountered
+class NoMoreInput: public ExitException { // EOF & Exit (Common usage)
+    public:
+        NoMoreInput(): ExitException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!") {}
 };
 
 // ERROR (unexpected token) : atom or '(' expected when token at Line X Column Y is >>...<<
-class UnexpectedToken: public BaseException {
+class UnexpectedToken: public SyntaxException { // Syntax Error (Project 1)
     public:
         UnexpectedToken(int line, int column, const std::string token):
-            BaseException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
+            SyntaxException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
 // ERROR (unexpected token) : ')' expected when token at Line X Column Y is >>...<<
-class NoRightParen: public BaseException {
+class NoRightParen: public SyntaxException { // Syntax Error (Project 1)
     public:
         NoRightParen(int line, int column, const std::string token):
-            BaseException("\n> ERROR (unexpected token) : ')' expected when token at Line "
+            SyntaxException("\n> ERROR (unexpected token) : ')' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n") {}
 };
 
 // ERROR (no closing quote) : END-OF-LINE encountered at Line X Column Y
-class NoClosingQuote: public BaseException {
+class NoClosingQuote: public SyntaxException { // Syntax Error (Project 1)
     public:
         NoClosingQuote(int line, int column):
-            BaseException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+            SyntaxException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + "\n") {}
-};
-
-// ERROR (no more input) : END-OF-FILE encountered
-class NoMoreInput: public BaseException {
-    public:
-        NoMoreInput(): BaseException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!") {}
 };
 
 /* S-Expression Parser */
@@ -162,8 +172,6 @@ class S_Exp_Parser {
         std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
     
     public:
-        std::vector<std::shared_ptr<AST>> tree_roots;
-
         void resetInfos() { // when a <S-exp> ended or error encountered
             lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
             dot_info = std::stack<std::pair<bool, int>>();
@@ -180,6 +188,13 @@ class S_Exp_Parser {
             if (! tree_root || tree_root->isAtom) return;
             if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == TokenType::SYMBOL && tree_root->left->atom.value == "exit"
                 && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw CorrectExit();
+        }
+
+        void endSExp(std::shared_ptr<AST> cur_node) {
+            std::cout << "\n> ";
+            printAST(cur_node);
+            // gDebugger.debugPrintAST(cur_node); // you can use this to debug
+            resetInfos();
         }
 
         bool parseAndBuildAST(const Token &token, int lineNum, int columnNum) {
@@ -240,11 +255,7 @@ class S_Exp_Parser {
                 }
                 else { // <S-exp> ended
                     checkExit(cur_node); // check if car == "exit" && cdr == "nil"
-                    std::cout << "\n> ";
-                    printAST(cur_node);
-                    // gDebugger.debugPrintAST(cur_node); // you can use this to debug
-                    tree_roots.push_back(cur_node);
-                    resetInfos();
+                    endSExp(cur_node);
                 }
             }
             else {
@@ -263,13 +274,7 @@ class S_Exp_Parser {
                     lists_info.top().second.push_back(cur_node);
                     if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
                 }
-                else { // <S-exp> ended
-                    std::cout << "\n> ";
-                    printAST(cur_node);
-                    // gDebugger.debugPrintAST(cur_node); // you can use this to debug
-                    tree_roots.push_back(cur_node);
-                    resetInfos();
-                }
+                else endSExp(cur_node); // <S-exp> ended
             }
 
             return lists_info.empty(); // if the whole <S-exp> ended
@@ -391,11 +396,11 @@ class S_Exp_Lexer {
                 token = Token(); // reset
                 return res;
             }
-            catch (CorrectExit &e) { // no need to eat a line
+            catch (ExitException &e) { // CorrectExit, no need to eat a line
                 parser.resetInfos();
                 throw;
             }
-            catch (BaseException &e) {
+            catch (SyntaxException &e) {
                 parser.resetInfos();
                 if (eat) eatALine(); // eat: if need to eat a line when error encountered
                 throw;
@@ -648,21 +653,11 @@ int main() {
         try {
             lexer.readAndTokenize(parser);
         }
-        catch (CorrectExit &c) {
-            std::cout << c.what();
-            break;
-        }
-        catch (NoMoreInput &e) {
+        catch (ExitException &e) {
             std::cout << e.what();
             break;
         }
-        catch (UnexpectedToken &e) {
-            std::cout << e.what();
-        }
-        catch (NoClosingQuote &e) {
-            std::cout << e.what();
-        }
-        catch (NoRightParen &e) {
+        catch (SyntaxException &e) {
             std::cout << e.what();
         }
         catch (...) {
