@@ -185,9 +185,44 @@ class S_Exp_Parser {
                 && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
 
+        std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, bool isRoot = true, int depth = 0, bool isFirstTokenOfLine = true, std::string s_exp = "") { // recursively print
+            if (cur == nullptr) return s_exp;
+            // ATOM
+            if (cur->isAtom) {
+                if (cur->atom.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
+                else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->atom.value + "\n");
+                return s_exp;
+            }
+            // LP: new list started
+            if (isRoot) {
+                s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "(");
+                depth++;
+                isFirstTokenOfLine = false;
+            }
+            // car
+            s_exp = prettyWriteSExp(cur->left, true, depth, isFirstTokenOfLine, s_exp);
+            // cdr
+            if (cur->right && cur->right->isAtom && cur->right->atom.type != TokenType::NIL) {
+                s_exp += (std::string(depth * 2, ' ') + ".\n");
+                s_exp = prettyWriteSExp(cur->right, true, depth, true, s_exp);
+            }
+            else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, false, depth, true, s_exp); //printAST(cur->right, false, depth);
+            else if (! cur->right || cur->right->atom.type == TokenType::NIL) ; // nothing
+            else {
+                s_exp += (std::string(depth * 2, ' ') + ".\n");
+                s_exp = prettyWriteSExp(cur->right, true, depth, true, s_exp);
+            }
+            // RP: cur list ended
+            if (isRoot) {
+                depth--;
+                s_exp += (std::string(depth * 2, ' ') + ")\n");
+            }
+            
+            return s_exp;
+        }
+
         void endSExp(std::shared_ptr<AST> cur_node) {
-            std::cout << "\n> ";
-            printAST(cur_node);
+            std::cout << "\n> " << prettyWriteSExp(cur_node);
             resetInfos();
         }
 
@@ -272,40 +307,6 @@ class S_Exp_Parser {
             }
 
             return lists_info.empty(); // if the whole <S-exp> ended
-        }
-
-        void printAST(const std::shared_ptr<AST> &cur, bool isRoot = true, int depth = 0, bool isFirstTokenOfLine = true) { // recursively print
-            if (cur == nullptr) return;
-            // ATOM
-            if (cur->isAtom) {
-                if (cur->atom.type == TokenType::QUOTE) std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << "quote\n";
-                else std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << cur->atom.value << "\n";
-                return;
-            }
-            // LP: new list started
-            if (isRoot) {
-                std::cout << (isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") << "(";
-                depth++;
-                isFirstTokenOfLine = false;
-            }
-            // car
-            printAST(cur->left, true, depth, isFirstTokenOfLine);
-            // cdr
-            if (cur->right && cur->right->isAtom && cur->right->atom.type != TokenType::NIL) {
-                std::cout << std::string(depth * 2, ' ') << ".\n";
-                printAST(cur->right, true, depth);
-            }
-            else if (cur->right && ! cur->right->isAtom) printAST(cur->right, false, depth);
-            else if (! cur->right || cur->right->atom.type == TokenType::NIL) ; // nothing
-            else {
-                std::cout << std::string(depth * 2, ' ') << ".\n";
-                printAST(cur->right, true, depth);
-            }
-            // RP: cur list ended
-            if (isRoot) {
-                depth--;
-                std::cout << std::string(depth * 2, ' ') << ")\n";
-            }
         }
 };    
 
