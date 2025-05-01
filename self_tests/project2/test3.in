@@ -1,0 +1,97 @@
+1
+; test 1
+(define (main a) ; print type and value of a
+    a
+    (type-of a))
+
+(define (type-of arg) ; print type of arg
+  (cond ((atom? arg) 'atom)
+        ((pair? arg) 'pair)
+        ((list? arg) 'list)
+        ((null? arg) 'null)
+        ((integer? arg) 'integer)
+        ((real? arg) 'real)
+        ((number? arg) 'number)
+        ((string? arg) 'string)
+        ((boolean? arg) 'boolean)
+        ((symbol? arg) 'symbol)
+        (else 'unknown)))
+
+(define a '(3 4))
+(main a)
+(define a (atom? a))
+(main a)
+(define a (pair? a))
+(main a)
+
+clean-environment
+
+; test 2
+(define (main a) ; main function: print type and value of a
+    "The type and value a is "
+    a
+    (type-of a)
+    "and the result of calculate() is "
+    (calculate 1234 2234)
+)
+
+(define (calculate a b) ; function 1: calculate
+  (begin (+(-(*(/ a b) b) a) (* 100.03 b)))
+)
+
+(define (type-of arg) ; function 2: print type of arg
+  (cond ((atom? arg) 'atom)
+        ((pair? arg) 'pair)
+        ((list? arg) 'list)
+        ((null? arg) 'null)
+        ((integer? arg) 'integer)
+        ((real? arg) 'real)
+        ((number? arg) 'number)
+        ((string? arg) 'string)
+        ((boolean? arg) 'boolean)
+        ((symbol? arg) 'symbol)
+        (else 'unknown)))
+
+(define a '(3 4))
+(main a)
+(define a (atom? a))
+(main a)
+(define a (pair? a))
+(main a)
+
+clean-environment
+
+; test 3
+(define (main) ; main function: print 3 <S-exp>s
+        "this is a string"
+        -.9876453210
+        '('test)
+)
+(main)
+
+clean-environment
+
+; test 4
+(define (main a) ; print type and value of a
+    (begin (
+            a
+            (type-of a)
+           )
+    )
+)
+
+(define (type-of arg) ; print type of arg
+  (cond ((atom? arg) 'atom)
+        ((pair? arg) 'pair)
+        ((list? arg) 'list)
+        ((null? arg) 'null)
+        ((integer? arg) 'integer)
+        ((real? arg) 'real)
+        ((number? arg) 'number)
+        ((string? arg) 'string)
+        ((boolean? arg) 'boolean)
+        ((symbol? arg) 'symbol)
+        (else 'unknown)))
+
+(main 4)
+(exit)
