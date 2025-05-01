@@ -165,12 +165,6 @@ class S_Exp_Parser {
         // check num of <S-exp> after DOT
         std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
         S_Exp_Evaluator evaluator;
-    
-    public:
-        void resetInfos() { // when a <S-exp> ended or error encountered
-            lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
-            dot_info = std::stack<std::pair<bool, int>>();
-        }
 
         std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
             const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{TokenType::NIL, "nil"})) { // the part after DOT (cdr)
@@ -225,6 +219,12 @@ class S_Exp_Parser {
         void endSExp(std::shared_ptr<AST> cur_node) {
             std::cout << "\n> " << prettyWriteSExp(cur_node);
             resetInfos();
+        }
+    
+    public:
+        void resetInfos() { // when a <S-exp> ended or error encountered
+            lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
+            dot_info = std::stack<std::pair<bool, int>>();
         }
 
         bool parseAndBuildAST(const Token &token, int lineNum, int columnNum) {
@@ -316,6 +316,7 @@ class S_Exp_Lexer {
     private:
         char ch;
         int lineNum = 1, columnNum = 0;
+        bool s_exp_ended = false;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
         S_Exp_Parser parser;
 
@@ -404,8 +405,6 @@ class S_Exp_Lexer {
         }
 
     public:
-        bool s_exp_ended = false;
-        
         S_Exp_Lexer() {
             ch = '\0';
         }
