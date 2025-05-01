@@ -321,6 +321,7 @@ class S_Exp_Lexer {
         char ch;
         int lineNum = 1, columnNum = 0;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
+        S_Exp_Parser parser;
 
         bool isWhiteSpace(char ch) {
             return (ch == ' ' || ch == '\t' || ch == '\n');
@@ -388,7 +389,7 @@ class S_Exp_Lexer {
             std::getline(std::cin, useless_line);
         }
 
-        bool saveAToken(Token &token, S_Exp_Parser &parser, int lineNum, int columnNum, bool eat = true) {
+        bool saveAToken(Token &token, int lineNum, int columnNum, bool eat = true) {
             try {
                 judgeType(token);
                 // gDebugger.printType(token); // you can use this to debug
@@ -414,7 +415,7 @@ class S_Exp_Lexer {
             ch = '\0';
         }
 
-        void readAndTokenize(S_Exp_Parser &parser) {
+        void readAndTokenize() {
             Token token;
             std::stack<char> parenStack;
             lineNum = 1;
@@ -442,7 +443,7 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                             eatALine();
                             if (s_exp_ended) {
                                 lineNum = 1;
@@ -470,7 +471,7 @@ class S_Exp_Lexer {
                                 throw NoClosingQuote(lineNum, columnNum);
                             }
                             else {
-                                s_exp_ended = saveAToken(token, parser, lineNum, columnNum, false);
+                                s_exp_ended = saveAToken(token, lineNum, columnNum, false);
                                 
                                 if (s_exp_ended) {
                                     lineNum = 1;
@@ -489,7 +490,7 @@ class S_Exp_Lexer {
                                 columnNum++;
                             }
                             else {
-                                s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                                s_exp_ended = saveAToken(token, lineNum, columnNum);
                                 
                                 if (s_exp_ended) {
                                     lineNum = 1;
@@ -505,7 +506,7 @@ class S_Exp_Lexer {
                         parenStack.push(ch);
                         token.value += ch; // "("
                         columnNum++; // ex. "   f   (((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 7 is >>.<<
-                        s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                        s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -514,13 +515,13 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                             
                             // save current
                             parenStack.push(ch);
                             token.value += ch; // "("
                             columnNum++; // ex. "123A((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 3 is >>.<<
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                            s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
                         }
                     }
                 }
@@ -536,7 +537,7 @@ class S_Exp_Lexer {
                             parenStack.pop();
                             token.value += ch; // ")"
                             columnNum++;
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                             if (s_exp_ended) {
                                 lineNum = 1;
                                 columnNum = 0;
@@ -550,7 +551,7 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                             if (s_exp_ended) {
                                 lineNum = 1;
                                 columnNum = 0;
@@ -566,7 +567,7 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 token.value += ch; // ")"
                                 columnNum++;
-                                s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                                s_exp_ended = saveAToken(token, lineNum, columnNum);
                                 if (s_exp_ended) {
                                     lineNum = 1;
                                     columnNum = 0;
@@ -591,7 +592,7 @@ class S_Exp_Lexer {
                     if (token.value == "") {
                         token.value += ch;
                         columnNum++;
-                        s_exp_ended = saveAToken(token, parser, lineNum, columnNum); // must be false
+                        s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -599,12 +600,12 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                             
                             token.value += ch; // "\'"
                             if (s_exp_ended) columnNum = 1;
                             else columnNum++;
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                         }
                     }
                 }
@@ -617,13 +618,13 @@ class S_Exp_Lexer {
                         if (token.value[0] == '\"') { // the end of a STRING
                             token.value += ch;
                             columnNum++;
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                             
                             if (s_exp_ended) columnNum = 0;
                         }
                         else { // token + STRING, with no whitespace ex. > asf"
                             // save previous
-                            s_exp_ended = saveAToken(token, parser, lineNum, columnNum);
+                            s_exp_ended = saveAToken(token, lineNum, columnNum);
                             
                             // the start of a STRING
                             token.value += ch;
@@ -648,10 +649,9 @@ int main() {
     std::getline(std::cin, gTestNum);
     std::cout << "Welcome to OurScheme!\n";
     S_Exp_Lexer lexer;
-    S_Exp_Parser parser;
     while (true) {
         try {
-            lexer.readAndTokenize(parser);
+            lexer.readAndTokenize();
         }
         catch (ExitException &e) {
             std::cout << e.what();
