@@ -92,11 +92,11 @@
     - 比對：
         - 在大二的**組合語言與嵌入式系統**課程使用的[WinMerge](https://winmerge.org/downloads/?lang=zh_tw)是最熟悉的老熟人
         - 但我自己的習慣是使用VScode內建的比對功能
-            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/choose_to_compare.jpeg?raw=true)
-            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/compare_with_chosen.jpeg?raw=true)
-            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/native_compare.jpeg?raw=true)
+            ![image](./pictures/choose_to_compare.jpeg)
+            ![image](./pictures/compare_with_chosen.jpeg)
+            ![image](./pictures/native_compare.jpeg)
         - 你也可以使用extension，例如[Compare Folders](https://marketplace.visualstudio.com/items?itemName=moshfeu.compare-folders)：
-            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/compare_folders.jpeg?raw=true)
+            ![image](./pictures/compare_folders.jpeg)
 
 ## Structure
 ```
