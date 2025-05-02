@@ -88,6 +88,7 @@ Debugger gDebugger;
 class ExitException: public std::exception { // Common usage
     protected:
         std::string message = "";
+
     public:
         explicit ExitException(const std::string &msg): message(msg) {}
         const char *what() const noexcept override {
@@ -106,6 +107,7 @@ class ExitException: public std::exception { // Common usage
 class SyntaxException: public std::exception { // Project 1
     protected:
         std::string message = "";
+        
     public:
         explicit SyntaxException(const std::string &msg): message(msg) {}
         const char *what() const noexcept override {
