@@ -198,10 +198,27 @@ class S_Exp_Parser {
             return s_exp;
         }
 
-        void endSExp(std::shared_ptr<AST> cur_node) {
-            std::cout << "\n> " << prettyWriteSExp(cur_node);
-            // gDebugger.debugPrintAST(cur_node); // you can use this to debug
-            resetInfos();
+        void endSExp(std::shared_ptr<AST> cur_node, bool isAtom) {
+            // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
+            while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
+                // get quote
+                auto quote_list = std::move(lists_info.top().second);
+                lists_info.pop();
+                // make quote
+                cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
+            }
+
+            // current <S-exp> ended
+            if (! lists_info.empty()) { // current <S-exp> is not the most outer <S-exp>
+                lists_info.top().second.push_back(cur_node);
+                if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
+            }
+            else { // current <S-exp> is the most outer <S-exp>
+                if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
+                std::cout << "\n> " << prettyWriteSExp(cur_node);
+                // gDebugger.debugPrintAST(cur_node); // you can use this to debug
+                resetInfos();
+            }
         }
     
     public:
@@ -252,42 +269,11 @@ class S_Exp_Parser {
                     cur_node = makeList(cur_list, cdr);
                 }
                 
-                // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
-                    // get quote
-                    auto quote_list = std::move(lists_info.top().second);
-                    lists_info.pop();
-                    // make quote
-                    cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
-                }
-
-                // end a dotted-pair
-                if (! lists_info.empty()) {
-                    lists_info.top().second.push_back(cur_node);
-                    if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
-                }
-                else { // <S-exp> ended
-                    checkExit(cur_node); // check if car == "exit" && cdr == "nil"
-                    endSExp(cur_node);
-                }
+                endSExp(cur_node, false);
             }
             else {
                 auto cur_node = std::make_shared<AST>(token); // <ATOM>
-
-                // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
-                    // get quote
-                    auto quote_list = std::move(lists_info.top().second);
-                    lists_info.pop();
-                    // make quote
-                    cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
-                }
-        
-                if (! lists_info.empty()) {
-                    lists_info.top().second.push_back(cur_node);
-                    if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
-                }
-                else endSExp(cur_node); // <S-exp> ended
+                endSExp(cur_node, true);
             }
 
             return lists_info.empty(); // if the whole <S-exp> ended

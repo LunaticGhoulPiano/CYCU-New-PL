@@ -1,3 +1,7 @@
 *.exe
 .vscode
-self_tests/**/*.bug
+self_tests/**
+!self_tests/
+!self_tests/**/
+!self_tests/**/*.in
+!self_tests/**/*.out

@@ -213,47 +213,10 @@ class S_Exp_Evaluator {
             {"if", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {std::string("S"), {std::string("2"), std::string("3")}}}},
             {"cond", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {std::string("+"), {std::string("1")}}}},
             {"clean-environment", {KEYWORD_TYPE::CLEAN_ENVIRONMENT, {std::string("-"), {std::string("0")}}}}
-        };        
+        };
 
         bool isKeyword(const std::string &str) {
             return keywords.find(str) != keywords.end();
-        }
-    public:
-        //
-};
-
-/* S-Expression Parser */
-// <S-exp> ::= <ATOM>
-//             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
-//             | QUOTE <S-exp>
-         
-// <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
-//             | NIL | T | LEFT-PAREN RIGHT-PAREN
-class S_Exp_Parser {
-    private:
-        enum class LIST_MODE {
-            NO_DOT,
-            WITH_DOT,
-            QUOTE
-        };
-    
-        // store list modes and lists
-        std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>> lists_info; // first: mode, second: list
-        // check num of <S-exp> after DOT
-        std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
-        S_Exp_Evaluator evaluator;
-
-        std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
-            const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{TokenType::NIL, "nil"})) { // the part after DOT (cdr)
-            std::shared_ptr<AST> res = cdr;
-            for (int i = static_cast<int>(tree_root.size()) - 1; i >= 0; --i) res = std::make_shared<AST>(tree_root[i], res);
-            return res;
-        }
-
-        void checkExit(const std::shared_ptr<AST> &tree_root) {
-            if (! tree_root || tree_root->isAtom) return;
-            if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == TokenType::SYMBOL && tree_root->left->atom.value == "exit"
-                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
 
         std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
@@ -293,15 +256,72 @@ class S_Exp_Parser {
             return s_exp;
         }
 
-        void endSExp(std::shared_ptr<AST> cur_node) {
-            std::cout << "\n> " << prettyWriteSExp(cur_node);
-            resetInfos();
+    public:
+        void evaluate(std::shared_ptr<AST> root) {
+            std::cout << "\n> " << prettyWriteSExp(root);
+        }
+};
+
+/* S-Expression Parser */
+// <S-exp> ::= <ATOM>
+//             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
+//             | QUOTE <S-exp>
+         
+// <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
+//             | NIL | T | LEFT-PAREN RIGHT-PAREN
+class S_Exp_Parser {
+    private:
+        enum class LIST_MODE {
+            NO_DOT,
+            WITH_DOT,
+            QUOTE
+        };
+    
+        // store list modes and lists
+        std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>> lists_info; // first: mode, second: list
+        // check num of <S-exp> after DOT
+        std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
+        S_Exp_Evaluator evaluator;
+
+        std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
+            const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{TokenType::NIL, "nil"})) { // the part after DOT (cdr)
+            std::shared_ptr<AST> res = cdr;
+            for (int i = static_cast<int>(tree_root.size()) - 1; i >= 0; --i) res = std::make_shared<AST>(tree_root[i], res);
+            return res;
+        }
+
+        void checkExit(const std::shared_ptr<AST> &tree_root) {
+            if (! tree_root || tree_root->isAtom) return;
+            if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == TokenType::SYMBOL && tree_root->left->atom.value == "exit"
+                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
     
     public:
         void resetInfos() { // when a <S-exp> ended or error encountered
             lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
             dot_info = std::stack<std::pair<bool, int>>();
+        }
+
+        void endSExp(std::shared_ptr<AST> cur_node, bool isAtom) {
+            // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
+            while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
+                // get quote
+                auto quote_list = std::move(lists_info.top().second);
+                lists_info.pop();
+                // make quote
+                cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
+            }
+
+            // current <S-exp> ended
+            if (! lists_info.empty()) { // current <S-exp> is not the most outer <S-exp>
+                lists_info.top().second.push_back(cur_node);
+                if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
+            }
+            else { // current <S-exp> is the most outer <S-exp>
+                if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
+                evaluator.evaluate(cur_node);
+                resetInfos();
+            }
         }
 
         bool parseAndBuildAST(const Token &token, int lineNum, int columnNum) {
@@ -346,42 +366,11 @@ class S_Exp_Parser {
                     cur_node = makeList(cur_list, cdr);
                 }
                 
-                // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
-                    // get quote
-                    auto quote_list = std::move(lists_info.top().second);
-                    lists_info.pop();
-                    // make quote
-                    cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
-                }
-
-                // end a dotted-pair
-                if (! lists_info.empty()) {
-                    lists_info.top().second.push_back(cur_node);
-                    if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
-                }
-                else { // <S-exp> ended
-                    checkExit(cur_node); // check if car == "exit" && cdr == "nil"
-                    endSExp(cur_node);
-                }
+                endSExp(cur_node, false);
             }
             else {
                 auto cur_node = std::make_shared<AST>(token); // <ATOM>
-
-                // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
-                while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
-                    // get quote
-                    auto quote_list = std::move(lists_info.top().second);
-                    lists_info.pop();
-                    // make quote
-                    cur_node = makeList({std::make_shared<AST>(Token{TokenType::QUOTE, ""}), cur_node});
-                }
-        
-                if (! lists_info.empty()) {
-                    lists_info.top().second.push_back(cur_node);
-                    if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
-                }
-                else endSExp(cur_node); // <S-exp> ended
+                endSExp(cur_node, true);
             }
 
             return lists_info.empty(); // if the whole <S-exp> ended

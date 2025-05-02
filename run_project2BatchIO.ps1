@@ -1,0 +1,40 @@
+# === 1. Compile ===
+Push-Location "Complete_Code_by_Projects"
+g++ project2.cpp -std=c++2a -o ..\project2.exe
+Pop-Location
+
+# === 2. Set paths ===
+$testDir = "./self_tests/project2"
+$exePath = "./project2.exe"
+$outputDir = "$testDir/test_outputs_project2"
+$logFile = "$outputDir/error_test_cases.txt"
+
+# === 3. Create output folder if not exists ===
+if (!(Test-Path $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
+}
+
+# === 4. Initialize log file (overwrite if exists)
+if (Test-Path $logFile) {
+    Remove-Item $logFile
+}
+
+# === 5. Run test cases ===
+Get-ChildItem "$testDir/*.in" | ForEach-Object {
+    $filename = $_.BaseName
+    $inputFile = $_.FullName
+    $outputFile = "$outputDir/$filename.bug"
+    $correctAnswerFile = "$testDir/$filename.out"
+
+    # === 5.1 Run the program and produce .bug
+    Get-Content $inputFile | & $exePath > $outputFile
+
+    # === 5.2 Compare .bug and .out
+    if (Compare-Object (Get-Content $outputFile) (Get-Content $correctAnswerFile) -SyncWindow 0) {
+        $filenameWithExt = "$filename.bug"
+        Add-Content -Path $logFile -Value $filenameWithExt
+        Write-Host $filenameWithExt
+    }
+}
+
+Write-Host "All tests completed."
