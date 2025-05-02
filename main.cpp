@@ -140,7 +140,84 @@ class SemanticException: public std::exception { // Project 2
 /* S-Expression Evaluator */
 class S_Exp_Evaluator {
     private:
-        //
+        /*
+        // just to record how to use std::functional
+        std::unordered_map<std::string, std::function<double(double, double)>> binary_operators = {
+            {"+", [](double a, double b) { return a + b; }}, // a + b
+            {"-", [](double a, double b) { return a - b; }}, // a - b
+            {"*", [](double a, double b) { return a * b; }}, // a * b
+            {"/", [](double a, double b) { return a / b; }}, // a / b
+            {"<", [](double a, double b) { return a < b; }}, // a < b
+            {">", [](double a, double b) { return a > b; }}, // a > b
+            {"<=", [](double a, double b) { return a <= b; }}, // a <= b
+            {">=", [](double a, double b) { return a >= b; }}, // a >= b
+            {"=", [](double a, double b) { return a == b; }}, // a == b
+            {"!=", [](double a, double b) { return a != b; }}, // a != b
+        };
+        */
+       
+        enum class KEYWORD_TYPE {
+            CONSTRUCTOR,
+            QUOTE,
+            DEFINE,
+            PART_ACCESSOR,
+            PRIMITIVE_PREDICATE,
+            OPERATOR,
+            EQIVALENCE_TESTER,
+            SEQUENCING_AND_FUNCTIONAL_COMPOSITION,
+            CONDITIONAL_OPERATOR,
+            CLEAN_ENVIRONMENT
+        };
+
+        // {<KEYWORD>, {KEY_WORD_TYPE, {<ARGUMENT_MODE>, {<ARGUMENT_NUMBER>}}}}
+        // <ARGUMENT_MODE> ::= "+" -> keyword accept more than <ARGUMENT_NUMBER> arguments, and size of {<ARGUMENT_NUMBER>} must be 1
+        // <ARGUMENT_MODE> ::= "-" -> keyword accept only <ARGUMENT_NUMBER> arguments, and size of {<ARGUMENT_NUMBER>} must be 1
+        // <ARGUMENT_MODE> ::= "S" -> keyword accept specific numbers of arguments, which are in {<ARGUMENT_NUMBER>}
+        std::unordered_map<std::string, std::pair<KEYWORD_TYPE, std::pair<std::string, std::vector<std::string>>>> keywords = {
+            {"cons", {KEYWORD_TYPE::CONSTRUCTOR, {std::string("-"), {std::string("2")}}}},
+            {"lists", {KEYWORD_TYPE::CONSTRUCTOR, {std::string("+"), {std::string("0")}}}},
+            {"quote", {KEYWORD_TYPE::QUOTE, {std::string("-"), {std::string("1")}}}},
+            {"\'", {KEYWORD_TYPE::QUOTE, {std::string("-"), {std::string("1")}}}},
+            {"define", {KEYWORD_TYPE::DEFINE, {std::string("-"), {std::string("2")}}}},
+            {"car", {KEYWORD_TYPE::PART_ACCESSOR, {std::string("-"), {std::string("1")}}}},
+            {"cdr", {KEYWORD_TYPE::PART_ACCESSOR, {std::string("-"), {std::string("1")}}}},
+            {"atom?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"pair?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"list?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"null?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"integer?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"real?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"number?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"string?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"boolean?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"symbol?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {std::string("-"), {std::string("1")}}}},
+            {"+", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"-", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"*", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"/", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"not", {KEYWORD_TYPE::OPERATOR, {std::string("-"), {std::string("1")}}}},
+            {"and", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"or", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {">", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {">=", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"<", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"<=", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"=", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"string-append", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"string>?", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"string<?", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"string=?", {KEYWORD_TYPE::OPERATOR, {std::string("+"), {std::string("2")}}}},
+            {"eqv?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {std::string("-"), {std::string("2")}}}},
+            {"equql?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {std::string("-"), {std::string("2")}}}},
+            {"begin", {KEYWORD_TYPE::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, {std::string("+"), {std::string("1")}}}},
+            {"if", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {std::string("S"), {std::string("2"), std::string("3")}}}},
+            {"cond", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {std::string("+"), {std::string("1")}}}},
+            {"clean-environment", {KEYWORD_TYPE::CLEAN_ENVIRONMENT, {std::string("-"), {std::string("0")}}}}
+        };        
+
+        bool isKeyword(const std::string &str) {
+            return keywords.find(str) != keywords.end();
+        }
     public:
         //
 };
