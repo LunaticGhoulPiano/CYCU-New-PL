@@ -30,8 +30,8 @@
 
 ## What is OurScheme?
 - 它是中原資工大三下的**程式語言**課程Project，會有```OurC```與```OurScheme```兩種每年輪替，OurScheme是比較簡單的。
-- ```OurC```要寫簡化版的```C```compiler, ```OurScheme```要寫簡化版的```Scheme```interpreter
-- ```Scheme```是```LISP```的其中一種方言(dialect)，而```OurScheme```是此門課程將```Scheme```簡化後的方言（同理，```OurC```也是```C```的簡化方言）。
+- ```OurC```要寫簡化版的```C```compiler, ```OurScheme```要寫簡化版的```Scheme```interpreter（一個使用Python實作的Scheme interpreter[見此](https://github.com/vladimirfomene/scheme-interpreter)，線上IDE[請點此](https://www.jdoodle.com/execute-scheme-online)）
+- [Scheme](https://zh.wikipedia.org/zh-tw/Scheme)是[LISP](https://zh.wikipedia.org/wiki/LISP)的其中一種方言([dialect](https://en.wikipedia.org/wiki/Programming_language#Dialects,_flavors_and_implementations))，而```OurScheme```是此門課程將```Scheme```簡化後的方言（同理，```OurC```也是```C```的簡化方言）。
 - 詳細實現內容請見[./AboutProject底下的OurSchemeProj{1/2/3/4}-UTF-8.txt](./AboutProject/)，現在新版的測試系統不會以```HowToWriteOurScheme.doc```為準，例如```ERROR (level of CLEAN-ENVIRONMENT) / ERROR (level of DEFINE) / ERROR (level of EXIT)```就不需實作。
 
 ## Commands
@@ -89,6 +89,14 @@
                     [main.cpp]: 2 error case(s) are found!
                     ```
             - 如果想要順便學用powershell寫測試腳本，可以參考[Pester官方文檔](https://pester.dev/docs/quick-start)及[微軟的測試檔解釋](https://devblogs.microsoft.com/scripting/unit-testing-powershell-code-with-pester/)
+    - 比對：
+        - 在大二的**組合語言與嵌入式系統**課程使用的[WinMerge](https://winmerge.org/downloads/?lang=zh_tw)是最熟悉的老熟人
+        - 但我自己的習慣是使用VScode內建的比對功能
+            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/choose_to_compare.jpeg?raw=true)
+            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/compare_with_chosen.jpeg?raw=true)
+            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/native_compare.jpeg?raw=true)
+        - 你也可以使用extension，例如[Compare Folders](https://marketplace.visualstudio.com/items?itemName=moshfeu.compare-folders)：
+            ![image](https://github.com/LunaticGhoulPiano/CYCU-New-PL/blob/master/pictures/compare_folders.jpeg?raw=true)
 
 ## Structure
 ```
@@ -123,6 +131,11 @@ CYCU-New-PL
 ├──CompleteCodeByProjects // 對應project的完整程式碼及說明文件，一個project完成才會丟
 │ ├──Project1.cpp
 │ └──Project1.md
+├──pictures // 說明用圖片
+│ ├──choose_to_compare.jpeg
+│ ├──compare_folders.jpeg
+│ ├──compare_with_chosen.jpeg
+│ └──native_compare.jpeg
 ├──self_tests // 自訂義的測資，部分為測試系統官方的，理論上全過就能過測試系統
 │ ├──project1
 │ │   ├──test1.in
