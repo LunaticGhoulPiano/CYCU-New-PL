@@ -2,7 +2,7 @@
 g++ main.cpp -std=c++2a -o main.exe
 
 # set paths
-$testDir = "./self_tests/project1" # change the number of your current-working project here
+$testDir = "./self_tests/project2" # change the number of your current-working project here
 $exePath = "./main.exe"
 $outputDir = "$testDir/test_outputs_main"
 $logFile = "$outputDir/error_test_cases.txt"
@@ -31,7 +31,7 @@ Get-ChildItem "$testDir/*.in" | ForEach-Object {
     if (Compare-Object (Get-Content $outputFile) (Get-Content $correctAnswerFile) -SyncWindow 0) {
         $filenameWithExt = "$filename.bug"
         Add-Content -Path $logFile -Value $filenameWithExt
-        Write-Host $filenameWithExt
+        Write-Host "$filenameWithExt is not equal to $filename.out."
     }
 }
 

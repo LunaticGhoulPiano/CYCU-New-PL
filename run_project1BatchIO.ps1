@@ -33,7 +33,7 @@ Get-ChildItem "$testDir/*.in" | ForEach-Object {
     if (Compare-Object (Get-Content $outputFile) (Get-Content $correctAnswerFile) -SyncWindow 0) {
         $filenameWithExt = "$filename.bug"
         Add-Content -Path $logFile -Value $filenameWithExt
-        Write-Host $filenameWithExt
+        Write-Host "$filenameWithExt is not equal to $filename.out."
     }
 }
 
