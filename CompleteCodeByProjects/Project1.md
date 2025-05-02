@@ -237,7 +237,7 @@
 - **並非recursive descending parsing，而是將樹的概念扁平化成stack進行parse，當```<S-exp>```結束時才加入樹**
 - 為**Top-Down parsing**
 - **每次在tokenizer切出一個token時被呼叫**，即每個獨立的token都會跑一次
-- 回傳**目前的完整```<S-exp>```是否結束```**
+- 回傳**目前的完整```<S-exp>```是否結束**
 
 ### ```class S_Exp_Lexer```:
 #### private:
