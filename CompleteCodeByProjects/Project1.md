@@ -205,7 +205,7 @@
 - 因為stack就是扁平化的樹，因此我使用stack處理```<S-exp>```，並在此正在處理的```<S-exp>```完成時pop出來並加入到樹中
 - 此stack的top永遠是**正在處理的未完成```<S-exp>```**
 - 此stack中的結構：
-    - ```first```: LISTMODE
+    - ```first```: LIST_MODE
     - ```second```: 正在處理的未完成```<S-exp>```
 ##### ```std::stack<std::pair<bool, int>> dot_info;```:
 - 也是stack，但僅當遇到```.```時才會被壓入
