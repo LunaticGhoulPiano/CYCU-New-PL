@@ -33,8 +33,16 @@ Get-ChildItem "$testDir/*.in" | ForEach-Object {
     if (Compare-Object (Get-Content $outputFile) (Get-Content $correctAnswerFile) -SyncWindow 0) {
         $filenameWithExt = "$filename.bug"
         Add-Content -Path $logFile -Value $filenameWithExt
-        Write-Host "$filenameWithExt is not equal to $filename.out."
+        Write-Host "[project2.cpp]: $filenameWithExt is not equal to $filename.out."
     }
 }
 
-Write-Host "All tests completed."
+# check if $outputDir is empty and delete it if so
+if ((Get-ChildItem $outputDir).Count -eq 0) {
+    Remove-Item $outputDir -Force
+    Write-Host "[project2.cpp]: All tests are correct!"
+}
+else {
+    $errorCount = (Get-Content $logFile).Count
+    Write-Host "[project2.cpp]: $errorCount error case(s) are found!"
+}
