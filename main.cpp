@@ -462,13 +462,13 @@ class S_Exp_Lexer {
                 token = Token(); // reset
                 return res;
             }
-            catch (ExitException &e) { // CorrectExit, no need to eat a line
-                parser.resetInfos();
-                throw;
-            }
             catch (SyntaxException &e) {
                 parser.resetInfos();
                 if (eat) eatALine(); // eat: if need to eat a line when error encountered
+                throw;
+            }
+            catch (...) { // if error encountered, need to reset
+                parser.resetInfos();
                 throw;
             }
         }

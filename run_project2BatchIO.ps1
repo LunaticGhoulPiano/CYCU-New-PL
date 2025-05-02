@@ -1,5 +1,5 @@
 # compile
-Push-Location "Complete_Code_by_Projects"
+Push-Location "CompleteCodeByProjects"
 g++ project2.cpp -std=c++2a -o ..\project2.exe
 Pop-Location
 
