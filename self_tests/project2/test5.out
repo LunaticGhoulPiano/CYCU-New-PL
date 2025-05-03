@@ -1,0 +1,73 @@
+Welcome to OurScheme!
+
+> main defined
+
+> type-of defined
+
+> a defined
+
+> ( 3
+  4
+)
+
+> pair
+
+> a defined
+
+> nil
+
+> atom
+
+> a defined
+
+> nil
+
+> atom
+
+> #<procedure clean-environment>
+
+> main defined
+
+> calculate defined
+
+> type-of defined
+
+> a defined
+
+> ( 3
+  4
+)
+
+> 222233.020
+
+> a defined
+
+> nil
+
+> 222233.020
+
+> a defined
+
+> nil
+
+> 222233.020
+
+> #<procedure clean-environment>
+
+> main defined
+
+> ( ( quote
+    test
+  )
+)
+
+> #<procedure clean-environment>
+
+> main defined
+
+> type-of defined
+
+> ERROR (attempt to apply non-function) : 4
+
+> 
+Thanks for using OurScheme!

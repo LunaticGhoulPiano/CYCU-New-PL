@@ -41,11 +41,48 @@ struct Token {
 /* AST structure */
 struct AST {
     bool isAtom = false;
-    Token atom;
+    Token token;
     std::shared_ptr<AST> left = nullptr, right = nullptr;
-    AST(Token t) : isAtom(true), atom(std::move(t)) {}
+    AST(Token t) : isAtom(true), token(std::move(t)) {}
     AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
 };
+
+/* Debugger */
+class Debugger {
+    public:
+        std::string getType(Token token) {
+            if (token.type == TokenType::LEFT_PAREN) return "LEFT_PAREN";
+            else if (token.type == TokenType::RIGHT_PAREN) return "RIGHT_PAREN";
+            else if (token.type == TokenType::INT) return "INT";
+            else if (token.type == TokenType::STRING) return "STRING";
+            else if (token.type == TokenType::DOT) return "DOT";
+            else if (token.type == TokenType::FLOAT) return "FLOAT";
+            else if (token.type == TokenType::NIL) return "NIL";
+            else if (token.type == TokenType::T) return "T";
+            else if (token.type == TokenType::QUOTE) return "QUOTE";
+            else if (token.type == TokenType::SYMBOL) return "SYMBOL";
+            else return "ERROR: didn't judged!";
+        }
+
+        void printType(Token token) {
+            std::cout << getType(token) << std::endl;
+        }
+
+        void debugPrintAST(const std::shared_ptr<AST> node, int depth = 0, const std::string &prefix = "AST_root") {
+            if (! node) return;
+
+            std::string indent(depth * 2, ' ');
+            std::cout << indent << prefix;
+
+            if (node->isAtom) std::cout << " (isAtom = true, atom = \"" << node->token.value << "\", type = " << getType(node->token) << ")\n";    
+            else {
+                std::cout << " (isAtom = false)\n";
+                debugPrintAST(node->left, depth + 1, "|--- left  -> ");
+                debugPrintAST(node->right, depth + 1, "|--- right -> ");
+            }
+        }
+};
+Debugger gDebugger;
 
 /* Error Exceptions */
 class ExitException: public std::exception { // Common usage
@@ -96,7 +133,7 @@ class SyntaxException: public std::exception { // Project 1
 class SemanticException: public std::exception { // Project 2
     protected:
         std::string message = "";
-        
+
     public:
         explicit SemanticException(const std::string &msg): message(msg) {}
         const char *what() const noexcept override {
@@ -179,57 +216,63 @@ class S_Exp_Evaluator {
         };
 
         // {<KEYWORD>, {KEY_WORD_TYPE, {<ARGUMENT_MODE>, {<ARGUMENT_NUMBER>}}}}
-        std::unordered_map<std::string, std::pair<KEYWORD_TYPE, std::pair<KEYWORD_NUM_MODE, std::vector<std::string>>>> keywords = {
-            {"cons", {KEYWORD_TYPE::CONSTRUCTOR, {KEYWORD_NUM_MODE::ONLY, {std::string("2")}}}},
-            {"lists", {KEYWORD_TYPE::CONSTRUCTOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("0")}}}},
-            {"quote", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"\'", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"define", {KEYWORD_TYPE::DEFINE, {KEYWORD_NUM_MODE::ONLY, {std::string("2")}}}},
-            {"car", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"cdr", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"atom?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"pair?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"list?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"null?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"integer?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"real?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"number?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"string?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"boolean?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"symbol?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"+", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"-", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"*", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"/", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"not", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::ONLY, {std::string("1")}}}},
-            {"and", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"or", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {">", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {">=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"<", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"<=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"string-append", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"string>?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"string<?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"string=?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("2")}}}},
-            {"eqv?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {std::string("2")}}}},
-            {"equql?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {std::string("2")}}}},
-            {"begin", {KEYWORD_TYPE::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("1")}}}},
-            {"if", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::SPECIFIC, {std::string("2"), std::string("3")}}}},
-            {"cond", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {std::string("1")}}}},
-            {"clean-environment", {KEYWORD_TYPE::CLEAN_ENVIRONMENT, {KEYWORD_NUM_MODE::ONLY, {std::string("0")}}}}
+        std::unordered_map<std::string, std::pair<KEYWORD_TYPE, std::pair<KEYWORD_NUM_MODE, std::vector<int>>>> keywords = {
+            {"cons", {KEYWORD_TYPE::CONSTRUCTOR, {KEYWORD_NUM_MODE::ONLY, {2}}}},
+            {"list", {KEYWORD_TYPE::CONSTRUCTOR, {KEYWORD_NUM_MODE::AT_LEAST, {0}}}},
+            {"quote", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"\'", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"define", {KEYWORD_TYPE::DEFINE, {KEYWORD_NUM_MODE::ONLY, {2}}}},
+            {"car", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"cdr", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"atom?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"pair?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"list?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"null?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"integer?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"real?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"number?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"string?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"boolean?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"symbol?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"+", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"-", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"*", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"/", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"not", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
+            {"and", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"or", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {">", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {">=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"<", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"<=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"string-append", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"string>?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"string<?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"string=?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"eqv?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {2}}}},
+            {"equql?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {2}}}},
+            {"begin", {KEYWORD_TYPE::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, {KEYWORD_NUM_MODE::AT_LEAST, {1}}}},
+            {"if", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::SPECIFIC, {2, 3}}}},
+            {"cond", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {1}}}},
+            {"clean-environment", {KEYWORD_TYPE::CLEAN_ENVIRONMENT, {KEYWORD_NUM_MODE::ONLY, {0}}}}
         };
+
+        std::unordered_map<std::string, std::shared_ptr<AST>> env;
 
         bool isKeyword(const std::string &str) {
             return keywords.find(str) != keywords.end();
         }
 
+        bool isDefined(const std::string &str) {
+            return env.find(str) != env.end();
+        }
+
         std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
             if (cur != nullptr) {
                 if (cur->isAtom) { // <S-exp> ::= <ATOM>
-                    if (cur->atom.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
-                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->atom.value + "\n");
+                    if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
+                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->token.value + "\n");
                 }
                 else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
                     // LP: new list started
@@ -241,12 +284,12 @@ class S_Exp_Evaluator {
                     // car
                     s_exp = prettyWriteSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
                     // cdr
-                    if (cur->right && cur->right->isAtom && cur->right->atom.type != TokenType::NIL) {
+                    if (cur->right && cur->right->isAtom && cur->right->token.type != TokenType::NIL) {
                         s_exp += (std::string(depth * 2, ' ') + ".\n");
                         s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
                     }
                     else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, s_exp, depth, false, true);
-                    else if (! cur->right || cur->right->atom.type == TokenType::NIL) ; // nothing
+                    else if (! cur->right || cur->right->token.type == TokenType::NIL) ; // nothing
                     else {
                         s_exp += (std::string(depth * 2, ' ') + ".\n");
                         s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
@@ -262,10 +305,122 @@ class S_Exp_Evaluator {
             return s_exp;
         }
 
+        void executeByKeywords(std::shared_ptr<AST> root) {
+            switch(keywords[root->left->token.value].first) {
+                case KEYWORD_TYPE::CONSTRUCTOR: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::QUOTE: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::DEFINE: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::PART_ACCESSOR: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::PRIMITIVE_PREDICATE: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::OPERATOR: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::EQIVALENCE_TESTER: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::SEQUENCING_AND_FUNCTIONAL_COMPOSITION: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::CONDITIONAL_OPERATOR: {
+                    //
+                    break;
+                }
+                case KEYWORD_TYPE::CLEAN_ENVIRONMENT: {
+                    env.clear();
+                    std::cout << "\n> environment cleaned\n";
+                    break;
+                }
+            }
+        }
+        
+        void isNumberOfArgumentsCorrect(std::shared_ptr<AST> root) { // recursively count each number of argument of a complete non-<ATOM> <S-exp>s
+            if (! isKeyword(root->left->token.value)) {
+                if (root->left->isAtom) {
+                    //
+                }
+                else {
+                    //
+                }
+            }
+            
+            // count from the current layer
+            int arg_num = 0;
+            std::shared_ptr<AST> temp = root->right;
+            while (temp->right != nullptr) {
+                arg_num++;
+                temp = temp->right;
+            }
+            
+            // judge the current layer
+            switch (keywords[root->left->token.value].second.first) {
+                case KEYWORD_NUM_MODE::AT_LEAST: {
+                    if (arg_num < keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
+                    break;
+                }
+                case KEYWORD_NUM_MODE::ONLY: {
+                    if (arg_num != keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
+                    break;
+                }
+                case KEYWORD_NUM_MODE::SPECIFIC: {
+                    const std::vector<int> &arg_nums = keywords[root->left->token.value].second.second; // legal numbers
+                    if (std::find(arg_nums.begin(), arg_nums.end(), arg_num) == arg_nums.end()) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
+                    break;
+                }
+            }
+
+            // std::cout << "\n> " << root->left->token.value << ": there are " << arg_num << " arguments.\n"; // just for debug
+
+            // if there are sub <S-exp>, judge the following
+            if (root->right->left != nullptr && ! root->right->left->isAtom) isNumberOfArgumentsCorrect(root->right->left);
+            if (root->right->right != nullptr && root->right->right->left != nullptr
+                && (! root->right->right->left->isAtom
+                    || (root->right->right->left->token.type == TokenType::NIL
+                        && root->right->right->left->left != nullptr))) isNumberOfArgumentsCorrect(root->right->right->left);
+        }
+
     public:
         void evaluate(std::shared_ptr<AST> root) {
-            std::cout << "\n> " << prettyWriteSExp(root);
+            if (! root->isAtom) {
+                isNumberOfArgumentsCorrect(root);
+                if (isKeyword(root->left->token.value)) {
+                    //
+                }
+                if (root->left->token.type == TokenType::QUOTE) { // QUOTE: "quote"
+                    std::cout << "\n> " << prettyWriteSExp(root); // temp
+                }
+            }
+            else { // <ATOM>
+                if (isKeyword(root->token.value)) std::cout << "\n> #<procedure " << root->token.value << ">\n";
+                else { // <ATOM> is not keyword
+                    if (root->token.type == TokenType::SYMBOL) { // <ATOM> is SYMBOL
+                        if (! isDefined(root->token.value)) throw SemanticException::UnboundSymbol(root->token.value);
+                        else {
+                            // TODO: define SYMBOL
+                        }
+                    }
+                    else std::cout << "\n> " << prettyWriteSExp(root); // just print it
+                }
+            }
         }
+    
 };
 
 /* S-Expression Parser */
@@ -298,8 +453,8 @@ class S_Exp_Parser {
 
         void checkExit(const std::shared_ptr<AST> &tree_root) {
             if (! tree_root || tree_root->isAtom) return;
-            if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == TokenType::SYMBOL && tree_root->left->atom.value == "exit"
-                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw ExitException::CorrectExit();
+            if (tree_root->left && tree_root->left->isAtom && tree_root->left->token.type == TokenType::SYMBOL && tree_root->left->token.value == "exit"
+                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->token.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
     
     public:
@@ -320,7 +475,7 @@ class S_Exp_Parser {
 
             // current <S-exp> ended
             if (! lists_info.empty()) { // current <S-exp> is not the most outer <S-exp>
-                lists_info.top().second.push_back(cur_node);
+                lists_info.top().second.emplace_back(cur_node);
                 if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
             }
             else { // current <S-exp> is the most outer <S-exp>

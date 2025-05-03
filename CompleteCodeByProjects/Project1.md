@@ -39,8 +39,8 @@
 ### ```struct AST```:
 - 定義抽象語法樹的結構
 - 一棵AST就是一個完整個```<S-exp>```
-- 存有```bool isAtom```, ```Token atom```, ```std::shared_ptr<AST> left```與```std::shared_ptr<AST> right```
-- Default為```isAtom = false```, ```atom = Token()```, ```left = nullptr```, ```right = nullptr```
+- 存有```bool isAtom```, ```Token token```, ```std::shared_ptr<AST> left```與```std::shared_ptr<AST> right```
+- Default為```isAtom = false```, ```token = Token()```, ```left = nullptr```, ```right = nullptr```
 
 ### ```class Debugger```:
 - 純粹用來debug

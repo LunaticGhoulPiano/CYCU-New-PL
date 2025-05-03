@@ -1,0 +1,60 @@
+4
+; test 1
+(define (main a) ; print type and value of a
+    (begin a
+    (type-of a)))
+
+(define (type-of arg) ; print type of arg
+  (cond ((atom? arg) 'atom)
+        ((pair? arg) 'pair)
+        ((list? arg) 'list)
+        ((null? arg) 'null)
+        ((integer? arg) 'integer)
+        ((real? arg) 'real)
+        ((number? arg) 'number)
+        ((string? arg) 'string)
+        ((boolean? arg) 'boolean)
+        ((symbol? arg) 'symbol)
+        (else 'unknown)))
+
+(define a '(3 4))
+a
+(main a)
+(define a (atom? a))
+a
+(main a)
+(define a (pair? a))
+a
+(main a)
+
+clean-environment
+
+; test 2
+(define (main a) ; print type and value of a
+    (begin (a
+    (type-of a))))
+
+(define (type-of arg) ; print type of arg
+  (cond ((atom? arg) 'atom)
+        ((pair? arg) 'pair)
+        ((list? arg) 'list)
+        ((null? arg) 'null)
+        ((integer? arg) 'integer)
+        ((real? arg) 'real)
+        ((number? arg) 'number)
+        ((string? arg) 'string)
+        ((boolean? arg) 'boolean)
+        ((symbol? arg) 'symbol)
+        (else 'unknown)))
+
+(define a '(3 4))
+a
+(main a)
+(define a (atom? a))
+a
+(main a)
+(define a (pair? a))
+a
+(main a)
+
+(exit)

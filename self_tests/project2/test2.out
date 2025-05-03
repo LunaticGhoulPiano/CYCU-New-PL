@@ -1,56 +1,104 @@
 Welcome to OurScheme!
 
-> main defined
-
-> type-of defined
-
-> a defined
-
 > ( 3
+  .
+  2
+)
+
+> ( ( 1
+    .
+    2
+  )
+  .
+  3
+)
+
+> nil
+
+> ( nil
+)
+
+> ( nil
+  nil
+)
+
+> ( 1
+  2
+  nil
+  3
   4
 )
 
-> pair
-
-> a defined
-
-> nil
-
-> atom
-
-> a defined
-
-> nil
-
-> atom
-
-> #<procedure clean-environment>
-
-> main defined
-
-> type-of defined
-
-> a defined
-
-> ( 3
-  4
+> ( ( 1
+  )
+  ( 2
+  )
 )
 
-> ERROR (attempt to apply non-function) : ( 3
-  4
+> 123
+
+> "test"
+
+> nil
+
+> ( quote
+  nil
 )
 
-> a defined
+> ( quote
+  ( 123
+    "456"
+    .
+    #t
+  )
+)
+
+> 123
 
 > nil
 
-> ERROR (attempt to apply non-function) : nil
+> ( quote
+  ( quote
+    ( ( "tests nultiple continuous quote"
+      )
+    )
+  )
+)
 
-> a defined
+> 1
+
+> ( 1
+)
 
 > nil
 
-> ERROR (attempt to apply non-function) : nil
+> ( ( 2
+  )
+)
+
+> #t
+
+> #t
+
+> nil
+
+> nil
+
+> nil
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
 
 > 
 Thanks for using OurScheme!

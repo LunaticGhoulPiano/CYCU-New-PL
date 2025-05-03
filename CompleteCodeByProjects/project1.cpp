@@ -41,9 +41,9 @@ struct Token {
 /* AST structure */
 struct AST {
     bool isAtom = false;
-    Token atom;
+    Token token;
     std::shared_ptr<AST> left = nullptr, right = nullptr;
-    AST(Token t) : isAtom(true), atom(std::move(t)) {}
+    AST(Token t) : isAtom(true), token(std::move(t)) {}
     AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
 };
 
@@ -74,7 +74,7 @@ class Debugger {
             std::string indent(depth * 2, ' ');
             std::cout << indent << prefix;
 
-            if (node->isAtom) std::cout << " (isAtom = true, atom = \"" << node->atom.value << "\", type = " << getType(node->atom) << ")\n";    
+            if (node->isAtom) std::cout << " (isAtom = true, atom = \"" << node->token.value << "\", type = " << getType(node->token) << ")\n";    
             else {
                 std::cout << " (isAtom = false)\n";
                 debugPrintAST(node->left, depth + 1, "|--- left  -> ");
@@ -159,15 +159,15 @@ class S_Exp_Parser {
 
         void checkExit(const std::shared_ptr<AST> &tree_root) {
             if (! tree_root || tree_root->isAtom) return;
-            if (tree_root->left && tree_root->left->isAtom && tree_root->left->atom.type == TokenType::SYMBOL && tree_root->left->atom.value == "exit"
-                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->atom.type == TokenType::NIL))) throw ExitException::CorrectExit();
+            if (tree_root->left && tree_root->left->isAtom && tree_root->left->token.type == TokenType::SYMBOL && tree_root->left->token.value == "exit"
+                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->token.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
 
         std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
             if (cur != nullptr) {
                 if (cur->isAtom) { // <S-exp> ::= <ATOM>
-                    if (cur->atom.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
-                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->atom.value + "\n");
+                    if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
+                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->token.value + "\n");
                 }
                 else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
                     // LP: new list started
@@ -179,12 +179,12 @@ class S_Exp_Parser {
                     // car
                     s_exp = prettyWriteSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
                     // cdr
-                    if (cur->right && cur->right->isAtom && cur->right->atom.type != TokenType::NIL) {
+                    if (cur->right && cur->right->isAtom && cur->right->token.type != TokenType::NIL) {
                         s_exp += (std::string(depth * 2, ' ') + ".\n");
                         s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
                     }
                     else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, s_exp, depth, false, true);
-                    else if (! cur->right || cur->right->atom.type == TokenType::NIL) ; // nothing
+                    else if (! cur->right || cur->right->token.type == TokenType::NIL) ; // nothing
                     else {
                         s_exp += (std::string(depth * 2, ' ') + ".\n");
                         s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
@@ -212,7 +212,7 @@ class S_Exp_Parser {
 
             // current <S-exp> ended
             if (! lists_info.empty()) { // current <S-exp> is not the most outer <S-exp>
-                lists_info.top().second.push_back(cur_node);
+                lists_info.top().second.emplace_back(cur_node);
                 if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
             }
             else { // current <S-exp> is the most outer <S-exp>

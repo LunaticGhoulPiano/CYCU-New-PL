@@ -1,28 +1,94 @@
 Welcome to OurScheme!
 
-> main defined
+> ERROR (unbound symbol) : A
 
-> type-of defined
+> ERROR (unbound symbol) : backc
 
-> a defined
+> ERROR (unbound symbol) : s
 
-> ( 3
-  4
-)
+> ERROR (unbound symbol) : ff
 
-> pair
+> ERROR (unbound symbol) : asdp
 
-> a defined
+> #<procedure clean-environment>
 
-> nil
+> #<procedure cons>
 
-> atom
+> #<procedure list>
 
-> a defined
+> #<procedure quote>
 
 > nil
 
-> atom
+> #<procedure define>
+
+> #<procedure car>
+
+> #<procedure cdr>
+
+> #<procedure atom?>
+
+> #<procedure pair?>
+
+> #<procedure list?>
+
+> #<procedure null?>
+
+> #<procedure integer?>
+
+> #<procedure real?>
+
+> #<procedure number?>
+
+> #<procedure string?>
+
+> #<procedure boolean?>
+
+> #<procedure symbol?>
+
+> #<procedure +>
+
+> #<procedure ->
+
+> #<procedure *>
+
+> #<procedure />
+
+> #<procedure not>
+
+> #<procedure and>
+
+> #<procedure or>
+
+> #<procedure >>
+
+> #<procedure >=>
+
+> #<procedure <>
+
+> #<procedure <=>
+
+> #<procedure =>
+
+> #<procedure string-append>
+
+> #<procedure string>?>
+
+> #<procedure string<?>
+
+> #<procedure string=?>
+
+> #<procedure eqv?>
+
+> #<procedure equal?>
+
+> #<procedure begin>
+
+> #<procedure if>
+
+> #<procedure cond>
+
+> #<procedure clean-environment>
 
 > 
 Thanks for using OurScheme!
