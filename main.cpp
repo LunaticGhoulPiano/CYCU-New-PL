@@ -140,41 +140,76 @@ class SemanticException: public std::exception { // Project 2
             return message.c_str();
         }
 
-        static SemanticException IncorrectNumOfArgs(std::string arg) {
-            return SemanticException("\n> ERROR (incorrect number of arguments) : " + arg + "\n");
+        // level error
+        static SemanticException LevelOfCleanEnv() {
+            return SemanticException("\n> ERROR (level of CLEAN-ENVIRONMENT)\n");
         }
 
-        static SemanticException NonFunction(std::string arg) {
-            return SemanticException("\n> ERROR (attempt to apply non-function) : " + arg + "\n");
+        static SemanticException LevelOfDefine() {
+            return SemanticException("\n> ERROR (level of DEFINE)\n");
         }
 
-        static SemanticException IncorrectCarArgType(std::string op, std::string arg) {
-            return SemanticException("\n> ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
+        static SemanticException LevelOfExit() {
+            return SemanticException("\n> ERROR (level of EXIT)\n");
         }
 
-        static SemanticException DivisionByZero() {
-            return SemanticException("\n> ERROR (division by zero) : /\n");
-        }
-
-        static SemanticException UnboundSymbol(std::string symbol) {
-            return SemanticException("\n> ERROR (unbound symbol) : " + symbol + "\n");
-        }
-
-        static SemanticException NonList(std::string s_exp) {
-            return SemanticException("\n> ERROR (non-list) : " + s_exp + "\n");
-        }
-
-        static SemanticException NoReturnValue(std::string s_exp) {
-            return SemanticException("\n> ERROR (no return value) : " + s_exp + "\n");
+        // format error
+        static SemanticException CondFormat(std::string s_exp) {
+            return SemanticException("\n> ERROR (COND format) : " + s_exp + "\n");
         }
 
         static SemanticException DefineFormat(std::string s_exp) {
             return SemanticException("\n> ERROR (DEFINE format) : " + s_exp + "\n");
         }
 
-        static SemanticException CondFormat(std::string s_exp) {
-            return SemanticException("\n> ERROR (COND format) : " + s_exp + "\n");
+        static SemanticException SetFormat(std::string s_exp) {
+            return SemanticException("\n> ERROR (SET! format) : " + s_exp + "\n");
         }
+
+        static SemanticException LetFormat(std::string s_exp) {
+            return SemanticException("\n> ERROR (LET format) : " + s_exp + "\n");
+        }
+
+        static SemanticException LambdaFormat(std::string s_exp) {
+            return SemanticException("\n> ERROR (LAMBDA format) : " + s_exp + "\n");
+        }
+
+        // symbol error
+        static SemanticException UnboundSymbol(std::string symbol) {
+            return SemanticException("\n> ERROR (unbound symbol) : " + symbol + "\n");
+        }
+
+        // argument error
+        static SemanticException IncorrectNumOfArgs(std::string arg) {
+            return SemanticException("\n> ERROR (incorrect number of arguments) : " + arg + "\n");
+        }
+        
+        static SemanticException IncorrectCarArgType(std::string op, std::string arg) {
+            return SemanticException("\n> ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
+        }
+
+        static SemanticException NonList(std::string s_exp) {
+            return SemanticException("\n> ERROR (non-list) : " + s_exp + "\n");
+        }
+
+        // function error
+        static SemanticException NonFunction(std::string arg) {
+            return SemanticException("\n> ERROR (attempt to apply non-function) : " + arg + "\n");
+        }
+
+        static SemanticException DivisionByZero() {
+            return SemanticException("\n> ERROR (division by zero) : /\n");
+        }
+        
+        static SemanticException NoReturnValue(std::string s_exp) {
+            return SemanticException("\n> ERROR (no return value) : " + s_exp + "\n");
+        }
+};
+
+/* S-Expression Executor */
+class S_exp_Executor {
+    private:
+    public:
 };
 
 /* S-Expression Evaluator */
@@ -206,7 +241,8 @@ class S_Exp_Evaluator {
             EQIVALENCE_TESTER,
             SEQUENCING_AND_FUNCTIONAL_COMPOSITION,
             CONDITIONAL_OPERATOR,
-            CLEAN_ENVIRONMENT
+            CLEAN_ENVIRONMENT,
+            EXIT
         };
 
         enum class KEYWORD_NUM_MODE {
@@ -222,6 +258,8 @@ class S_Exp_Evaluator {
             {"quote", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
             {"\'", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
             {"define", {KEYWORD_TYPE::DEFINE, {KEYWORD_NUM_MODE::ONLY, {2}}}},
+            // TODO: set
+            // TODO: let
             {"car", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
             {"cdr", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
             {"atom?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
@@ -250,12 +288,15 @@ class S_Exp_Evaluator {
             {"string>?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
             {"string<?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
             {"string=?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
+            {"display-string", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
             {"eqv?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {2}}}},
-            {"equql?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {2}}}},
+            {"equal?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {2}}}},
             {"begin", {KEYWORD_TYPE::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, {KEYWORD_NUM_MODE::AT_LEAST, {1}}}},
+            // TODO: lambda
             {"if", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::SPECIFIC, {2, 3}}}},
             {"cond", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {1}}}},
-            {"clean-environment", {KEYWORD_TYPE::CLEAN_ENVIRONMENT, {KEYWORD_NUM_MODE::ONLY, {0}}}}
+            {"clean-environment", {KEYWORD_TYPE::CLEAN_ENVIRONMENT, {KEYWORD_NUM_MODE::ONLY, {0}}}},
+            {"exit", {KEYWORD_TYPE::EXIT, {KEYWORD_NUM_MODE::ONLY, {0}}}}
         };
 
         std::unordered_map<std::string, std::shared_ptr<AST>> env;
@@ -350,8 +391,9 @@ class S_Exp_Evaluator {
                 }
             }
         }
-        
-        void isNumberOfArgumentsCorrect(std::shared_ptr<AST> root) { // recursively count each number of argument of a complete non-<ATOM> <S-exp>s
+
+        void isLegalSExp(std::shared_ptr<AST> root) { // recursively judge
+            // judge if the root->left
             if (! isKeyword(root->left->token.value)) {
                 if (root->left->isAtom) {
                     //
@@ -361,7 +403,7 @@ class S_Exp_Evaluator {
                 }
             }
             
-            // count from the current layer
+            // count count each number of argument of a complete non-<ATOM> <S-exp>s from the current layer (current <S-exp>)
             int arg_num = 0;
             std::shared_ptr<AST> temp = root->right;
             while (temp->right != nullptr) {
@@ -389,20 +431,17 @@ class S_Exp_Evaluator {
             // std::cout << "\n> " << root->left->token.value << ": there are " << arg_num << " arguments.\n"; // just for debug
 
             // if there are sub <S-exp>, judge the following
-            if (root->right->left != nullptr && ! root->right->left->isAtom) isNumberOfArgumentsCorrect(root->right->left);
+            if (root->right->left != nullptr && ! root->right->left->isAtom) isLegalSExp(root->right->left);
             if (root->right->right != nullptr && root->right->right->left != nullptr
                 && (! root->right->right->left->isAtom
                     || (root->right->right->left->token.type == TokenType::NIL
-                        && root->right->right->left->left != nullptr))) isNumberOfArgumentsCorrect(root->right->right->left);
+                        && root->right->right->left->left != nullptr))) isLegalSExp(root->right->right->left);
         }
 
     public:
         void evaluate(std::shared_ptr<AST> root) {
             if (! root->isAtom) {
-                isNumberOfArgumentsCorrect(root);
-                if (isKeyword(root->left->token.value)) {
-                    //
-                }
+                isLegalSExp(root);
                 if (root->left->token.type == TokenType::QUOTE) { // QUOTE: "quote"
                     std::cout << "\n> " << prettyWriteSExp(root); // temp
                 }

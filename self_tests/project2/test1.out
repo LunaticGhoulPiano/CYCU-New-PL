@@ -1,26 +1,22 @@
 Welcome to OurScheme!
 
-> ERROR (unbound symbol) : A
-
-> ERROR (unbound symbol) : backc
-
-> ERROR (unbound symbol) : s
-
-> ERROR (unbound symbol) : ff
-
-> ERROR (unbound symbol) : asdp
-
-> #<procedure clean-environment>
-
 > #<procedure cons>
 
 > #<procedure list>
 
 > #<procedure quote>
 
-> nil
+> "quote is special"
 
 > #<procedure define>
+
+> #<procedure set!>
+
+> ERROR (unbound symbol) : set-car!
+
+> ERROR (unbound symbol) : set-cdr!
+
+> #<procedure let>
 
 > #<procedure car>
 
@@ -78,17 +74,23 @@ Welcome to OurScheme!
 
 > #<procedure string=?>
 
+> #<procedure display-string>
+
 > #<procedure eqv?>
 
 > #<procedure equal?>
 
 > #<procedure begin>
 
+> #<procedure lambda>
+
 > #<procedure if>
 
 > #<procedure cond>
 
 > #<procedure clean-environment>
+
+> #<procedure exit>
 
 > 
 Thanks for using OurScheme!

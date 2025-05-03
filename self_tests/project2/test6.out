@@ -1,0 +1,81 @@
+Welcome to OurScheme!
+
+> ERROR (level of DEFINE)
+
+> ERROR (level of DEFINE)
+
+> ERROR (incorrect number of arguments) : exit
+
+> ERROR (level of EXIT)
+
+> ERROR (level of EXIT)
+
+> ERROR (attempt to apply non-function) : nil
+
+> ERROR (incorrect number of arguments) : cons
+
+> ERROR (level of EXIT)
+
+> environment cleaned
+
+> ERROR (level of CLEAN-ENVIRONMENT)
+
+> a defined
+
+> #<procedure clean-environment>
+
+> environment cleaned
+ERROR (no return value) : ( a
+)
+
+> ERROR (unbound symbol) : a
+
+> a defined
+
+> environment cleaned
+ERROR (no return value) : ( a
+)
+
+> test defined
+
+> a defined
+
+> 3
+
+> environment cleaned
+ERROR (no return value) : ( a
+)
+
+> ERROR (unbound symbol) : test
+
+> test defined
+
+> environment cleaned
+
+> ERROR (unbound symbol) : test
+
+> test defined
+
+> ERROR (level of CLEAN-ENVIRONMENT)
+
+> a defined
+
+> #<procedure a>
+
+> ERROR (unbound symbol) : b
+
+> ERROR (unbound symbol) : c
+
+> #<procedure a>
+
+> ( #<procedure a>
+)
+
+> quit defined
+
+> #<procedure exit>
+
+> ERROR (level of EXIT)
+
+> 
+Thanks for using OurScheme!

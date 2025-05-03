@@ -1,0 +1,78 @@
+Welcome to OurScheme!
+
+> 1
+
+> 1
+
+> #<procedure set!>
+
+> ERROR (LAMBDA format) : ( lambda
+  test
+  3
+)
+
+> ERROR (SET! format) : ( set!
+  exit
+)
+
+> ERROR (LAMBDA format) : ( lambda
+  ( cons
+    1
+    2
+  )
+)
+
+> #<procedure lambda>
+
+> lambda_func defined
+
+> #<procedure lambda>
+
+> #<procedure lambda>
+
+> #<procedure lambda>
+
+> ERROR (incorrect number of arguments) : lambda
+
+> lambda_func defined
+
+> nil
+
+> ERROR (incorrect number of arguments) : not
+
+> ERROR (attempt to apply non-function) : #t
+
+> #t
+
+> lambda_func_with_args defined
+
+> #<procedure lambda>
+
+> ( 1
+  .
+  2
+)
+
+> ( #<procedure lambda>
+  .
+  2
+)
+
+> ERROR (incorrect number of arguments) : lambda
+
+> ERROR (level of EXIT)
+
+> ERROR (LAMBDA format) : ( lambda
+  lambda_exit
+  ( exit
+  )
+)
+
+> #<procedure lambda>
+
+> lambda_exit defined
+
+> #<procedure lambda>
+
+> 
+Thanks for using OurScheme!

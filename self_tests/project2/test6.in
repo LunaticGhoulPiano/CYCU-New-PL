@@ -1,0 +1,51 @@
+6
+
+(define A (define B (define C 3))) ; ERROR (level of DEFINE)
+(define a (eqv? #t (define b 3))) ; ERROR (level of DEFINE)
+(exit (exit)) ; ERROR (incorrect number of arguments) : exit
+(cons 3 (exit)) ; ERROR (level of EXIT)
+((exit)) ; ERROR (level of EXIT)
+(() . (exit)) ; ERROR (attempt to apply non-function) : nil
+(cons (exit (exit))) ; ERROR (incorrect number of arguments) : cons
+(car (list (exit))) ; ERROR (level of EXIT)
+(clean-environment) ; environment cleaned
+((clean-environment)) ; ERROR (level of CLEAN-ENVIRONMENT)
+(define a clean-environment) ; a defined
+a ; #<procedure clean-environment>
+(a)
+; environment cleaned
+; ERROR (no return value) : ( a
+; )
+
+a ; ERROR (unbound symbol) : a
+(define a clean-environment) ; a defined 
+(a)
+; environment cleaned
+; ERROR (no return value) : ( a
+; )
+
+(define test 3) ; test defined
+(define a clean-environment) ; a defined
+test ; 3
+(a)
+; environment cleaned
+; ERROR (no return value) : ( a
+; )
+
+test ; ERROR (unbound symbol) : test
+(define test 3) ; test defined
+(clean-environment) ; environment cleaned
+test ; ERROR (unbound symbol) : test
+(define test 3) ; test defined
+(define op (clean-environment)) ; ERROR (level of CLEAN-ENVIRONMENT)
+
+(define (a b c) (1 2 3)) ; one-or-more synbol during define
+a
+b
+c
+a
+(list a)
+(define quit exit)
+quit
+(define quit (exit))
+(exit)
