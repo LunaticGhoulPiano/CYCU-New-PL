@@ -30,6 +30,125 @@ enum class TokenType {
         // (i.e., uppercase and lowercase are different);
 };
 
+/* Data types */
+// define all types of primitives and funcitons
+enum class DataType {
+    /* primitive types */
+    // minimal types
+    INTEGER,
+    FLOAT,
+    STRING,
+    ERROR_OBJECT,
+    BOOLEAN,
+    SYMBOL,
+    // complex primitives
+    REAL,
+    NUMBER, // same as REAL
+    // these are also complex primitives, but should be judgement actions, not the defined types
+    ATOM, // can be any of the primitive types
+    NIL, // can be boolean, aka nil, which is a minimal type, or any of the functions that return the minimal type NIL, i.e. ()
+    LIST, // can be a minimal type NIL, or a function (e.g. CONSTRUCTOR::LIST, SEQUENCING_AND_FUNCTIONAL_COMPOSITION::BEGIN) (<S-exp>s)
+    PAIR, // is a kind of LIST, be the number of <S-exp>s in (<S-exp>s) should be even
+    /* function types */
+    CONSTRUCTOR,
+    BYPASS_EVALUATION,
+    BINDING,
+    PART_ACCESSOR,
+    PRIMITIVE_PREDICATE,
+    OPERATION,
+    EQIVALENCE_TESTER,
+    SEQUENCING_AND_FUNCTIONAL_COMPOSITION,
+    CONDITIONAL,
+    READ,
+    DISPLAY,
+    LAMBDA,
+    VERBOSE,
+    EVALUATION,
+    CONVERT_TO_STRING,
+    ERROR_OBJECT_OPERATION,
+    CLEAN_ENVIRONMENT,
+    EXIT
+};
+
+/* Argument number mode */
+// define the number of arguments that a function accepts
+enum class ARGUMENT_NUMBER_MODE {
+    AT_LEAST, // argument number >= n
+    MUST_BE, // argument number == n
+    SPECIFIC // argument number is one of n1, n2, ..., nk
+};
+
+/* Data */
+// define the informations of primitives and functions
+struct Data {
+    bool isPrimitive;
+    ARGUMENT_NUMBER_MODE arg_mode;
+    std::vector<int> arg_nums;
+    DataType functionType, returnType;
+};
+
+/* Keywords */
+std::unordered_map<std::string, Data> KEYWORDS = {
+    // primitives
+    {"#t", {true}},
+    {"nil", {true}},
+    // functions
+    {"cons", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::CONSTRUCTOR, DataType::PAIR}},
+    {"list", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, DataType::CONSTRUCTOR, DataType::LIST}},
+    {"quote", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::BYPASS_EVALUATION}}, // returnType can be any of primitives
+    {"define", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::BINDING}}, // returnType can be any of primitives
+    {"let", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::BINDING}}, // returnType can be any of primitives
+    {"set!", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::BINDING}}, // returnType can be any of primitives
+    {"car", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PART_ACCESSOR}}, // returnType can be any of primitives
+    {"cdr", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PART_ACCESSOR}}, // returnType can be any of primitives
+    {"atom?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"pair?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"list?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"null?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"integer?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"real?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"number?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"string?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"boolean?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"symbol?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
+    {"+", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
+    {"-", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
+    {"*", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
+    {"/", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
+    {"not", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"and", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
+    {"or", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
+    {">", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {">=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"<", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"<=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"string-append", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::STRING}},
+    {"string>?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"string<?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"string=?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
+    {"eqv?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::EQIVALENCE_TESTER, DataType::BOOLEAN}},
+    {"equal?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::EQIVALENCE_TESTER, DataType::BOOLEAN}},
+    {"begin", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, DataType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}}, // returnType can be any of primitives
+    {"if", {false, ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, DataType::CONDITIONAL}}, // returnType can be any of primitives
+    {"else", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, DataType::CONDITIONAL}}, // returnType can be any of primitives // special case
+    {"cond", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, DataType::CONDITIONAL}}, // returnType can be any of primitives
+    {"read", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::READ}}, // returnType can be any of primitives
+    {"write", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::DISPLAY}}, // returnType can be any of primitives
+    {"display-string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
+    {"newline", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::DISPLAY, DataType::NIL}},
+    {"lambda", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::LAMBDA}}, // returnType can be any of primitives
+    {"verbose", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::VERBOSE, DataType::BOOLEAN}},
+    {"verbose?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::VERBOSE, DataType::BOOLEAN}},
+    {"eval", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::EVALUATION}}, // returnType can be any of primitives
+    {"symbol->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::CONVERT_TO_STRING, DataType::STRING}},
+    {"number->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::CONVERT_TO_STRING, DataType::STRING}},
+    {"create-error-object", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::ERROR_OBJECT_OPERATION, DataType::ERROR_OBJECT}},
+    {"error-object?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::ERROR_OBJECT_OPERATION, DataType::BOOLEAN}},
+    {"clean-environment", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::CLEAN_ENVIRONMENT}},
+    {"exit", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::EXIT}}
+};
+
 /* Token structure */
 struct Token {
     TokenType type = TokenType::NIL;
@@ -45,6 +164,7 @@ struct AST {
     std::shared_ptr<AST> left = nullptr, right = nullptr;
     AST(Token t) : isAtom(true), token(std::move(t)) {}
     AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
+    bool isEndNode() { return left == nullptr && right == nullptr; }
 };
 
 /* Debugger */
@@ -95,16 +215,20 @@ class ExitException: public std::exception { // Common usage
             return message.c_str();
         }
 
-        static ExitException CorrectExit() { // Exit
+        static ExitException CorrectExit() { // Exit, implemented in project 1
             return ExitException("\n> \nThanks for using OurScheme!");
         }
 
-        static ExitException NoMoreInput() { // EOF & Exit
+        static ExitException NoMoreInput() { // EOF & Exit, implemented in project 1
             return ExitException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!");
+        }
+
+        static ExitException NoMoreInputWhileRead() { // implemented in project 4, but current might be incorrect outputs
+            return ExitException("\n> ERROR : END-OF-FILE encountered when there should be more input\nThanks for using OurScheme!");
         }
 };
 
-class SyntaxException: public std::exception { // Project 1
+class SyntaxException: public std::exception {
     protected:
         std::string message = "";
 
@@ -114,23 +238,23 @@ class SyntaxException: public std::exception { // Project 1
             return message.c_str();
         }
 
-        static SyntaxException UnexpectedToken(int line, int column, const std::string token) {
+        static SyntaxException UnexpectedToken(int line, int column, const std::string token) { // unexpected token, implemented in project 1
             return SyntaxException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
         }
 
-        static SyntaxException NoRightParen(int line, int column, const std::string token) {
+        static SyntaxException NoRightParen(int line, int column, const std::string token) { // no RP, implemented in project 1
             return SyntaxException("\n> ERROR (unexpected token) : ')' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
         }
 
-        static SyntaxException NoClosingQuote(int line, int column) {
+        static SyntaxException NoClosingQuote(int line, int column) { // no second \", implemented in project 1
             return SyntaxException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + "\n");
         }
 };
 
-class SemanticException: public std::exception { // Project 2
+class SemanticException: public std::exception {
     protected:
         std::string message = "";
 
@@ -141,163 +265,174 @@ class SemanticException: public std::exception { // Project 2
         }
 
         // level error
-        static SemanticException LevelOfCleanEnv() {
+        static SemanticException LevelOfCleanEnv() { // implemented in project 2
             return SemanticException("\n> ERROR (level of CLEAN-ENVIRONMENT)\n");
         }
 
-        static SemanticException LevelOfDefine() {
+        static SemanticException LevelOfDefine() { // implemented in project 2
             return SemanticException("\n> ERROR (level of DEFINE)\n");
         }
 
-        static SemanticException LevelOfExit() {
+        static SemanticException LevelOfExit() { // implemented in project 2
             return SemanticException("\n> ERROR (level of EXIT)\n");
         }
 
         // format error
-        static SemanticException CondFormat(std::string s_exp) {
+        static SemanticException CondFormat(std::string s_exp) { // implemented in project 2
             return SemanticException("\n> ERROR (COND format) : " + s_exp + "\n");
         }
 
-        static SemanticException DefineFormat(std::string s_exp) {
+        static SemanticException DefineFormat(std::string s_exp) { // implemented in project 2
             return SemanticException("\n> ERROR (DEFINE format) : " + s_exp + "\n");
         }
 
-        static SemanticException SetFormat(std::string s_exp) {
+        static SemanticException SetFormat(std::string s_exp) { // implemented in project 4
             return SemanticException("\n> ERROR (SET! format) : " + s_exp + "\n");
         }
 
-        static SemanticException LetFormat(std::string s_exp) {
+        static SemanticException LetFormat(std::string s_exp) { // implemented in project 3
             return SemanticException("\n> ERROR (LET format) : " + s_exp + "\n");
         }
 
-        static SemanticException LambdaFormat(std::string s_exp) {
+        static SemanticException LambdaFormat(std::string s_exp) { // implemented in project 3
             return SemanticException("\n> ERROR (LAMBDA format) : " + s_exp + "\n");
         }
 
         // symbol error
-        static SemanticException UnboundSymbol(std::string symbol) {
+        static SemanticException UnboundSymbol(std::string symbol) { // implemented in project 2
             return SemanticException("\n> ERROR (unbound symbol) : " + symbol + "\n");
         }
 
         // argument error
-        static SemanticException IncorrectNumOfArgs(std::string arg) {
+        static SemanticException IncorrectNumOfArgs(std::string arg) { // implemented in project 2
             return SemanticException("\n> ERROR (incorrect number of arguments) : " + arg + "\n");
         }
         
-        static SemanticException IncorrectCarArgType(std::string op, std::string arg) {
+        static SemanticException IncorrectCarArgType(std::string op, std::string arg) { // implemented in project 2
             return SemanticException("\n> ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
         }
 
-        static SemanticException NonList(std::string s_exp) {
+        static SemanticException NonList(std::string s_exp) { // implemented in project 2
             return SemanticException("\n> ERROR (non-list) : " + s_exp + "\n");
         }
 
         // function error
-        static SemanticException NonFunction(std::string arg) {
+        static SemanticException NonFunction(std::string arg) { // implemented in project 2
             return SemanticException("\n> ERROR (attempt to apply non-function) : " + arg + "\n");
         }
-
-        static SemanticException DivisionByZero() {
-            return SemanticException("\n> ERROR (division by zero) : /\n");
-        }
         
-        static SemanticException NoReturnValue(std::string s_exp) {
+        static SemanticException NoReturnValue(std::string s_exp) { // implemented in project 2
             return SemanticException("\n> ERROR (no return value) : " + s_exp + "\n");
         }
 };
 
-/* S-Expression Executor */
-class S_exp_Executor {
-    private:
+class RuntimeException: public std::exception {
+    protected:
+        std::string message = "";
+
     public:
+        explicit RuntimeException(const std::string &msg): message(msg) {}
+        const char *what() const noexcept override {
+            return message.c_str();
+        }
+
+        // function error
+        static RuntimeException DivisionByZero() { // implemented in project 2
+            return RuntimeException("\n> ERROR (division by zero) : /\n");
+        }
 };
 
 /* S-Expression Evaluator */
 class S_Exp_Evaluator {
     private:
+        //
+    public:
+        void evaluate(std::shared_ptr<AST> cur) {
+            //
+        }
+};
+
+/* S-Expression Executor */
+class S_Exp_Executor {
+    private:
+        S_Exp_Evaluator s_exp_evaluator;
+        // std::stack<> call_stack;
+        // std::unordered_map<> env;
+
+    public:
+        void execute(std::shared_ptr<AST> root) {
+            // evaluate based on cases
+            s_exp_evaluator.evaluate(root);
+            // then execute
+        }
+
         /*
-        // just to record how to use std::functional
-        std::unordered_map<std::string, std::function<double(double, double)>> binary_operators = {
-            {"+", [](double a, double b) { return a + b; }}, // a + b
-            {"-", [](double a, double b) { return a - b; }}, // a - b
-            {"*", [](double a, double b) { return a * b; }}, // a * b
-            {"/", [](double a, double b) { return a / b; }}, // a / b
-            {"<", [](double a, double b) { return a < b; }}, // a < b
-            {">", [](double a, double b) { return a > b; }}, // a > b
-            {"<=", [](double a, double b) { return a <= b; }}, // a <= b
-            {">=", [](double a, double b) { return a >= b; }}, // a >= b
-            {"=", [](double a, double b) { return a == b; }}, // a == b
-            {"!=", [](double a, double b) { return a != b; }}, // a != b
-        };
+        bool isKeyword(const std::string &str) {
+            return keywords.find(str) != keywords.end();
+        }
+
+        bool isDefined(const std::string &str) {
+            return env.find(str) != env.end();
+        }
         */
-       
-        enum class KEYWORD_TYPE {
-            CONSTRUCTOR,
-            QUOTE,
-            DEFINE,
-            PART_ACCESSOR,
-            PRIMITIVE_PREDICATE,
-            OPERATOR,
-            EQIVALENCE_TESTER,
-            SEQUENCING_AND_FUNCTIONAL_COMPOSITION,
-            CONDITIONAL_OPERATOR,
-            CLEAN_ENVIRONMENT,
-            EXIT
-        };
 
-        enum class KEYWORD_NUM_MODE {
-            AT_LEAST, // keyword accept more than keywords[<KEYWORD>].second.second[0] arguments, and keywords[<KEYWORD>].second.second.size() must be 1
-            ONLY, // keyword accept only keywords[<KEYWORD>].second.second[0] arguments, and keywords[<KEYWORD>].second.second.size() must be 1
-            SPECIFIC // keyword accept specific numbers of arguments, which are in keywords[<KEYWORD>].second.second
-        };
+        std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
+            if (cur != nullptr) {
+                if (cur->isAtom) { // <S-exp> ::= <ATOM>
+                    if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
+                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->token.value + "\n");
+                }
+                else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
+                    // LP: new list started
+                    if (isRoot) {
+                        s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "(");
+                        depth++;
+                        isFirstTokenOfLine = false;
+                    }
+                    // car
+                    s_exp = prettyWriteSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
+                    // cdr
+                    if (cur->right && cur->right->isAtom && cur->right->token.type != TokenType::NIL) {
+                        s_exp += (std::string(depth * 2, ' ') + ".\n");
+                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
+                    }
+                    else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, s_exp, depth, false, true);
+                    else if (! cur->right || cur->right->token.type == TokenType::NIL) ; // nothing
+                    else {
+                        s_exp += (std::string(depth * 2, ' ') + ".\n");
+                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
+                    }
+                    // RP: cur list ended
+                    if (isRoot) {
+                        depth--;
+                        s_exp += (std::string(depth * 2, ' ') + ")\n");
+                    }
+                }
+            }
 
-        // {<KEYWORD>, {KEY_WORD_TYPE, {<ARGUMENT_MODE>, {<ARGUMENT_NUMBER>}}}}
-        std::unordered_map<std::string, std::pair<KEYWORD_TYPE, std::pair<KEYWORD_NUM_MODE, std::vector<int>>>> keywords = {
-            {"cons", {KEYWORD_TYPE::CONSTRUCTOR, {KEYWORD_NUM_MODE::ONLY, {2}}}},
-            {"list", {KEYWORD_TYPE::CONSTRUCTOR, {KEYWORD_NUM_MODE::AT_LEAST, {0}}}},
-            {"quote", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"\'", {KEYWORD_TYPE::QUOTE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"define", {KEYWORD_TYPE::DEFINE, {KEYWORD_NUM_MODE::ONLY, {2}}}},
-            // TODO: set
-            // TODO: let
-            {"car", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"cdr", {KEYWORD_TYPE::PART_ACCESSOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"atom?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"pair?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"list?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"null?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"integer?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"real?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"number?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"string?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"boolean?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"symbol?", {KEYWORD_TYPE::PRIMITIVE_PREDICATE, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"+", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"-", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"*", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"/", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"not", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"and", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"or", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {">", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {">=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"<", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"<=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"=", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"string-append", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"string>?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"string<?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"string=?", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {2}}}},
-            {"display-string", {KEYWORD_TYPE::OPERATOR, {KEYWORD_NUM_MODE::ONLY, {1}}}},
-            {"eqv?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {2}}}},
-            {"equal?", {KEYWORD_TYPE::EQIVALENCE_TESTER, {KEYWORD_NUM_MODE::ONLY, {2}}}},
-            {"begin", {KEYWORD_TYPE::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, {KEYWORD_NUM_MODE::AT_LEAST, {1}}}},
-            // TODO: lambda
-            {"if", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::SPECIFIC, {2, 3}}}},
-            {"cond", {KEYWORD_TYPE::CONDITIONAL_OPERATOR, {KEYWORD_NUM_MODE::AT_LEAST, {1}}}},
-            {"clean-environment", {KEYWORD_TYPE::CLEAN_ENVIRONMENT, {KEYWORD_NUM_MODE::ONLY, {0}}}},
-            {"exit", {KEYWORD_TYPE::EXIT, {KEYWORD_NUM_MODE::ONLY, {0}}}}
-        };
+            return s_exp;
+        }
+};
+
+/* Below comments are deprecated codes */
+// S-Expression Evaluator
+/*
+class S_Exp_Evaluator {
+    private:
+        
+        // just to record how to use std::functional
+        //std::unordered_map<std::string, std::function<double(double, double)>> binary_operators = {
+        //    {"+", [](double a, double b) { return a + b; }}, // a + b
+        //    {"-", [](double a, double b) { return a - b; }}, // a - b
+        //    {"*", [](double a, double b) { return a * b; }}, // a * b
+        //    {"/", [](double a, double b) { return a / b; }}, // a / b
+        //    {"<", [](double a, double b) { return a < b; }}, // a < b
+        //    {">", [](double a, double b) { return a > b; }}, // a > b
+        //    {"<=", [](double a, double b) { return a <= b; }}, // a <= b
+        //    {">=", [](double a, double b) { return a >= b; }}, // a >= b
+        //    {"=", [](double a, double b) { return a == b; }}, // a == b
+        //    {"!=", [](double a, double b) { return a != b; }}, // a != b
+        //};
 
         std::unordered_map<std::string, std::shared_ptr<AST>> env;
 
@@ -392,8 +527,25 @@ class S_Exp_Evaluator {
             }
         }
 
-        void isLegalSExp(std::shared_ptr<AST> root) { // recursively judge
-            // judge if the root->left
+        void checkLegalSExp(std::shared_ptr<AST> root, int layer) { // recursively judge
+            int increased_layer = layer;
+            std::shared_ptr<AST> temp = root;
+            
+            //while ({()}), i.e., there are ((((( ... then <keyword> {<arg>s} ... )))))
+            //after while, temp->left must be a symbol or <keyword>
+            //ex. (((just_a_atom) test a))
+            //    ^ ^     ^
+            //   /   \    |
+            // root temp temp->left
+            //  0     2   3 // increased_layer
+            while (temp->left->token.type == TokenType::NIL) { // while LP
+                increased_layer++;
+                temp = temp->left;
+            }
+
+            // judge if the root->left is a <keyword> or a bound/unbound symbol
+            // if (<keyword> {<arg>s}) -> root->left must be <keyword>
+            // if ({(<keyword> {<arg>s)}) -> root->left must be NIL
             if (! isKeyword(root->left->token.value)) {
                 if (root->left->isAtom) {
                     //
@@ -410,6 +562,8 @@ class S_Exp_Evaluator {
                 arg_num++;
                 temp = temp->right;
             }
+
+            std::cout << "\n> " << root->left->token.value << ": there are " << arg_num << " arguments.\n"; // just for debug
             
             // judge the current layer
             switch (keywords[root->left->token.value].second.first) {
@@ -428,23 +582,22 @@ class S_Exp_Evaluator {
                 }
             }
 
-            // std::cout << "\n> " << root->left->token.value << ": there are " << arg_num << " arguments.\n"; // just for debug
-
             // if there are sub <S-exp>, judge the following
-            if (root->right->left != nullptr && ! root->right->left->isAtom) isLegalSExp(root->right->left);
+            if (root->right->left != nullptr && ! root->right->left->isAtom) checkLegalSExp(root->right->left, layer + 2);
             if (root->right->right != nullptr && root->right->right->left != nullptr
                 && (! root->right->right->left->isAtom
                     || (root->right->right->left->token.type == TokenType::NIL
-                        && root->right->right->left->left != nullptr))) isLegalSExp(root->right->right->left);
+                        && root->right->right->left->left != nullptr))) checkLegalSExp(root->right->right->left, layer + 3);
         }
 
     public:
         void evaluate(std::shared_ptr<AST> root) {
             if (! root->isAtom) {
-                isLegalSExp(root);
-                if (root->left->token.type == TokenType::QUOTE) { // QUOTE: "quote"
-                    std::cout << "\n> " << prettyWriteSExp(root); // temp
-                }
+                checkLegalSExp(root, 0);
+                //if (root->left->token.type == TokenType::QUOTE) { // QUOTE: "quote"
+                //    std::cout << "\n> " << prettyWriteSExp(root); // temp
+                //}
+                std::cout << "\n> " << prettyWriteSExp(root); // just print it
             }
             else { // <ATOM>
                 if (isKeyword(root->token.value)) std::cout << "\n> #<procedure " << root->token.value << ">\n";
@@ -461,6 +614,7 @@ class S_Exp_Evaluator {
         }
     
 };
+*/
 
 /* S-Expression Parser */
 // <S-exp> ::= <ATOM>
@@ -481,7 +635,7 @@ class S_Exp_Parser {
         std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>> lists_info; // first: mode, second: list
         // check num of <S-exp> after DOT
         std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
-        S_Exp_Evaluator evaluator;
+        S_Exp_Executor executor;
 
         std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
             const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{TokenType::NIL, "nil"})) { // the part after DOT (cdr)
@@ -519,7 +673,7 @@ class S_Exp_Parser {
             }
             else { // current <S-exp> is the most outer <S-exp>
                 if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
-                evaluator.evaluate(cur_node);
+                executor.execute(cur_node);
                 resetInfos();
             }
         }

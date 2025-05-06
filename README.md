@@ -2,6 +2,7 @@
 ## 修課相關
 - 本人修大四下畢業班，夏老大（夏延德）授課，計分方式與大三不同
 - [Project 1 的簡報](https://www.canva.com/design/DAGemJ7sLQI/X3aeWBckMJEJuJ5ks3dF7w/edit)
+- [Project 2 的簡報](https://www.canva.com/design/DAGhDegFZEU/uxxLU615FuWu6gMkWg2Aaw/edit)
 - 老大的上傳系統：
     - [設定密碼](https://pai.lab715.uk:5001/ChangePassword/)
     - [上傳檔案](https://pai.lab715.uk:5001/PL-PostCode/)
@@ -28,12 +29,762 @@
     0. Not good
 - Project分數到80可以不用出席
 
+## 我的實作
+### [Project 1](./CompleteCodeByProjects/Project1.md)
+
 ## What is OurScheme?
 - 它是中原資工大三下的**程式語言**課程Project，會有```OurC```與```OurScheme```兩種每年輪替，OurScheme是比較簡單的。
 - ```OurC```要寫簡化版的```C```compiler, ```OurScheme```要寫簡化版的```Scheme```interpreter（一個使用Python實作的Scheme interpreter[見此](https://github.com/vladimirfomene/scheme-interpreter)，線上IDE[請點此](https://www.jdoodle.com/execute-scheme-online)）
 - [Scheme](https://zh.wikipedia.org/zh-tw/Scheme)是[LISP](https://zh.wikipedia.org/wiki/LISP)的其中一種方言([dialect](https://en.wikipedia.org/wiki/Programming_language#Dialects,_flavors_and_implementations))，而```OurScheme```是此門課程將```Scheme```簡化後的方言（同理，```OurC```也是```C```的簡化方言）。
 - 詳細實現內容請見[./AboutProject底下的OurSchemeProj{1/2/3/4}-UTF-8.txt](./AboutProject/)，現在新版的測試系統不會以```HowToWriteOurScheme.doc```為準，例如```ERROR (level of CLEAN-ENVIRONMENT) / ERROR (level of DEFINE) / ERROR (level of EXIT)```就不需實作。
 
+## Project definitions
+### Project 1
+#### Syntax of S-expression
+```EBNF
+<S-exp> ::= <ATOM> | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | QUOTE <S-exp>
+<ATOM>  ::= SYMBOL | INT | FLOAT | STRING | NIL | T | LEFT-PAREN RIGHT-PAREN
+```
+#### Types of Terminal Tokens
+```
+LEFT_PAREN
+RIGHT_PAREN
+INT
+STRING
+DOT
+FLOAT
+NIL
+T
+QUOTE
+SYMBOL
+```
+#### Exit and Error exceptions
+##### Exit exceptions
+1. Normal Exit
+    ```
+    Thanks for using OurScheme!
+    ```
+2. EOF & Exit
+    ```
+    ERROR (no more input) : END-OF-FILE encountered
+    Thanks for using OurScheme!
+    ```
+##### Syntax exceptions
+1. Unexpceted token
+    ```
+    ERROR (unexpected token) : atom or '(' expected when token at Line <line number> Column <column number> is >><token><<
+    ```
+2. Unexpceted token, not RIGHT_PAREN
+    ```
+    ERROR (unexpected token) : ')' expected when token at Line <line number> Column <column number> is >><token><<
+    ```
+3. No closing quote
+    ```
+    ERROR (no closing quote) : END-OF-LINE encountered at Line <line number> Column <column number>
+    ```
+### Project 2
+#### Data types
+TODO: set minor data type, e.g. procedure, int, float, bool..., etc., may follow ATOM's type or token's type.
+#### Primitives and Features
+1. Constructors (```CONSTRUCTOR```)
+    - To construct a list or a (dotted) pair
+    1. ```cons```:
+        - **Must be 2** argument: 
+        - **Return** ```list``` (i.e. pair, but pair is not primitive)
+        - References:
+            - [MIT Scheme Reference](https://groups.csail.mit.edu/mac/ftpdir/scheme-7.4/doc-html/scheme_8.html)
+            - [PLT Scheme](https://cs.brown.edu/courses/cs173/2008/Manual/guide/Pairs__Lists__and_Scheme_Syntax.html)
+        - Examples:
+            ```Scheme
+            (cons 3 4)
+            ;( 3
+            ;  .
+            ;  4
+            ;)
+            (cons 3 ()) ; (3 . nil) and (3) are the same
+            ;( 3
+            ;)
+            (cons 3 '(4321 5))
+            ;( 3
+            ;  4321
+            ;  5
+            ;)
+            (cons '(1 2 . 3) 4)
+            ;( ( 1
+            ;    2
+            ;    .
+            ;    3
+            ;  )
+            ;  .
+            ;  4
+            ;)
+            (cons (list 2 3) 1)
+            ;( ( 2
+            ;    3
+            ;  )
+            ;  .
+            ;  1
+            ;)
+            (cons 1 (list 2 3))
+            ;( 1
+            ;  2
+            ;  3
+            ;)
+            (cons (cons cons cons) (cons (cons cons cons) (cons cons cons)))
+            ;( ( #<procedure cons>
+            ;    .
+            ;    #<procedure cons>
+            ;  )
+            ;  ( #<procedure cons>
+            ;    .
+            ;    #<procedure cons>
+            ;  )
+            ;  #<procedure cons>
+            ;  .
+            ;  #<procedure cons>
+            ;)
+            ```
+    2. ```list```:
+        - **At least 0** argument
+        - **Return** ```list``` (i.e. pair)
+        - Examples:
+        ```Scheme
+        (list)
+        ;nil
+        (list ())
+        ;( nil
+        ;)
+        (list () nil ())
+        ;( nil
+        ;  nil
+        ;  nil
+        ;)
+        ```
+2. Bypassing the default evaluation (```BYPASS_EVALUATION```)
+    - To bypass (avoid) the evaluation of a S-expression
+    1. ```quote```:
+        - **Must be 1** argument
+        - **Return** ```list``` (i.e. pair)
+        - Example:
+            ```Scheme
+            (quote (3 (4 5)))
+            ;( 3
+            ;  ( 4
+            ;    5
+            ;  )
+            ;)
+            ```
+    2. ```'```:
+        - **Must be 1** argument
+        - **Return** ```list``` (i.e. pair)
+        - Example:
+            ```Scheme
+            '((3 4) "Happy New Year!" . 6)
+            ;( ( 3
+            ;    4
+            ;  )
+            ;  "Happy New Year!"
+            ;  .
+            ;  6
+            ;)
+            ```
+3. The binding of a symbol to an S-expression (```BINDING```)
+    - To set a binding of a symbol, which is a primitive (recursive data type)
+    1. ```define```:
+        - **Must be 2** arguments
+        - **Return** a binding, can be primitive or function or previous definitino
+        - Once a symbol is defined (or "bound"), the user can enter this symbol, and the system will return its binding.
+        - However, the user is not allowed to redefine symbols that happen to be system primitives such as ```cons``` or ```car``` or ```cdr```, etc.
+        - Examples:
+            ```Scheme
+            (define add3 (lambda (x) (+ x 3)))
+            ```
+4. Part accessors (```PART_ACCESSOR```)
+    - To get the value of the specific part
+    1. ```car```:
+        - **Must be 1** argument
+    2. ```cdr```:
+        - **Must be 1** argument
+5. Primitive predicates (```PRIMITIVE_PREDICATE```)
+    - To judge the given argument, aka judgement
+    1. ```atom?```:
+        - **Must be 1** argument
+    2. ```pair?```:
+        - **Must be 1** argument
+    3. ```list?```:
+        - **Must be 1** argument
+    4. ```null?```:
+        - **Must be 1** argument
+    5. ```integer?```:
+        - **Must be 1** argument
+    6. ```real?``` & ```number?```:
+        - **Must be 1** argument
+        - In OurSchem, ```real?``` = ```number?```
+    7. ```string?```:
+        - **Must be 1** argument
+    8. ```boolean?```:
+        - **Must be 1** argument
+    9. ```symbol?```:
+        - **Must be 1** argument
+6. Basic arithmetic, logical and string operations (```OPERATION```)
+    - To operation what it should does and return it
+    - Arithmetic operations:
+        1. ```+```:
+            - **At least 2** arguments
+        2. ```-```:
+            - **At least 2** arguments
+        3. ```*```:
+            - **At least 2** arguments
+        4. ```/```:
+            - **At least 2** arguments
+    - Logical operations:
+        - In evaluating ```and``` or ```or```, it is possible that some "argument expr" does not get evaluated. Use Petite Scheme to see what this means.
+        - For instance:
+            ```Scheme
+            (set! a 5)
+            a
+            (and (set! a 10) #f (set! a 100))
+            a
+            (or #t (set! a 200))
+            a
+            ```
+        1. ```not```:
+            - **Must be 1** argument
+        2. ```and```:
+            - **At least 2** arguments
+        3. ```or```:
+            - **At least 2** arguments
+        4. ```>```:
+            - **At least 2** arguments
+        5. ```>=```:
+            - **At least 2** arguments
+        6. ```<```:
+            - **At least 2** arguments
+        7. ```<=```:
+            - **At least 2** arguments
+        8. ```=```:
+            - **At least 2** arguments
+    - String operations:
+        1. ```string-append```:
+            - **At least 2** arguments
+        2. ```string>?```:
+            - **At least 2** arguments
+        3. ```string<?```:
+            - **At least 2** arguments
+        4. ```string=?```:
+            - **At least 2** arguments
+7. Eqivalence tester (```EQIVALENCE_TESTER```)
+    - To judge if the value or (and) definition (aka atom) is the same
+    1. ```eqv?```:
+        - **Must be 2** arguments
+    2. ```equal?```:
+        - **Must be 2** arguments
+8. Sequencing and functional composition (```SEQUENCING_AND_FUNCTIONAL_COMPOSITION```)
+    1. ```begin```:
+        - **At least 1** argument: primitive
+        - **Return** the value of the sequence / function / operation
+        - It is necessary every time you need several forms when the syntax allows only one form. For instance, if you need to increment a variable y each time you use it:
+            ```Scheme
+            ((set! r 5) 4) ; set! return 5 -> (5 4) -> ERROR (attempt to apply non-function) : 5
+            (begin (set! r 5) 4) ; set! return 5 -> (begin 5 4) -> begin return 4 -> 4
+            ```
+        - The following are the same:
+            ```Scheme
+            (car (cdr '(1 2 3 4))) ; cdr return (2 3 4) -> car return 2 -> 2
+            (begin (car (cdr '(1 2 3 4)))) ; cdr return (2 3 4) -> car return 2 -> begin return 2 -> 2
+            ```
+9. Conditionals (```CONDITIONAL```)
+    - In evaluating ```if``` or ```cond```, it is possible that some "sub-expr" does not get evaluated (this is the meaning of conditional expressions). Use Petite Scheme to check.
+    1. ```if```:
+        - **Specifically 2 or 3** arguments
+        - **Return** the binding by condition
+        - if the condition is true -> 2 or 3 arguments
+        - if the condition if false -> must be 3 arguments
+        - Examples:
+            ```Scheme
+            (if #t 'true) ; true -> 2 arguments
+            ; true
+            (if (not nil) 'true 'false) ; true -> 3 arguments
+            ; true
+            (if (not #t) 'true) ; false -> 2 arguments will error
+            ;ERROR (no return value) : ( if
+            ;  ( not
+            ;    #t
+            ;  )
+            ;  ( quote
+            ;    true
+            ;  )
+            ;)
+            (if (equal? 1 2) 'true 'false) ; false -> must be 3 arguments
+            ; false
+            ```
+    2. ```cond```:
+        - **At least 1** argument
+        - **Return** the binding by condition
+        - Use switch-case to think, but must have return value:
+            ```Scheme
+            (cond ((< 1 0) 'compare_action1 'compare_action2) ; condi 1
+                  (nil 'nil_action1 "nil_action2") ; condi 2
+                  (< 1 2) ; condi 3
+                  (#t '#t_action1 '#t_action2) ; condi 4
+                  (else 'else_action1 'else_action2) ; condi 5
+            )
+            ```
+            is same as
+            ```C++
+            if (1 < 0) { // condi 1
+                // get the value of 'compare_action1
+                // get the value of 'compare_action2
+                // return the value of 'compare_action2
+            }
+            else if (false) { // condi 2
+                // get the value of 'nil_action1
+                // get the value of "'nil_action2"
+                // return the value of "'nil_action2"
+            }
+            else if (<) { // condi 3 // must go here because this is a primitive
+                // get the value of 1
+                // get the value of 2
+                // return the value of 2
+            }
+            else if (true) { // condi 4 // if this condition if former than <, will go here
+                // get the value of '#t_action1
+                // get the value of '#t_action2
+                // return the value of #t_action2
+            }
+            else { // condi 5
+                // get the value of 'else_action1
+                // get the value of else_action2
+                // return the value of else_action2
+            }
+            ```
+            and will go *condi 3*.
+        - Example:
+            ```Scheme
+            (cond ((< 1 2) cons)
+            )
+            ;#<procedure cons>
+            (cond ((> 3 4) 'bad)
+                  ((> 4 5) 'bad)
+            ) ; because the 2 conditions are false, must have else here
+            ;ERROR (no return value) : ( cond
+            ;  ( ( >
+            ;    3
+            ;    4
+            ;    )
+            ;    ( quote
+            ;    bad
+            ;    )
+            ;  )
+            ;  ( ( >
+            ;    4
+            ;    5
+            ;    )
+            ;    ( quote
+            ;    bad
+            ;    )
+            ;  )
+            ;)
+            ```
+    3. ```else```:
+        - - **At least 1** argument
+        - **Return** the binding by condition
+        - It is a keyword (and not a reserve word) in OurScheme (or rather, Scheme).
+        - According to our textbook (by Sebesta), a keyword has a special meaning ONLY WHEN it appears in some special contexts.
+        - When the word appears in contexts that are not special, the word is just an "ordinary word".
+        - ```else``` has a special meaning only when it appear as the first element of the last condition of 'cond' ; in all other cases, ```else``` is considered a normal symbol.
+        - Examples:
+            ```Scheme
+            (cond ((< 1 0) 'act1)
+                ('must_here) ; because must here, should have at least 1 action, and don't need else
+            )
+            ;ERROR (COND format) : ( cond
+            ;  ( ( <
+            ;      1
+            ;      0
+            ;    )
+            ;    ( quote
+            ;      act1
+            ;    )
+            ;  )
+            ;  ( ( quote
+            ;      must_here
+            ;    )
+            ;  )
+            ;)
+            (cond ((< 1 0) 'act1)
+                ('must_here 'act1 (list) 4) ; because must here,so don't need else
+            )
+            ;4
+            (cond ((< 1 0) 'act1)
+                  (nil 'act2 (list) 4)
+                  (else 'act3 'end_else) ; because the first 2 conditions must be false, so else must be required
+            )
+            ;end_else
+            ```
+10. clean-environment (```CLEAN_ENV```)
+    1. ```clean-environment```:
+        - **Must be 0** argument
+        - Clear all definitions
+        - Examples:
+            ```Scheme
+            (cond ((< 1 0) 'act1)
+                  (nil 'act2 (list) 4)
+                  (else (clean-environment) 'end_else) ; because the first 2 conditions must be false, so else must be required
+            )
+            ;ERROR (level of CLEAN-ENVIRONMENT)
+            ```
+11. Exit (```EXIT```)
+    1. ```exit```:
+        - **Must be 0** argument
+        - Exit OurScheme
+#### Error exceptions
+##### Semantic exceptions
+1. Format error: define
+    ```
+    ERROR (DEFINE format) : <S-exp>
+    ```
+2. Format error: cond
+    ```
+    ERROR (COND format) : <S-exp>
+    ```
+3. ATOM error: Apply non-function
+    ```
+    ERROR (attempt to apply non-function) : <ATOM>
+    ```
+4. ATOM error: Unbound symbol
+    ```
+    ERROR (unbound symbol) : <SYMBOL>
+    ```
+5. Argument error: ```<S-exp>``` is not a pure list
+    ```
+    ERROR (non-list) : <S-exp>
+    ```
+6. Argument error: incorrect argument type
+    ```
+    ERROR (<PRIMITIVE> with incorrect argument type) : <S-exp>
+    ```
+7. Argument error: incorrect number of argument(s)
+    ```
+    ERROR (incorrect number of arguments) : <PRIMITIVE>
+    ```
+8. Function error: no return value
+    ```
+    ERROR (no return value) : <S-exp>
+    ```
+9. Operatoin error: division by 0
+    ```
+    ERROR (division by zero) : /
+    ```
+### Project 3
+#### Reserve words
+```
+quote
+and
+or
+begin
+if
+cond
+define
+lambda
+set!
+let
+```
+```let```, ```lambda``` and ```define``` are three of the above mentioned reserve words. They are not functions. Whenever a reserve word appears, the system should check the syntax of the related code fragment.
+Though S-expressions starting with any one of the above ten reserve words are actually "forms" and not functions, some of them may nevertheless return values. For this reason, we will also refer to these "forms" as "functional forms".
+#### Special reserve words
+#### ```let```
+```Scheme
+(let (<sS1>) <sS2>)
+```
+- At least 2 parameters
+- First: ```(<sS1>)```
+    - A list of zero or more pairs
+    - ```<sS1>``` is a sequence of S-expressions, with each S-expression ```S1``` being of the form:
+        ```Scheme
+        ( SYMBOL S-expression )
+        ```
+    - The ```<sS1>``` are **local bound symbol**, i.e. only bound in ```let```
+- Second: ```<sS2>```
+    - ```<sS2>``` is a **non-empty** sequence of S-expressions.
+    - The "LET-defined" local variables (i.e., 'x' and 'y') can appear in these S-expressions, and the system knows what their bindings are (i.e., bound before).
+    - The evaluated result of the last S-expression in '.........' is taken to be the evaluated result of the entire LET expression.
+- Example:
+    ```Scheme
+    (let ((a 4) (b 5)); <sS1> = ((a 4) (b 5)), pair1 = (a 4), pair2 = (b 5)
+      (list (list a b)); the first <S-exp> in sS1, only be evaluated
+      (list (list ab a)); the first <S-exp> in sS1, be evaluated and returned
+    )
+    ; print the return value: last <S-exp> in <sS2>
+    ;( ( 5
+    ;    4
+    ;  )
+    ;)
+
+    (let (a 4) ()) ; <sS1> should be ((a 4)) not (a 4)
+    ;ERROR (LET format) : ( let
+    ;  ( a
+    ;    4
+    ;  )
+    ;  nil
+    ;)
+
+    (let ((a 4)) ())
+    ;nil
+    a ; a ls a local symbol
+    ;ERROR (unbound symbol) : a
+
+    (let ((a 4)) a) ; return the local symbol's value
+    ;4
+
+    (eqv? 4 (let ((a 4)) a)) ; compare the value of return
+    ;#t    
+    ```
+#### ```lambda```
+- At least 2 params
+- First:
+    - A list of **symbol**s (i.e. only symbol), at least 0, i.e. the arguments of the function being defined by the lambda expression.
+- Second and the after:
+    - The one-or-more-S-expressions constitute the function's body.
+    - return the last action's result
+- Example:
+    ```Scheme
+    (lambda () 'do_1 'do_2)
+    ;#<procedure lambda>
+
+    (list (lambda () 'do_1 'do_2))
+    ;( #<procedure lambda>
+    ;)
+
+    ((lambda () 'do_1 'do_2))
+    ;do_2
+    
+    (list ((lambda () 'do_1 'do_2)))
+    ;( do_2
+    ;)
+
+    (lambda (3) (+ x 1 c "") ())
+    ERROR (LAMBDA format) : ( lambda
+    ;  ( 3
+    ;  )
+    ;  ( +
+    ;    x
+    ;    1
+    ;    c
+    ;    ""
+    ;  )
+    ;nil
+    ;)
+
+    (lambda (x) (+ x 1 c "") ()) ; don't evaluate
+    ;#<procedure lambda>
+
+    (define f (lambda (x) (+ x 1 c "") ())) ; don't evaluate lambda
+    ; f defined
+
+    ((lambda (x) (+ x 1 c "") ()))
+    ;ERROR (incorrect number of arguments) : lambda
+
+    ((lambda (x) (+ x 1 c "") ()) 1)
+    ;ERROR (unbound symbol) : c
+
+    ((lambda (x) (+ x 1 3 "") ()) 1)
+    ;ERROR (+ with incorrect argument type) : ""
+
+    (define f (lambda (3) (+ x 1 c "") ())) ; 3 is not symbol
+    ERROR (LAMBDA format) : ( lambda
+    ;  ( 3
+    ;  )
+    ;  ( +
+    ;    x
+    ;    1
+    ;    c
+    ;    ""
+    ;  )
+    ;nil
+    ;)
+
+    ((lambda (x) (+ x 1 3) ()) 1)
+    ;nil
+
+    (define f ((lambda (x) (+ x 1 3) ()) 1) )
+    ;nil
+    ```
+#### ```define```
+```Scheme
+( define SYMBOL S-expression )
+; or
+( define ( SYMBOL zero-or-more-symbols ) one-or-more-S-expressions )
+```
+- Must appear at the top level
+- Examples:
+```Scheme
+(define main ()) ; define main is a symbol bound to nil
+;main defined
+main
+;nil
+(main)
+;ERROR (attempt to apply non-function) : nil
+
+(define (main) (list 1) (list 2) (list 3)) ; no arguments
+;main defined
+main
+;#<procedure main>
+(main)
+;( 3
+;)
+
+(define (main a b c) (list a) (list b) (list c)) ; 3 arguments
+;main defined
+main
+;#<procedure main>
+(main)
+;ERROR (incorrect number of arguments) : main
+(main 3 '(test) "") ; return the last action (list c)
+;( ""
+;)
+
+( define f ( lambda (x) (+ x x c)))
+;f defined
+f
+;#<procedure lambda>
+(f)
+;ERROR (incorrect number of arguments) : lambda
+(f 1)
+;ERROR (unbound symbol) : c
+(define c 10)
+;c defined
+(f c)
+;12
+
+(define cadr (lambda (x) (car (cdr x))))
+;cadr defined
+cadr
+;#<procedure lambda>
+(cadr)
+;ERROR (incorrect number of arguments) : lambda
+(cadr '(1 2 3 4))
+;2
+
+(define a 2)
+;a defined
+(define plus_twice (lambda (x) (+ x x c)))
+;plus_twice defined
+plus_twice
+;#<procedure lambda>
+(plus_twice 1)
+ERROR (unbound symbol) : c
+(define c 2)
+;c defined
+(plus_twice a)
+;6
+
+(define ( do_plus_20 x ) (plus_20 x x))
+;do_plus_20 defined
+(define (plus_20 used_arg unused_arg) (+ used_arg 20))
+;plus_20 defined
+(plus_20 10)
+;ERROR (incorrect number of arguments) : plus_20
+(plus_20 10 0)
+;30
+(do_plus_20 10)
+;30
+```
+#### Verbose mode
+- To print the details about the system
+the "verbose" mode controls whether the system will print something when the being evaluated S-expression is ```DEFINE``` or ```CLEAN-ENVIRONMENT```
+- Default mode is on
+- ```verbose```
+    - To set verbose mode
+    - return boolean
+    - 1 argument (S-expression)
+    - ```(verbose nil)``` vs. ```(verbose #t)``` ; #t can be replaced by any S-expression that evaluates to NOT NIL
+- ```verbose?```
+    - To check if the verbose mode on
+    - return boolean
+    - 0 argument
+- Example:
+    ```Scheme
+    ; default is on
+    (verbose?)
+    ;#t
+    (verbose? (not (not (not (and #t nil)))))
+    ;ERROR (incorrect number of arguments) : verbose?
+    (not (not (and #t nil)))
+    ;nil
+
+    ; print define and clean-environment messages when on
+    (define a 5)
+    ;a defined
+    (clean-environment)
+    ;environment cleaned
+
+    ; set to off
+    (verbose (not (not (and #t nil)))) ; get the return value of (not (not (and #t nil))) and set it
+    ;nil
+    (verbose?)
+    ;nil
+
+    ; don't print messsage, just print "\n" when off
+    (define a 5)
+    ;
+    (clean-environment)
+    ;
+
+    ; reset to on
+    (verbose (not (eqv? "" "")))
+    ;#t
+    ```
+#### Error exceptions
+- Total function: has return
+- Partial function: no return
+    - No Return is Error:
+        ```Scheme
+        (define (F x) (cond ((> x 5) x)))
+        ;F defined
+        (F 3)
+        ;ERROR (no return value) : ( F
+        ;  3
+        ;)
+        ```
+    - No Return is OK:
+        ```Scheme
+        (define (F x) (cond ((> x 5) x)))
+        ;F defined
+        (begin (F 3) 5)
+        ;5
+        (begin (begin (F 3)) 5)
+        ;5
+        ```
+### Project 4
+#### Error objects
+- A new datatype ```ERROR_OBJECT```
+- An error-object "contains" a string (an appropriately phrased error message), and "behaves" just like a string-object, i.e. just a special type, but the value is a string.
+- error-object v.s. string-object:
+    1. while 'error-object?' returns #t in the case of an error-object, it returns nil in the case of a string-object.
+    2. while string-objects can be read in, error-objects cannot. Error-objects can only be explicitly created by calling 'create-error-object'. Calling the function 'read' 
+    may also result in an error object to be implicitly created, as described below.
+##### ```create-error-objects```
+- function
+- only 1 argument, a string
+- return error-object
+##### ```error-object?```
+- function
+- 1 argument: ```<S-exp>```
+- return boolena, if the argument is a error-object
+#### I/Os
+##### ```read```
+- ```main()```
+- 0 arguments
+- It attempts to first read in the next input S-expression and then return (the internal representation of) that S-expression.
+##### ```write```
+##### ```display-string```
+##### ```newline```
+#### Functions
+##### ```symbol->string```
+##### ```number->string```
+##### ```eval```
+##### ```set!```
 ## Commands
 - Windows Powershell:
     - Warning:
@@ -172,6 +923,3 @@ CYCU-New-PL
 ├──run_project1BatchIO.ps1 // project1.cpp的multi-test-cases測試腳本
 └──run_project2BatchIO.ps1 // project2.cpp的multi-test-cases測試腳本
 ```
-
-# 我的實作
-## [Project 1](./CompleteCodeByProjects/Project1.md)
