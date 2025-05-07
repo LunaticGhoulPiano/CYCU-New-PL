@@ -10,6 +10,7 @@
 #include <regex>
 
 std::string gTestNum; // note that it is int + '\n'
+bool gIsFirstSExpInputed = false; // to record if the first legal <S-exp> has been read
 
 /* Token types */
 enum class TokenType {
@@ -88,7 +89,7 @@ struct Data {
 };
 
 /* Keywords */
-std::unordered_map<std::string, Data> KEYWORDS = {
+std::unordered_map<std::string, Data> gKeywords = {
     // primitives
     {"#t", {true}},
     {"nil", {true}},
@@ -359,43 +360,82 @@ class Printer { // all outputs are dealed here
             std::cout << e.what();
             // the next prompt will be printed in S_Exp_Lexer()::readAndTokenize()
         }
+
+        void printProcedure(std::string procedure) {
+            std::cout << "#<procedure " << procedure << ">\n";
+            printPrompt();
+        }
 };
 Printer gPrinter;
 
 /* S-Expression Evaluator */
 class S_Exp_Evaluator {
     private:
-        //
+        std::unordered_map<std::string, Data> env; // to store the user-defined bindings
+
     public:
+        bool isKeyword(const std::string &str) {
+            return gKeywords.find(str) != gKeywords.end();
+        }
+
+        bool isDefined(const std::string &str) {
+            return env.find(str) != env.end();
+        }
+
+        bool isAtomAFunctionName(std::string atom) {
+            // if the atom is a symbol that is bound to a function, will not check the bindings (cuz it should check outside)
+            if (atom != "#t" && atom != "nil" && atom != "else" && isKeyword(atom)) return true;
+            else return false;
+        }
+
         void evaluate(std::shared_ptr<AST> cur) {
-            //
+            // TODO
         }
 };
 
 /* S-Expression Executor */
 class S_Exp_Executor {
     private:
-        S_Exp_Evaluator s_exp_evaluator;
-        // std::stack<> call_stack;
-        // std::unordered_map<> env;
+        S_Exp_Evaluator evaluator;
 
     public:
         void execute(std::shared_ptr<AST> root) {
-            // evaluate based on cases
-            s_exp_evaluator.evaluate(root);
-            // then execute
-            gPrinter.printSExp(prettyWriteSExp(root));
+            if (root->isAtom) {
+                if (evaluator.isAtomAFunctionName(root->token.value)) gPrinter.printProcedure(root->token.value);
+                else {
+                    if (root->token.type == TokenType::SYMBOL) {
+                        // check the binding
+                        if (! evaluator.isDefined(root->token.value)) throw SemanticException::UnboundSymbol(root->token.value);
+                        else {
+                            // TODO: bind the symbol
+                            /*
+                            [user]> (define a (list 1 2 (cons 3 4) 5 ""))
+                            [system]> a defined
+                            [user]> a
+                            [system]> (1 2 (3 . 4) 5 "") // use pretty print to print the binding value
+                            [user]> (define b (lambda (x y) (+ x y)))
+                            [system]> b defined
+                            [user]> b
+                            [system]> #<procedure lambda>
+                            [user]> (b 1)
+                            [system]> ERROR (incorrect number of arguments) : lambda
+                            [user]> (b 1 2)
+                            [system]> 3
+                            */
+                        }
+                    }
+                    else gPrinter.printSExp(prettyWriteSExp(root));
+                }
+            }
+            else {
+                if (root->left->token.type == TokenType::QUOTE) gPrinter.printSExp(prettyWriteSExp(root->right->left)); // quote
+                else {
+                    // TODO: evaluate based on cases
+                    evaluator.evaluate(root);
+                    // TODO: print the correct output
+                }
+            }
         }
-
-        /*
-        bool isKeyword(const std::string &str) {
-            return keywords.find(str) != keywords.end();
-        }
-
-        bool isDefined(const std::string &str) {
-            return env.find(str) != env.end();
-        }
-        */
 
         std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
             if (cur != nullptr) {
@@ -695,6 +735,7 @@ class S_Exp_Parser {
             else { // current <S-exp> is the most outer <S-exp>
                 if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                 executor.execute(cur_node);
+                if (! gIsFirstSExpInputed) gIsFirstSExpInputed = true; // record the first legal <S-exp> is activated
                 resetInfos();
             }
         }
@@ -757,7 +798,7 @@ class S_Exp_Lexer {
     private:
         char ch;
         int lineNum = 1, columnNum = 0;
-        bool isFirstInput = true, isSExpEnded = false;
+        bool isSExpEnded = false;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
         S_Exp_Parser parser;
 
@@ -859,11 +900,9 @@ class S_Exp_Lexer {
             bool start = false;
             isSExpEnded = false;
 
-            if (isFirstInput && ! start) { // because peek() will need a input while Interactive I/O at the beginning
-                gPrinter.printPrompt();
-                isFirstInput = false;
-            }
-            else if (std::cin.peek() != EOF) gPrinter.printPrompt(); // so in the following (i.e. not the first input) can use peek()
+            // because peek() will need a input while Interactive I/O at the beginning
+            // so in the following (i.e. not the first input) can use peek()
+            if (! gIsFirstSExpInputed || std::cin.peek() != EOF) gPrinter.printPrompt();
 
             while (std::cin.get(ch)) {
                 start = true;
