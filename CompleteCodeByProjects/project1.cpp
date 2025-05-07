@@ -96,11 +96,11 @@ class ExitException: public std::exception { // Common usage
         }
 
         static ExitException CorrectExit() { // Exit
-            return ExitException("\n> \nThanks for using OurScheme!");
+            return ExitException("\nThanks for using OurScheme!");
         }
 
         static ExitException NoMoreInput() { // EOF & Exit
-            return ExitException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!");
+            return ExitException("ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!");
         }
 };
 
@@ -115,20 +115,40 @@ class SyntaxException: public std::exception { // Project 1
         }
 
         static SyntaxException UnexpectedToken(int line, int column, const std::string token) {
-            return SyntaxException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
+            return SyntaxException("ERROR (unexpected token) : atom or '(' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
         }
 
         static SyntaxException NoRightParen(int line, int column, const std::string token) {
-            return SyntaxException("\n> ERROR (unexpected token) : ')' expected when token at Line "
+            return SyntaxException("ERROR (unexpected token) : ')' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
         }
 
         static SyntaxException NoClosingQuote(int line, int column) {
-            return SyntaxException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+            return SyntaxException("ERROR (no closing quote) : END-OF-LINE encountered at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + "\n");
         }
 };
+
+/* Global output printer */
+class Printer { // all outputs are dealed here
+    public:
+
+        void printPrompt() {
+            std::cout << "\n> ";
+        }
+
+        void printSExp(std::string s_exp) {
+            std::cout << s_exp;
+            printPrompt(); // print the next prompt
+        }
+
+        void printError(const std::exception &e) {
+            std::cout << e.what();
+            // the next prompt will be printed in S_Exp_Lexer()::readAndTokenize()
+        }
+};
+Printer gPrinter;
 
 /* S-Expression Parser */
 // <S-exp> ::= <ATOM>
@@ -217,7 +237,7 @@ class S_Exp_Parser {
             }
             else { // current <S-exp> is the most outer <S-exp>
                 if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
-                std::cout << "\n> " << prettyWriteSExp(cur_node);
+                gPrinter.printSExp(prettyWriteSExp(cur_node));
                 // gDebugger.debugPrintAST(cur_node); // you can use this to debug
                 resetInfos();
             }
@@ -287,7 +307,7 @@ class S_Exp_Lexer {
     private:
         char ch;
         int lineNum = 1, columnNum = 0;
-        bool s_exp_ended = false;
+        bool isFirstInput = true, isSExpEnded = false;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
         S_Exp_Parser parser;
 
@@ -388,7 +408,13 @@ class S_Exp_Lexer {
             columnNum = 0;
             ch = '\0';
             bool start = false;
-            s_exp_ended = false;
+            isSExpEnded = false;
+
+            if (isFirstInput && ! start) { // because peek() will need a input while Interactive I/O at the beginning
+                gPrinter.printPrompt();
+                isFirstInput = false;
+            }
+            else if (std::cin.peek() != EOF) gPrinter.printPrompt(); // so in the following (i.e. not the first input) can use peek()
 
             while (std::cin.get(ch)) {
                 start = true;
@@ -396,9 +422,9 @@ class S_Exp_Lexer {
                 if (ch == ';') {
                     if (token.value == "") {
                         eatALine();
-                        if (s_exp_ended) {
+                        if (isSExpEnded) {
                             lineNum = 1;
-                            s_exp_ended = false;
+                            isSExpEnded = false;
                         }
                         else lineNum++;
                         columnNum = 0;
@@ -409,11 +435,11 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             eatALine();
-                            if (s_exp_ended) {
+                            if (isSExpEnded) {
                                 lineNum = 1;
-                                s_exp_ended = false;
+                                isSExpEnded = false;
                             }
                             else lineNum++;
                             columnNum = 0;
@@ -423,9 +449,9 @@ class S_Exp_Lexer {
                 else if (isWhiteSpace(ch)) {
                     if (ch == '\n') {
                         if (token.value == "") {
-                            if (s_exp_ended) {
+                            if (isSExpEnded) {
                                 lineNum = 1;
-                                s_exp_ended = false;
+                                isSExpEnded = false;
                             }
                             else lineNum++;
                             columnNum = 0;
@@ -437,11 +463,11 @@ class S_Exp_Lexer {
                                 throw SyntaxException::NoClosingQuote(lineNum, columnNum);
                             }
                             else {
-                                s_exp_ended = saveAToken(token, lineNum, columnNum, false);
+                                isSExpEnded = saveAToken(token, lineNum, columnNum, false);
                                 
-                                if (s_exp_ended) {
+                                if (isSExpEnded) {
                                     lineNum = 1;
-                                    s_exp_ended = false;
+                                    isSExpEnded = false;
                                 }
                                 else lineNum++;
                                 columnNum = 0;
@@ -456,9 +482,9 @@ class S_Exp_Lexer {
                                 columnNum++;
                             }
                             else {
-                                s_exp_ended = saveAToken(token, lineNum, columnNum);
+                                isSExpEnded = saveAToken(token, lineNum, columnNum);
                                 
-                                if (s_exp_ended) {
+                                if (isSExpEnded) {
                                     lineNum = 1;
                                     columnNum = 1; // 1 for ' ' or '\t'
                                 }
@@ -472,7 +498,7 @@ class S_Exp_Lexer {
                         parenStack.push(ch);
                         token.value += ch; // "("
                         columnNum++; // ex. "   f   (((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 7 is >>.<<
-                        s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
+                        isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -481,13 +507,13 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
                             // save current
                             parenStack.push(ch);
                             token.value += ch; // "("
                             columnNum++; // ex. "123A((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 3 is >>.<<
-                            s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
+                            isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
                         }
                     }
                 }
@@ -503,8 +529,8 @@ class S_Exp_Lexer {
                             parenStack.pop();
                             token.value += ch; // ")"
                             columnNum++;
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
-                            if (s_exp_ended) {
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            if (isSExpEnded) {
                                 lineNum = 1;
                                 columnNum = 0;
                             }
@@ -517,8 +543,8 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
-                            if (s_exp_ended) {
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            if (isSExpEnded) {
                                 lineNum = 1;
                                 columnNum = 0;
                             }
@@ -533,8 +559,8 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 token.value += ch; // ")"
                                 columnNum++;
-                                s_exp_ended = saveAToken(token, lineNum, columnNum);
-                                if (s_exp_ended) {
+                                isSExpEnded = saveAToken(token, lineNum, columnNum);
+                                if (isSExpEnded) {
                                     lineNum = 1;
                                     columnNum = 0;
                                 }
@@ -558,7 +584,7 @@ class S_Exp_Lexer {
                     if (token.value == "") {
                         token.value += ch;
                         columnNum++;
-                        s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
+                        isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -566,12 +592,12 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
                             token.value += ch; // "\'"
-                            if (s_exp_ended) columnNum = 1;
+                            if (isSExpEnded) columnNum = 1;
                             else columnNum++;
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                         }
                     }
                 }
@@ -584,17 +610,17 @@ class S_Exp_Lexer {
                         if (token.value[0] == '\"') { // the end of a STRING
                             token.value += ch;
                             columnNum++;
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
-                            if (s_exp_ended) columnNum = 0;
+                            if (isSExpEnded) columnNum = 0;
                         }
                         else { // token + STRING, with no whitespace ex. > asf"
                             // save previous
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
                             // the start of a STRING
                             token.value += ch;
-                            if (s_exp_ended) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
+                            if (isSExpEnded) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
                             else columnNum++; // ex. > (asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 6
                         }
                     }
@@ -602,7 +628,7 @@ class S_Exp_Lexer {
                 else {
                     token.value += ch;
                     columnNum++;
-                    s_exp_ended = false;
+                    isSExpEnded = false;
                 }
             }
 
@@ -620,11 +646,11 @@ int main() {
             lexer.readAndTokenize();
         }
         catch (ExitException &e) {
-            std::cout << e.what();
+            gPrinter.printError(e);
             break;
         }
         catch (SyntaxException &e) {
-            std::cout << e.what();
+            gPrinter.printError(e);
         }
         catch (...) {
             std::cout << "Unknown error" << std::endl;

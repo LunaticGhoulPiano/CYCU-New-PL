@@ -216,15 +216,15 @@ class ExitException: public std::exception { // Common usage
         }
 
         static ExitException CorrectExit() { // Exit, implemented in project 1
-            return ExitException("\n> \nThanks for using OurScheme!");
+            return ExitException("\nThanks for using OurScheme!");
         }
 
         static ExitException NoMoreInput() { // EOF & Exit, implemented in project 1
-            return ExitException("\n> ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!");
+            return ExitException("ERROR (no more input) : END-OF-FILE encountered\nThanks for using OurScheme!");
         }
 
         static ExitException NoMoreInputWhileRead() { // implemented in project 4, but current might be incorrect outputs
-            return ExitException("\n> ERROR : END-OF-FILE encountered when there should be more input\nThanks for using OurScheme!");
+            return ExitException("ERROR : END-OF-FILE encountered when there should be more input\nThanks for using OurScheme!");
         }
 };
 
@@ -239,17 +239,17 @@ class SyntaxException: public std::exception {
         }
 
         static SyntaxException UnexpectedToken(int line, int column, const std::string token) { // unexpected token, implemented in project 1
-            return SyntaxException("\n> ERROR (unexpected token) : atom or '(' expected when token at Line "
+            return SyntaxException("ERROR (unexpected token) : atom or '(' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
         }
 
         static SyntaxException NoRightParen(int line, int column, const std::string token) { // no RP, implemented in project 1
-            return SyntaxException("\n> ERROR (unexpected token) : ')' expected when token at Line "
+            return SyntaxException("ERROR (unexpected token) : ')' expected when token at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + " is >>" + token + "<<\n");
         }
 
         static SyntaxException NoClosingQuote(int line, int column) { // no second \", implemented in project 1
-            return SyntaxException("\n> ERROR (no closing quote) : END-OF-LINE encountered at Line "
+            return SyntaxException("ERROR (no closing quote) : END-OF-LINE encountered at Line "
                 + std::to_string(line) + " Column " + std::to_string(column) + "\n");
         }
 };
@@ -266,63 +266,63 @@ class SemanticException: public std::exception {
 
         // level error
         static SemanticException LevelOfCleanEnv() { // implemented in project 2
-            return SemanticException("\n> ERROR (level of CLEAN-ENVIRONMENT)\n");
+            return SemanticException("ERROR (level of CLEAN-ENVIRONMENT)\n");
         }
 
         static SemanticException LevelOfDefine() { // implemented in project 2
-            return SemanticException("\n> ERROR (level of DEFINE)\n");
+            return SemanticException("ERROR (level of DEFINE)\n");
         }
 
         static SemanticException LevelOfExit() { // implemented in project 2
-            return SemanticException("\n> ERROR (level of EXIT)\n");
+            return SemanticException("ERROR (level of EXIT)\n");
         }
 
         // format error
         static SemanticException CondFormat(std::string s_exp) { // implemented in project 2
-            return SemanticException("\n> ERROR (COND format) : " + s_exp + "\n");
+            return SemanticException("ERROR (COND format) : " + s_exp + "\n");
         }
 
         static SemanticException DefineFormat(std::string s_exp) { // implemented in project 2
-            return SemanticException("\n> ERROR (DEFINE format) : " + s_exp + "\n");
+            return SemanticException("ERROR (DEFINE format) : " + s_exp + "\n");
         }
 
         static SemanticException SetFormat(std::string s_exp) { // implemented in project 4
-            return SemanticException("\n> ERROR (SET! format) : " + s_exp + "\n");
+            return SemanticException("ERROR (SET! format) : " + s_exp + "\n");
         }
 
         static SemanticException LetFormat(std::string s_exp) { // implemented in project 3
-            return SemanticException("\n> ERROR (LET format) : " + s_exp + "\n");
+            return SemanticException("ERROR (LET format) : " + s_exp + "\n");
         }
 
         static SemanticException LambdaFormat(std::string s_exp) { // implemented in project 3
-            return SemanticException("\n> ERROR (LAMBDA format) : " + s_exp + "\n");
+            return SemanticException("ERROR (LAMBDA format) : " + s_exp + "\n");
         }
 
         // symbol error
         static SemanticException UnboundSymbol(std::string symbol) { // implemented in project 2
-            return SemanticException("\n> ERROR (unbound symbol) : " + symbol + "\n");
+            return SemanticException("ERROR (unbound symbol) : " + symbol + "\n");
         }
 
         // argument error
         static SemanticException IncorrectNumOfArgs(std::string arg) { // implemented in project 2
-            return SemanticException("\n> ERROR (incorrect number of arguments) : " + arg + "\n");
+            return SemanticException("ERROR (incorrect number of arguments) : " + arg + "\n");
         }
         
         static SemanticException IncorrectCarArgType(std::string op, std::string arg) { // implemented in project 2
-            return SemanticException("\n> ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
+            return SemanticException("ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
         }
 
         static SemanticException NonList(std::string s_exp) { // implemented in project 2
-            return SemanticException("\n> ERROR (non-list) : " + s_exp + "\n");
+            return SemanticException("ERROR (non-list) : " + s_exp + "\n");
         }
 
         // function error
         static SemanticException NonFunction(std::string arg) { // implemented in project 2
-            return SemanticException("\n> ERROR (attempt to apply non-function) : " + arg + "\n");
+            return SemanticException("ERROR (attempt to apply non-function) : " + arg + "\n");
         }
         
         static SemanticException NoReturnValue(std::string s_exp) { // implemented in project 2
-            return SemanticException("\n> ERROR (no return value) : " + s_exp + "\n");
+            return SemanticException("ERROR (no return value) : " + s_exp + "\n");
         }
 };
 
@@ -338,9 +338,29 @@ class RuntimeException: public std::exception {
 
         // function error
         static RuntimeException DivisionByZero() { // implemented in project 2
-            return RuntimeException("\n> ERROR (division by zero) : /\n");
+            return RuntimeException("ERROR (division by zero) : /\n");
         }
 };
+
+/* Global output printer */
+class Printer { // all outputs are dealed here
+    public:
+
+        void printPrompt() {
+            std::cout << "\n> ";
+        }
+
+        void printSExp(std::string s_exp) {
+            std::cout << s_exp;
+            printPrompt(); // print the next prompt
+        }
+
+        void printError(const std::exception &e) {
+            std::cout << e.what();
+            // the next prompt will be printed in S_Exp_Lexer()::readAndTokenize()
+        }
+};
+Printer gPrinter;
 
 /* S-Expression Evaluator */
 class S_Exp_Evaluator {
@@ -364,6 +384,7 @@ class S_Exp_Executor {
             // evaluate based on cases
             s_exp_evaluator.evaluate(root);
             // then execute
+            gPrinter.printSExp(prettyWriteSExp(root));
         }
 
         /*
@@ -736,7 +757,7 @@ class S_Exp_Lexer {
     private:
         char ch;
         int lineNum = 1, columnNum = 0;
-        bool s_exp_ended = false;
+        bool isFirstInput = true, isSExpEnded = false;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
         S_Exp_Parser parser;
 
@@ -829,14 +850,20 @@ class S_Exp_Lexer {
             ch = '\0';
         }
 
-        void readAndTokenize() {
+        void readAndTokenize() { // all inputs are dealed here
             Token token;
             std::stack<char> parenStack;
             lineNum = 1;
             columnNum = 0;
             ch = '\0';
             bool start = false;
-            s_exp_ended = false;
+            isSExpEnded = false;
+
+            if (isFirstInput && ! start) { // because peek() will need a input while Interactive I/O at the beginning
+                gPrinter.printPrompt();
+                isFirstInput = false;
+            }
+            else if (std::cin.peek() != EOF) gPrinter.printPrompt(); // so in the following (i.e. not the first input) can use peek()
 
             while (std::cin.get(ch)) {
                 start = true;
@@ -844,9 +871,9 @@ class S_Exp_Lexer {
                 if (ch == ';') {
                     if (token.value == "") {
                         eatALine();
-                        if (s_exp_ended) {
+                        if (isSExpEnded) {
                             lineNum = 1;
-                            s_exp_ended = false;
+                            isSExpEnded = false;
                         }
                         else lineNum++;
                         columnNum = 0;
@@ -857,11 +884,11 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             eatALine();
-                            if (s_exp_ended) {
+                            if (isSExpEnded) {
                                 lineNum = 1;
-                                s_exp_ended = false;
+                                isSExpEnded = false;
                             }
                             else lineNum++;
                             columnNum = 0;
@@ -871,9 +898,9 @@ class S_Exp_Lexer {
                 else if (isWhiteSpace(ch)) {
                     if (ch == '\n') {
                         if (token.value == "") {
-                            if (s_exp_ended) {
+                            if (isSExpEnded) {
                                 lineNum = 1;
-                                s_exp_ended = false;
+                                isSExpEnded = false;
                             }
                             else lineNum++;
                             columnNum = 0;
@@ -885,11 +912,11 @@ class S_Exp_Lexer {
                                 throw SyntaxException::NoClosingQuote(lineNum, columnNum);
                             }
                             else {
-                                s_exp_ended = saveAToken(token, lineNum, columnNum, false);
+                                isSExpEnded = saveAToken(token, lineNum, columnNum, false);
                                 
-                                if (s_exp_ended) {
+                                if (isSExpEnded) {
                                     lineNum = 1;
-                                    s_exp_ended = false;
+                                    isSExpEnded = false;
                                 }
                                 else lineNum++;
                                 columnNum = 0;
@@ -904,9 +931,9 @@ class S_Exp_Lexer {
                                 columnNum++;
                             }
                             else {
-                                s_exp_ended = saveAToken(token, lineNum, columnNum);
+                                isSExpEnded = saveAToken(token, lineNum, columnNum);
                                 
-                                if (s_exp_ended) {
+                                if (isSExpEnded) {
                                     lineNum = 1;
                                     columnNum = 1; // 1 for ' ' or '\t'
                                 }
@@ -920,7 +947,7 @@ class S_Exp_Lexer {
                         parenStack.push(ch);
                         token.value += ch; // "("
                         columnNum++; // ex. "   f   (((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 7 is >>.<<
-                        s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
+                        isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -929,13 +956,13 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
                             // save current
                             parenStack.push(ch);
                             token.value += ch; // "("
                             columnNum++; // ex. "123A((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 3 is >>.<<
-                            s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
+                            isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
                         }
                     }
                 }
@@ -951,8 +978,8 @@ class S_Exp_Lexer {
                             parenStack.pop();
                             token.value += ch; // ")"
                             columnNum++;
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
-                            if (s_exp_ended) {
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            if (isSExpEnded) {
                                 lineNum = 1;
                                 columnNum = 0;
                             }
@@ -965,8 +992,8 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
-                            if (s_exp_ended) {
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            if (isSExpEnded) {
                                 lineNum = 1;
                                 columnNum = 0;
                             }
@@ -981,8 +1008,8 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 token.value += ch; // ")"
                                 columnNum++;
-                                s_exp_ended = saveAToken(token, lineNum, columnNum);
-                                if (s_exp_ended) {
+                                isSExpEnded = saveAToken(token, lineNum, columnNum);
+                                if (isSExpEnded) {
                                     lineNum = 1;
                                     columnNum = 0;
                                 }
@@ -1006,7 +1033,7 @@ class S_Exp_Lexer {
                     if (token.value == "") {
                         token.value += ch;
                         columnNum++;
-                        s_exp_ended = saveAToken(token, lineNum, columnNum); // must be false
+                        isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -1014,12 +1041,12 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
                             token.value += ch; // "\'"
-                            if (s_exp_ended) columnNum = 1;
+                            if (isSExpEnded) columnNum = 1;
                             else columnNum++;
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                         }
                     }
                 }
@@ -1032,17 +1059,17 @@ class S_Exp_Lexer {
                         if (token.value[0] == '\"') { // the end of a STRING
                             token.value += ch;
                             columnNum++;
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
-                            if (s_exp_ended) columnNum = 0;
+                            if (isSExpEnded) columnNum = 0;
                         }
                         else { // token + STRING, with no whitespace ex. > asf"
                             // save previous
-                            s_exp_ended = saveAToken(token, lineNum, columnNum);
+                            isSExpEnded = saveAToken(token, lineNum, columnNum);
                             
                             // the start of a STRING
                             token.value += ch;
-                            if (s_exp_ended) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
+                            if (isSExpEnded) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
                             else columnNum++; // ex. > (asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 6
                         }
                     }
@@ -1050,7 +1077,7 @@ class S_Exp_Lexer {
                 else {
                     token.value += ch;
                     columnNum++;
-                    s_exp_ended = false;
+                    isSExpEnded = false;
                 }
             }
 
@@ -1068,14 +1095,14 @@ int main() {
             lexer.readAndTokenize();
         }
         catch (ExitException &e) {
-            std::cout << e.what();
+            gPrinter.printError(e);
             break;
         }
         catch (SyntaxException &e) {
-            std::cout << e.what();
+            gPrinter.printError(e);
         }
         catch (SemanticException &e) {
-            std::cout << e.what();
+            gPrinter.printError(e);
         }
         catch (...) {
             std::cout << "Unknown error" << std::endl;
