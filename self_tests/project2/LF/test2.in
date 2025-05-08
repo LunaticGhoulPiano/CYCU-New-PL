@@ -1,0 +1,55 @@
+2
+; simple (keyword {<S-exp>}) without complex define
+; to test the numbder of arguments
+
+;; correct argument numbers
+;;; cons
+(cons 3 2)
+(cons (cons 1 2) 3)
+
+;;; list
+(list)
+(list nil)
+(list nil ())
+(list 1 2 (list) 3 4)
+(list (list 1) (list 2))
+
+;;; quote: (quote <S-exp>)
+(quote 123)
+(quote "test")
+(quote ())
+(quote (quote()))
+(quote (quote (123 "456" . #t)))
+
+;;; quote: '<S-exp>
+'123
+'()
+'''(("tests nultiple continuous quote"))
+
+;;; car
+(car (list 1))
+(car (list (list 1) (list 2)))
+
+;;; cdr
+(cdr (list 1)) ; nil
+(cdr (list (list 1) (list 2)))
+
+;;; atom?
+(atom? "")
+(atom? (list))
+(atom? (cons (list 1) (car (list 1 2 3))))
+
+;;; pair?
+(pair? "atom")
+(pair? ())
+(pair? (list))
+(pair? (list 1))
+(pair? (list 1 2))
+(pair? (list 1 2 3))
+(pair? '(3 4))
+(pair? '(3 . 4))
+
+;;; list?
+(list? ())
+
+(exit)

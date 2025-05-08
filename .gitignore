@@ -1,5 +1,17 @@
+# Linux executable files
+main
+project1
+project2
+project3
+project4
+
+# Windows executable files
 *.exe
+
+# VScode settings
 .vscode
+
+# others
 self_tests/**
 !self_tests/
 !self_tests/**/

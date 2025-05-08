@@ -1,0 +1,12 @@
+10
+display-string
+procedure
+(display-string "a" "b")
+(display-string)
+(display-string "a")
+(define (func1) (display-string "a"))
+func1
+(define (func2 a) (display-string a))
+(func2 "test string")
+(func2 123) ; test non-string error
+(exit)

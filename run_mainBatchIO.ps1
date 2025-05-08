@@ -1,8 +1,11 @@
+# set project serial number
+$projectName = "project2"
+
 # compile
 g++ main.cpp -std=c++2a -o main.exe
 
 # set paths
-$testDir = "./self_tests/project2" # change the number of your current-working project here
+$testDir = "./self_tests/$projectName/CRLF"
 $exePath = "./main.exe"
 $outputDir = "$testDir/test_outputs_main"
 $logFile = "$outputDir/error_test_cases.txt"

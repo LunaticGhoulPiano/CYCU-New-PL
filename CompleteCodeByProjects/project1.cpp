@@ -10,7 +10,6 @@
 #include <regex>
 
 std::string gTestNum; // note that it is int + '\n'
-bool gIsFirstSExpInputed = false; // to record if the first legal <S-exp> has been read
 
 /* Token types */
 enum class TokenType {
@@ -238,7 +237,6 @@ class S_Exp_Parser {
             }
             else { // current <S-exp> is the most outer <S-exp>
                 if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
-                if (! gIsFirstSExpInputed) gIsFirstSExpInputed = true; // record the first legal <S-exp> is activated
                 gPrinter.printSExp(prettyWriteSExp(cur_node));
                 // gDebugger.debugPrintAST(cur_node); // you can use this to debug
                 resetInfos();
@@ -409,16 +407,11 @@ class S_Exp_Lexer {
             lineNum = 1;
             columnNum = 0;
             ch = '\0';
-            bool start = false;
             isSExpEnded = false;
 
-            // because peek() will need a input while Interactive I/O at the beginning
-            // so in the following (i.e. not the first input) can use peek()
-            if (! gIsFirstSExpInputed || std::cin.peek() != EOF) gPrinter.printPrompt();
-
+            if (! std::cin.eof()) gPrinter.printPrompt();
+            else throw ExitException::NoMoreInput();
             while (std::cin.get(ch)) {
-                start = true;
-                
                 if (ch == ';') {
                     if (token.value == "") {
                         eatALine();
@@ -631,8 +624,6 @@ class S_Exp_Lexer {
                     isSExpEnded = false;
                 }
             }
-
-            if (! start) throw ExitException::NoMoreInput();
         }
 };
 

@@ -1,12 +1,15 @@
+# set project serial number
+$projectName = "project1"
+
 # compile
 Push-Location "CompleteCodeByProjects"
-g++ project1.cpp -std=c++2a -o ..\project1.exe
+g++ "$projectName.cpp" -std=c++2a -o "..\$projectName.exe"
 Pop-Location
 
 # set paths
-$testDir = "./self_tests/project1"
-$exePath = "./project1.exe"
-$outputDir = "$testDir/test_outputs_project1"
+$testDir = "./self_tests/$projectName/CRLF"
+$exePath = "./$projectName.exe"
+$outputDir = "$testDir/test_outputs_$projectName"
 $logFile = "$outputDir/error_test_cases.txt"
 
 # create output folder if not exists
@@ -33,7 +36,7 @@ Get-ChildItem "$testDir/*.in" | ForEach-Object {
     if (Compare-Object (Get-Content $outputFile) (Get-Content $correctAnswerFile) -SyncWindow 0) {
         $filenameWithExt = "$filename.bug"
         Add-Content -Path $logFile -Value $filenameWithExt
-        Write-Host "[project1.cpp]: $filenameWithExt is not equal to $filename.out."
+        Write-Host "[$projectName.cpp]: $filenameWithExt is not equal to $filename.out."
     }
     else { # no error, remove .bug file
         Remove-Item $outputFile
@@ -43,9 +46,9 @@ Get-ChildItem "$testDir/*.in" | ForEach-Object {
 # check if $outputDir is empty and delete it if so
 if ((Get-ChildItem $outputDir).Count -eq 0) {
     Remove-Item $outputDir -Force
-    Write-Host "[project1.cpp]: All tests are correct!"
+    Write-Host "[$projectName.cpp]: All tests are correct!"
 }
 else {
     $errorCount = (Get-Content $logFile).Count
-    Write-Host "[project1.cpp]: $errorCount error case(s) are found!"
+    Write-Host "[$projectName.cpp]: $errorCount error case(s) are found!"
 }

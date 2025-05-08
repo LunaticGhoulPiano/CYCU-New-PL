@@ -1,0 +1,127 @@
+2
+"" ""asf""(""
+.:)
+' (a(
+b nil).
+   ;intp
+'
+#t
+)"t"
+a .
+; test nil
+( a b ( c . ( ) ) . d )
+(a b (c.()).d)
+( a b ( c . () ) . d )
+( a b ( c . nil) . d )
+( a b ( c . () ) . d )
+( a b ( c . (    ) ) . d )
+( a b (
+       c . ()
+      )
+  . d )
+( a b (
+       c . nil
+      )
+  . d )
+( a b (
+       c . #f
+      )
+  . d )
+( a b (
+       c . nil
+      )
+  . d )
+; test basics
+123 456 789
+( 234 . 6 )
+( 77.9 + 6 )
+( ( ( ()()())))
+(123 "")
+'(1 2 3) )
+'(1 2 3) .25
+(Hi there) (How are you)
+(Hi! (How about using . (Lisp (instead of . C?))))
+(((1 . 2) 
+    . ((3 4) 
+       . 
+       (5 . 6)
+      )
+   )
+   . (7 . 8)
+  )
+a   ; a line-comment starts with a ';', and continues until end-of-line
+3   ; your system should be able to skip all line-comments
+23.56
++3
++3.23
+1.55555 ; Use printf( "%.3f", ...) in C or String.format( "%.3f", ...) in Java
+(cons 3 5)  ; once the system prints the output, it prints a blank line
+            ; the system first prints '> ', and then starts to get
+                ; the user's input until either an unexpected character
+     (    (     ; is encountered or the user has entered an S-expression
+                ;
+  Hi "!" How    ; note that the principle of "longest match preferred" 
+                ; should be honored ; e.g., if the user enters 'How', 
+  . "are you?"  ; you should get 'How' and not (just) 'H' or 'Ho' ;
+  
+        )   "Fine.  Thank you."
+        
+   )    ( 3 .   ; if, on the same line that the S-expression ends, the
+            ; user also starts another input, then the
+                ; system also starts processing the second input,
+         .      ; but will print the output for the first input first
+( 1 2 ) ( 3 4 ) 5()(abc)
+a   ; a line-comment starts with a ';', and continues until end-of-line
+3   ; your system should be able to skip all line-comments
+(cons 3 5)  ; once it prints the output, it prints a blank line
+            ; the system first prints '> ', and then starts to get
+              ; the user's input until either an unexpected character
+   (    (     ; is encountered or the user has entered an S-expression
+              ;
+Hi "!" How    ; note that the principle of "longest match preferred" 
+              ; should be honored ; e.g., if the user enters 'How', 
+. "are you?"  ; you should get 'How' and not (just) 'H' or 'Ho' ;
+
+      )   "Fine.  Thank you."
+      
+ )    ( 3 .   ; if, on the same line that the S-expression ends, the
+            ; user also starts another input, then the
+              ; system also starts processing the second input,
+       .      ; but will print the output for the first input first
+( 1 2 ) ( 3 4 ) 5
+; the above is an example of how the system handles "multiple
+  ; input on the same line"
+  ; The point : the user may have already started entering input
+  ;             BEFORE the system prints '> '
+(((1 . 2) (3 4) 5 . 6) 7 . 8)
+(((1 . "ICE CYCU") (THIS is (41 42 . 43)) Chung . Yuan) 7 . 8)
+    ; error cases
+(1 2 . ; this is a comment
+) ; comment again
+.
+
+
+   . 34 56
+(1 2 . ;
+34 56 ) ; See?
+( 1 2 (3
+4 
+    )
+   .   "Hi, CYCU-ICE
+(23 56 "How do you do?
+"
+(exit 0)
+
+
+
+
+
+; the above is an example of how the system handles "multiple
+    ; input on the same line"
+    ; The point : the user may have already started entering input
+    ;             BEFORE the system prints '> '
+    
+    (exit     ; this is the way to get out of user-system dialog ;
+              ; below, there is a LINE-ENTER preceding 'Thanks' and
+   )          ; two LINE-ENTER following '!'
+3 4 5

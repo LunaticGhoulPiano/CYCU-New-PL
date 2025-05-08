@@ -1,0 +1,84 @@
+Welcome to OurScheme!
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c.
+    nil
+  )
+  .d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ( a
+  b
+  ( c
+  )
+  .
+  d
+)
+
+> ERROR (no more input) : END-OF-FILE encountered
+Thanks for using OurScheme!

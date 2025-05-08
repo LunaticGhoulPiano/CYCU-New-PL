@@ -10,7 +10,6 @@
 #include <regex>
 
 std::string gTestNum; // note that it is int + '\n'
-bool gIsFirstSExpInputed = false; // to record if the first legal <S-exp> has been read
 
 /* Token types */
 enum class TokenType {
@@ -410,6 +409,7 @@ class S_Exp_Executor {
     private:
         std::unordered_map<std::string, KeywordType> env; // to store the user-defined bindings
 
+        /* helper functions */
         bool isKeyword(const std::string &str) {
             return gKeywords.find(str) != gKeywords.end();
         }
@@ -424,56 +424,75 @@ class S_Exp_Executor {
             else return false;
         }
 
-        /* functions */
-        // KeywordType::CONSTRUCTOR
-        std::shared_ptr<AST> constructPair() { // cons
-            //
+        bool isArgumentNumberCorrect(std::shared_ptr<AST> cur) {
+            // TODO: only judge the current level
+            return true;
         }
 
-        std::shared_ptr<AST> constructList() { // list
+        /* primitive functions */
+        /*
+        // KeywordType::CONSTRUCTOR
+        std::shared_ptr<AST> construct(std::shared_ptr<AST> cur) { // cons & list
             //
         }
 
         // KeywordType::BYPASS_EVALUATION
+        std::shared_ptr<AST> bypass(std::shared_ptr<AST> cur) { // quote
+            //
+        }
 
         // KeywordType::BINDING
+        std::shared_ptr<AST> bind(std::shared_ptr<AST> cur) { // define, let (project 3), set! (project 4)
+            //
+        }
 
         // KeywordType::PART_ACCESSOR
+        std::shared_ptr<AST> getPart(std::shared_ptr<AST> cur) { // car, cdr
+            //
+        }
 
-        // KeywordType::PRIMITIVE_PREDICATE        
+        // KeywordType::PRIMITIVE_PREDICATE
+        std::shared_ptr<AST> judgePrimitivePredicate(std::shared_ptr<AST> cur) { // atom?, pair?, list?, null?, integer?, real?, number?, string?, boolean?, symbol?
+            //
+        }
 
         // KeywordType::OPERATION
+        std::shared_ptr<AST> operate(std::shared_ptr<AST> cur) { // +, -, *, /, not, and, or, >, >=, <, <=, =, string-append, string>?, string<?, string=?
+            //
+        }
 
         // KeywordType::EQIVALENCE_TESTER
+        std::shared_ptr<AST> judgeEqivalence(std::shared_ptr<AST> cur) { // eqv?, equal?
+            //
+        }
 
         // KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION
+        // begin
 
         // KeywordType::CONDITIONAL
+        std::shared_ptr<AST> getCondition(std::shared_ptr<AST> cur) { // if, else, cond
+            //
+        }
 
+        // project 3 ~ 4
         // KeywordType::READ
-
         // KeywordType::DISPLAY
-
         // KeywordType::LAMBDA
-
         // KeywordType::VERBOSE
-
         // KeywordType::EVALUATION
-
         // KeywordType::CONVERT_TO_STRING
-
         // KeywordType::ERROR_OBJECT_OPERATION
-
+        
+        // 2 ~ 4
         // KeywordType::CLEAN_ENVIRONMENT
-
         // KeywordType::EXIT
+        */
 
     public:
         std::string evaluate(std::shared_ptr<AST> cur) {
             // TODO: add the to-return-value (string or function in env) into AST and return std::shared_ptr<AST>
-            // or just make a new struct that has AST and the above values
             if (cur->isAtom) {
-                if (cur->token.type != TokenType::SYMBOL) return cur->token.value;
+                if (cur->token.type != TokenType::SYMBOL) return (cur->token.value + "\n");
                 else {
                     if (isAtomAFunctionName(cur->token.value)) return ("#<procedure " + cur->token.value + ">\n");
                     else {
@@ -481,12 +500,19 @@ class S_Exp_Executor {
                         if (! isDefined(cur->token.value)) throw SemanticException::UnboundSymbol(cur->token.value);
                         else {
                             // TODO: get the bind of symbol, i.e. return gPrinter.getprettifiedSExp(env[cur->token.value]) or and internal function
+                            return "\n";
                         }
                     }
                 }
             }
             else { // functions
-                //
+
+                /*
+                gDebugger.debugPrintAST(cur);
+                if (cur->token.value == "") std::cout << "cur->token.value == \"\"\n";
+                if (cur->isEndNode()) std::cout << "cur->isEndNode()\n";
+                return gDebugger.getType(cur->token) + "\n";
+                */
             }
         }
 
@@ -499,203 +525,83 @@ class S_Exp_Executor {
 /* Below comments are deprecated codes */
 // S-Expression Evaluator
 /*
-class S_Exp_Evaluator {
-    private:
-        
-        // just to record how to use std::functional
-        //std::unordered_map<std::string, std::function<double(double, double)>> binary_operators = {
-        //    {"+", [](double a, double b) { return a + b; }}, // a + b
-        //    {"-", [](double a, double b) { return a - b; }}, // a - b
-        //    {"*", [](double a, double b) { return a * b; }}, // a * b
-        //    {"/", [](double a, double b) { return a / b; }}, // a / b
-        //    {"<", [](double a, double b) { return a < b; }}, // a < b
-        //    {">", [](double a, double b) { return a > b; }}, // a > b
-        //    {"<=", [](double a, double b) { return a <= b; }}, // a <= b
-        //    {">=", [](double a, double b) { return a >= b; }}, // a >= b
-        //    {"=", [](double a, double b) { return a == b; }}, // a == b
-        //    {"!=", [](double a, double b) { return a != b; }}, // a != b
-        //};
-
-        std::unordered_map<std::string, std::shared_ptr<AST>> env;
-
-        bool isKeyword(const std::string &str) {
-            return keywords.find(str) != keywords.end();
-        }
-
-        bool isDefined(const std::string &str) {
-            return env.find(str) != env.end();
-        }
-
-        std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
-            if (cur != nullptr) {
-                if (cur->isAtom) { // <S-exp> ::= <ATOM>
-                    if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
-                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->token.value + "\n");
-                }
-                else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
-                    // LP: new list started
-                    if (isRoot) {
-                        s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "(");
-                        depth++;
-                        isFirstTokenOfLine = false;
-                    }
-                    // car
-                    s_exp = prettyWriteSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
-                    // cdr
-                    if (cur->right && cur->right->isAtom && cur->right->token.type != TokenType::NIL) {
-                        s_exp += (std::string(depth * 2, ' ') + ".\n");
-                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
-                    }
-                    else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, s_exp, depth, false, true);
-                    else if (! cur->right || cur->right->token.type == TokenType::NIL) ; // nothing
-                    else {
-                        s_exp += (std::string(depth * 2, ' ') + ".\n");
-                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
-                    }
-                    // RP: cur list ended
-                    if (isRoot) {
-                        depth--;
-                        s_exp += (std::string(depth * 2, ' ') + ")\n");
-                    }
-                }
-            }
-
-            return s_exp;
-        }
-
-        void executeByKeywords(std::shared_ptr<AST> root) {
-            switch(keywords[root->left->token.value].first) {
-                case KEYWORD_TYPE::CONSTRUCTOR: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::QUOTE: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::DEFINE: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::PART_ACCESSOR: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::PRIMITIVE_PREDICATE: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::OPERATOR: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::EQIVALENCE_TESTER: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::SEQUENCING_AND_FUNCTIONAL_COMPOSITION: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::CONDITIONAL_OPERATOR: {
-                    //
-                    break;
-                }
-                case KEYWORD_TYPE::CLEAN_ENVIRONMENT: {
-                    env.clear();
-                    std::cout << "\n> environment cleaned\n";
-                    break;
-                }
-            }
-        }
-
-        void checkLegalSExp(std::shared_ptr<AST> root, int layer) { // recursively judge
-            int increased_layer = layer;
-            std::shared_ptr<AST> temp = root;
-            
-            //while ({()}), i.e., there are ((((( ... then <keyword> {<arg>s} ... )))))
-            //after while, temp->left must be a symbol or <keyword>
-            //ex. (((just_a_atom) test a))
-            //    ^ ^     ^
-            //   /   \    |
-            // root temp temp->left
-            //  0     2   3 // increased_layer
-            while (temp->left->token.type == TokenType::NIL) { // while LP
-                increased_layer++;
-                temp = temp->left;
-            }
-
-            // judge if the root->left is a <keyword> or a bound/unbound symbol
-            // if (<keyword> {<arg>s}) -> root->left must be <keyword>
-            // if ({(<keyword> {<arg>s)}) -> root->left must be NIL
-            if (! isKeyword(root->left->token.value)) {
-                if (root->left->isAtom) {
-                    //
-                }
-                else {
-                    //
-                }
-            }
-            
-            // count count each number of argument of a complete non-<ATOM> <S-exp>s from the current layer (current <S-exp>)
-            int arg_num = 0;
-            std::shared_ptr<AST> temp = root->right;
-            while (temp->right != nullptr) {
-                arg_num++;
-                temp = temp->right;
-            }
-
-            std::cout << "\n> " << root->left->token.value << ": there are " << arg_num << " arguments.\n"; // just for debug
-            
-            // judge the current layer
-            switch (keywords[root->left->token.value].second.first) {
-                case KEYWORD_NUM_MODE::AT_LEAST: {
-                    if (arg_num < keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
-                    break;
-                }
-                case KEYWORD_NUM_MODE::ONLY: {
-                    if (arg_num != keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
-                    break;
-                }
-                case KEYWORD_NUM_MODE::SPECIFIC: {
-                    const std::vector<int> &arg_nums = keywords[root->left->token.value].second.second; // legal numbers
-                    if (std::find(arg_nums.begin(), arg_nums.end(), arg_num) == arg_nums.end()) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
-                    break;
-                }
-            }
-
-            // if there are sub <S-exp>, judge the following
-            if (root->right->left != nullptr && ! root->right->left->isAtom) checkLegalSExp(root->right->left, layer + 2);
-            if (root->right->right != nullptr && root->right->right->left != nullptr
-                && (! root->right->right->left->isAtom
-                    || (root->right->right->left->token.type == TokenType::NIL
-                        && root->right->right->left->left != nullptr))) checkLegalSExp(root->right->right->left, layer + 3);
-        }
-
-    public:
-        void evaluate(std::shared_ptr<AST> root) {
-            if (! root->isAtom) {
-                checkLegalSExp(root, 0);
-                //if (root->left->token.type == TokenType::QUOTE) { // QUOTE: "quote"
-                //    std::cout << "\n> " << prettyWriteSExp(root); // temp
-                //}
-                std::cout << "\n> " << prettyWriteSExp(root); // just print it
-            }
-            else { // <ATOM>
-                if (isKeyword(root->token.value)) std::cout << "\n> #<procedure " << root->token.value << ">\n";
-                else { // <ATOM> is not keyword
-                    if (root->token.type == TokenType::SYMBOL) { // <ATOM> is SYMBOL
-                        if (! isDefined(root->token.value)) throw SemanticException::UnboundSymbol(root->token.value);
-                        else {
-                            // TODO: define SYMBOL
-                        }
-                    }
-                    else std::cout << "\n> " << prettyWriteSExp(root); // just print it
-                }
-            }
-        }
+// just to record how to use std::functional
+//std::unordered_map<std::string, std::function<double(double, double)>> binary_operators = {
+//    {"+", [](double a, double b) { return a + b; }}, // a + b
+//    {"-", [](double a, double b) { return a - b; }}, // a - b
+//    {"*", [](double a, double b) { return a * b; }}, // a * b
+//    {"/", [](double a, double b) { return a / b; }}, // a / b
+//    {"<", [](double a, double b) { return a < b; }}, // a < b
+//    {">", [](double a, double b) { return a > b; }}, // a > b
+//    {"<=", [](double a, double b) { return a <= b; }}, // a <= b
+//    {">=", [](double a, double b) { return a >= b; }}, // a >= b
+//    {"=", [](double a, double b) { return a == b; }}, // a == b
+//    {"!=", [](double a, double b) { return a != b; }}, // a != b
+//};
+*/
+/*
+void checkLegalSExp(std::shared_ptr<AST> root, int layer) { // recursively judge
+    int increased_layer = layer;
+    std::shared_ptr<AST> temp = root;
     
-};
+    //while ({()}), i.e., there are ((((( ... then <keyword> {<arg>s} ... )))))
+    //after while, temp->left must be a symbol or <keyword>
+    //ex. (((just_a_atom) test a))
+    //    ^ ^     ^
+    //   /   \    |
+    // root temp temp->left
+    //  0     2   3 // increased_layer
+    while (temp->left->token.type == TokenType::NIL) { // while LP
+        increased_layer++;
+        temp = temp->left;
+    }
+
+    // judge if the root->left is a <keyword> or a bound/unbound symbol
+    // if (<keyword> {<arg>s}) -> root->left must be <keyword>
+    // if ({(<keyword> {<arg>s)}) -> root->left must be NIL
+    if (! isKeyword(root->left->token.value)) {
+        if (root->left->isAtom) {
+            //
+        }
+        else {
+            //
+        }
+    }
+    
+    // count count each number of argument of a complete non-<ATOM> <S-exp>s from the current layer (current <S-exp>)
+    int arg_num = 0;
+    std::shared_ptr<AST> temp = root->right;
+    while (temp->right != nullptr) {
+        arg_num++;
+        temp = temp->right;
+    }
+
+    std::cout << "\n> " << root->left->token.value << ": there are " << arg_num << " arguments.\n"; // just for debug
+    
+    // judge the current layer
+    switch (keywords[root->left->token.value].second.first) {
+        case KEYWORD_NUM_MODE::AT_LEAST: {
+            if (arg_num < keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
+            break;
+        }
+        case KEYWORD_NUM_MODE::ONLY: {
+            if (arg_num != keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
+            break;
+        }
+        case KEYWORD_NUM_MODE::SPECIFIC: {
+            const std::vector<int> &arg_nums = keywords[root->left->token.value].second.second; // legal numbers
+            if (std::find(arg_nums.begin(), arg_nums.end(), arg_num) == arg_nums.end()) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
+            break;
+        }
+    }
+
+    // if there are sub <S-exp>, judge the following
+    if (root->right->left != nullptr && ! root->right->left->isAtom) checkLegalSExp(root->right->left, layer + 2);
+    if (root->right->right != nullptr && root->right->right->left != nullptr
+        && (! root->right->right->left->isAtom
+            || (root->right->right->left->token.type == TokenType::NIL
+                && root->right->right->left->left != nullptr))) checkLegalSExp(root->right->right->left, layer + 3);
+}
 */
 
 /* S-Expression Parser */
@@ -756,7 +662,6 @@ class S_Exp_Parser {
             else { // current <S-exp> is the most outer <S-exp>
                 if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                 executor.execute(cur_node);
-                if (! gIsFirstSExpInputed) gIsFirstSExpInputed = true; // record the first legal <S-exp> is activated
                 resetInfos();
             }
         }
@@ -918,16 +823,11 @@ class S_Exp_Lexer {
             lineNum = 1;
             columnNum = 0;
             ch = '\0';
-            bool start = false;
             isSExpEnded = false;
 
-            // because peek() will need a input while Interactive I/O at the beginning
-            // so in the following (i.e. not the first input) can use peek()
-            if (! gIsFirstSExpInputed || std::cin.peek() != EOF) gPrinter.printPrompt();
-
+            if (! std::cin.eof()) gPrinter.printPrompt();
+            else throw ExitException::NoMoreInput();
             while (std::cin.get(ch)) {
-                start = true;
-
                 if (ch == ';') {
                     if (token.value == "") {
                         eatALine();
@@ -1140,8 +1040,6 @@ class S_Exp_Lexer {
                     isSExpEnded = false;
                 }
             }
-
-            if (! start) throw ExitException::NoMoreInput();
         }
 };
 

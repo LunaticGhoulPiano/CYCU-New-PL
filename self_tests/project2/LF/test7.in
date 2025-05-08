@@ -1,0 +1,29 @@
+7
+(set! a 1)
+a
+set!
+(lambda test 3)
+(set! exit)
+(lambda (cons 1 2))
+(lambda () (cons 1 2))
+(define lambda_func (lambda () (cons 1 2)))
+lambda_func
+(set! test lambda_func)
+test
+(test 1)
+(define lambda_func (lambda #f (cons 1 2)))
+(eqv? #t lambda_func)
+(not #t lambda_func)
+(not (#t lambda_func))
+(not (eqv? #t lambda_func))
+(define lambda_func_with_args (lambda (a) (cons a 2)))
+lambda_func_with_args
+(lambda_func_with_args 1)
+(lambda_func_with_args lambda_func)
+(lambda_func (exit))
+(lambda_func_with_args (exit))
+(lambda lambda_exit (exit))
+(lambda #f (exit))
+(define lambda_exit (lambda #f (exit)))
+lambda_exit
+(exit)

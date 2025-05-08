@@ -1,0 +1,28 @@
+Welcome to OurScheme!
+
+> main defined
+
+> type-of defined
+
+> a defined
+
+> ( 3
+  4
+)
+
+> pair
+
+> a defined
+
+> nil
+
+> atom
+
+> a defined
+
+> nil
+
+> atom
+
+> 
+Thanks for using OurScheme!

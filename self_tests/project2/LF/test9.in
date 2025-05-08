@@ -1,0 +1,35 @@
+9
+(set-cdr! a 123)
+(display-string "test")
+(lambda #t (list 1 2 3))
+(lambda #f (list 1 2 3))
+(lambda (not #t) (list 1 2 3))
+(lambda (not (#t)) (list 1 2 3))
+(not #t)
+(define NIL (not #t))
+(lambda NIL (list 1 2 3))
+(lambda () (list 1 2 3))
+(eqv? () (lambda () (list 1 2 3)))
+(eqv? #t (lambda () (list 1 2 3)))
+(eqv? (lambda () (list 1 2 3)) (lambda () (list 1 2 3)))
+(define a 1)
+(define b (1))
+(eqv?
+    a
+    b
+)
+(eqv?
+        (lambda () (list 1 2 3))
+        (lambda () (list 1 2 3))
+)
+(define b (list 1))
+(eqv?
+    a
+    b
+)
+(define b 1)
+(eqv?
+    a
+    b
+)
+(exit)

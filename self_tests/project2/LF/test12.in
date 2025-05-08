@@ -1,0 +1,20 @@
+12
+(define (Factorial n)
+  (cond ( (not (integer? n)) 
+          ( create-error-object "Error! parameter not an integer." )
+        )
+        ( (< n 0) 
+          ( create-error-object "Error! parameter less than 0." )
+        )
+        ( #t
+          ( if (= n 0)
+             1
+             (* n (Factorial (- n 1)))
+          )
+        )
+  )
+)
+(Factorial 0)
+(Factorial 0.1)
+(Factorial -1)
+(Factorial 1009)

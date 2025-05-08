@@ -1,0 +1,40 @@
+5
+1.
+"123" .0
+-.
+.39744444444
+.aslfn;
+(1 2 3)
+(1 (2 3))
+(1 . (2 . (3 . nil)))
+(1 . (2 . (3 . #f)))
+(10 ().125)   ; same as : ( 10 () .125 )
+(((1 . 2) 
+    . ((3 4) 
+       . 
+       (5 . 6)
+      )
+   ) 
+   . (7 . 8)
+  )
+            (1 2.25.5.a)
+       '(Hi
+           .
+           (there  .(     ; note that there may be no space between
+                          ; '.' and '('
+           How is it going?))
+           )
+(";ksjeg tset"."a)")
+(a . (b "wi o o    gpos9dug posu og " """""" . (c)))
+;l as f     
+(;
+a
+3128.000000005
+'(
+)
+.
+nil
+)
+""
+'(exit)
+(exit)
