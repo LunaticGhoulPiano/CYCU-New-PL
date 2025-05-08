@@ -31,9 +31,9 @@ enum class TokenType {
         // (i.e., uppercase and lowercase are different);
 };
 
-/* Data types */
+/* Keyword types */
 // define all types of primitives and funcitons
-enum class DataType {
+enum class KeywordType {
     /* primitive types */
     // minimal types
     INTEGER,
@@ -79,83 +79,83 @@ enum class ARGUMENT_NUMBER_MODE {
     SPECIFIC // argument number is one of n1, n2, ..., nk
 };
 
-/* Data */
+/* KeywordInfo */
 // define the informations of primitives and functions
-struct Data {
+struct KeywordInfo {
     bool isPrimitive;
     ARGUMENT_NUMBER_MODE arg_mode;
     std::vector<int> arg_nums;
-    DataType functionType, returnType;
+    KeywordType functionType, returnType;
 };
 
 /* Keywords */
-std::unordered_map<std::string, Data> gKeywords = {
+std::unordered_map<std::string, KeywordInfo> gKeywords = {
     // primitives
     {"#t", {true}},
     {"nil", {true}},
     // functions
-    {"cons", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::CONSTRUCTOR, DataType::PAIR}},
-    {"list", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, DataType::CONSTRUCTOR, DataType::LIST}},
-    {"quote", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::BYPASS_EVALUATION}}, // returnType can be any of primitives
-    {"define", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::BINDING}}, // returnType can be any of primitives
-    {"let", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::BINDING}}, // returnType can be any of primitives
-    {"set!", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::BINDING}}, // returnType can be any of primitives
-    {"car", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PART_ACCESSOR}}, // returnType can be any of primitives
-    {"cdr", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PART_ACCESSOR}}, // returnType can be any of primitives
-    {"atom?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"pair?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"list?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"null?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"integer?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"real?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"number?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"string?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"boolean?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"symbol?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::PRIMITIVE_PREDICATE, DataType::BOOLEAN}},
-    {"+", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
-    {"-", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
-    {"*", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
-    {"/", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::NUMBER}},
-    {"not", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"and", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
-    {"or", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
-    {">", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {">=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"<", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"<=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"string-append", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::STRING}},
-    {"string>?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"string<?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"string=?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::OPERATION, DataType::BOOLEAN}},
-    {"eqv?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::EQIVALENCE_TESTER, DataType::BOOLEAN}},
-    {"equal?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, DataType::EQIVALENCE_TESTER, DataType::BOOLEAN}},
-    {"begin", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, DataType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}}, // returnType can be any of primitives
-    {"if", {false, ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, DataType::CONDITIONAL}}, // returnType can be any of primitives
-    {"else", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, DataType::CONDITIONAL}}, // returnType can be any of primitives // special case
-    {"cond", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, DataType::CONDITIONAL}}, // returnType can be any of primitives
-    {"read", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::READ}}, // returnType can be any of primitives
-    {"write", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::DISPLAY}}, // returnType can be any of primitives
-    {"display-string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
-    {"newline", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::DISPLAY, DataType::NIL}},
-    {"lambda", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, DataType::LAMBDA}}, // returnType can be any of primitives
-    {"verbose", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::VERBOSE, DataType::BOOLEAN}},
-    {"verbose?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::VERBOSE, DataType::BOOLEAN}},
-    {"eval", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::EVALUATION}}, // returnType can be any of primitives
-    {"symbol->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::CONVERT_TO_STRING, DataType::STRING}},
-    {"number->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::CONVERT_TO_STRING, DataType::STRING}},
-    {"create-error-object", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::ERROR_OBJECT_OPERATION, DataType::ERROR_OBJECT}},
-    {"error-object?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, DataType::ERROR_OBJECT_OPERATION, DataType::BOOLEAN}},
-    {"clean-environment", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::CLEAN_ENVIRONMENT}},
-    {"exit", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, DataType::EXIT}}
+    {"cons", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR, KeywordType::PAIR}},
+    {"list", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR, KeywordType::LIST}},
+    {"quote", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}}, // returnType can be any of primitives
+    {"define", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    {"let", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    {"set!", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    {"car", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
+    {"cdr", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
+    {"atom?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"pair?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"list?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"null?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"integer?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"real?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"number?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"string?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"boolean?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"symbol?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"+", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"-", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"*", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"/", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"not", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"and", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
+    {"or", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
+    {">", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {">=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"<", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"<=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"string-append", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::STRING}},
+    {"string>?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"string<?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"string=?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"eqv?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
+    {"equal?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
+    {"begin", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}}, // returnType can be any of primitives
+    {"if", {false, ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
+    {"else", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives // special case
+    {"cond", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
+    {"read", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}}, // returnType can be any of primitives
+    {"write", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
+    {"display-string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
+    {"newline", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY, KeywordType::NIL}},
+    {"lambda", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
+    {"verbose", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    {"verbose?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    {"eval", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}}, // returnType can be any of primitives
+    {"symbol->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
+    {"number->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
+    {"create-error-object", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::ERROR_OBJECT}},
+    {"error-object?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::BOOLEAN}},
+    {"clean-environment", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::CLEAN_ENVIRONMENT}},
+    {"exit", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::EXIT}}
 };
 
 /* Token structure */
 struct Token {
     TokenType type = TokenType::NIL;
     std::string value = "";
-    Token() : type(TokenType::NIL), value("") {}
-    Token(TokenType t, const std::string& v) : type(t), value(v) {}
+    Token(): type(TokenType::NIL), value("") {}
+    Token(TokenType t, const std::string& v): type(t), value(v) {}
 };
 
 /* AST structure */
@@ -361,19 +361,55 @@ class Printer { // all outputs are dealed here
             // the next prompt will be printed in S_Exp_Lexer()::readAndTokenize()
         }
 
-        void printProcedure(std::string procedure) {
-            std::cout << "#<procedure " << procedure << ">\n";
+        void printResult(std::string result) {
+            std::cout << result;
             printPrompt();
+        }
+
+        std::string getprettifiedSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively append into the string
+            if (cur != nullptr) {
+                if (cur->isAtom) { // <S-exp> ::= <ATOM>
+                    if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
+                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->token.value + "\n");
+                }
+                else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
+                    // LP: new list started
+                    if (isRoot) {
+                        s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "(");
+                        depth++;
+                        isFirstTokenOfLine = false;
+                    }
+                    // car
+                    s_exp = getprettifiedSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
+                    // cdr
+                    if (cur->right && cur->right->isAtom && cur->right->token.type != TokenType::NIL) {
+                        s_exp += (std::string(depth * 2, ' ') + ".\n");
+                        s_exp = getprettifiedSExp(cur->right, s_exp, depth, true, true);
+                    }
+                    else if (cur->right && ! cur->right->isAtom) s_exp = getprettifiedSExp(cur->right, s_exp, depth, false, true);
+                    else if (! cur->right || cur->right->token.type == TokenType::NIL) ; // nothing
+                    else {
+                        s_exp += (std::string(depth * 2, ' ') + ".\n");
+                        s_exp = getprettifiedSExp(cur->right, s_exp, depth, true, true);
+                    }
+                    // RP: cur list ended
+                    if (isRoot) {
+                        depth--;
+                        s_exp += (std::string(depth * 2, ' ') + ")\n");
+                    }
+                }
+            }
+
+            return s_exp;
         }
 };
 Printer gPrinter;
 
 /* S-Expression Evaluator */
-class S_Exp_Evaluator {
+class S_Exp_Executor {
     private:
-        std::unordered_map<std::string, Data> env; // to store the user-defined bindings
+        std::unordered_map<std::string, KeywordType> env; // to store the user-defined bindings
 
-    public:
         bool isKeyword(const std::string &str) {
             return gKeywords.find(str) != gKeywords.end();
         }
@@ -388,90 +424,75 @@ class S_Exp_Evaluator {
             else return false;
         }
 
-        void evaluate(std::shared_ptr<AST> cur) {
-            // TODO
+        /* functions */
+        // KeywordType::CONSTRUCTOR
+        std::shared_ptr<AST> constructPair() { // cons
+            //
         }
-};
 
-/* S-Expression Executor */
-class S_Exp_Executor {
-    private:
-        S_Exp_Evaluator evaluator;
+        std::shared_ptr<AST> constructList() { // list
+            //
+        }
+
+        // KeywordType::BYPASS_EVALUATION
+
+        // KeywordType::BINDING
+
+        // KeywordType::PART_ACCESSOR
+
+        // KeywordType::PRIMITIVE_PREDICATE        
+
+        // KeywordType::OPERATION
+
+        // KeywordType::EQIVALENCE_TESTER
+
+        // KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION
+
+        // KeywordType::CONDITIONAL
+
+        // KeywordType::READ
+
+        // KeywordType::DISPLAY
+
+        // KeywordType::LAMBDA
+
+        // KeywordType::VERBOSE
+
+        // KeywordType::EVALUATION
+
+        // KeywordType::CONVERT_TO_STRING
+
+        // KeywordType::ERROR_OBJECT_OPERATION
+
+        // KeywordType::CLEAN_ENVIRONMENT
+
+        // KeywordType::EXIT
 
     public:
-        void execute(std::shared_ptr<AST> root) {
-            if (root->isAtom) {
-                if (evaluator.isAtomAFunctionName(root->token.value)) gPrinter.printProcedure(root->token.value);
+        std::string evaluate(std::shared_ptr<AST> cur) {
+            // TODO: add the to-return-value (string or function in env) into AST and return std::shared_ptr<AST>
+            // or just make a new struct that has AST and the above values
+            if (cur->isAtom) {
+                if (cur->token.type != TokenType::SYMBOL) return cur->token.value;
                 else {
-                    if (root->token.type == TokenType::SYMBOL) {
+                    if (isAtomAFunctionName(cur->token.value)) return ("#<procedure " + cur->token.value + ">\n");
+                    else {
                         // check the binding
-                        if (! evaluator.isDefined(root->token.value)) throw SemanticException::UnboundSymbol(root->token.value);
+                        if (! isDefined(cur->token.value)) throw SemanticException::UnboundSymbol(cur->token.value);
                         else {
-                            // TODO: bind the symbol
-                            /*
-                            [user]> (define a (list 1 2 (cons 3 4) 5 ""))
-                            [system]> a defined
-                            [user]> a
-                            [system]> (1 2 (3 . 4) 5 "") // use pretty print to print the binding value
-                            [user]> (define b (lambda (x y) (+ x y)))
-                            [system]> b defined
-                            [user]> b
-                            [system]> #<procedure lambda>
-                            [user]> (b 1)
-                            [system]> ERROR (incorrect number of arguments) : lambda
-                            [user]> (b 1 2)
-                            [system]> 3
-                            */
+                            // TODO: get the bind of symbol, i.e. return gPrinter.getprettifiedSExp(env[cur->token.value]) or and internal function
                         }
                     }
-                    else gPrinter.printSExp(prettyWriteSExp(root));
                 }
             }
-            else {
-                if (root->left->token.type == TokenType::QUOTE) gPrinter.printSExp(prettyWriteSExp(root->right->left)); // quote
-                else {
-                    // TODO: evaluate based on cases
-                    evaluator.evaluate(root);
-                    // TODO: print the correct output
-                }
+            else { // functions
+                //
             }
         }
 
-        std::string prettyWriteSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively print
-            if (cur != nullptr) {
-                if (cur->isAtom) { // <S-exp> ::= <ATOM>
-                    if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
-                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->token.value + "\n");
-                }
-                else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
-                    // LP: new list started
-                    if (isRoot) {
-                        s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "(");
-                        depth++;
-                        isFirstTokenOfLine = false;
-                    }
-                    // car
-                    s_exp = prettyWriteSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
-                    // cdr
-                    if (cur->right && cur->right->isAtom && cur->right->token.type != TokenType::NIL) {
-                        s_exp += (std::string(depth * 2, ' ') + ".\n");
-                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
-                    }
-                    else if (cur->right && ! cur->right->isAtom) s_exp = prettyWriteSExp(cur->right, s_exp, depth, false, true);
-                    else if (! cur->right || cur->right->token.type == TokenType::NIL) ; // nothing
-                    else {
-                        s_exp += (std::string(depth * 2, ' ') + ".\n");
-                        s_exp = prettyWriteSExp(cur->right, s_exp, depth, true, true);
-                    }
-                    // RP: cur list ended
-                    if (isRoot) {
-                        depth--;
-                        s_exp += (std::string(depth * 2, ' ') + ")\n");
-                    }
-                }
-            }
-
-            return s_exp;
+        void execute(std::shared_ptr<AST> root) {
+            // TODO: if return a internal function, execute it
+            gPrinter.printResult(evaluate(root)); // temp
         }
 };
 
