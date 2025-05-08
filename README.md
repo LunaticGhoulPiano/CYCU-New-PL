@@ -840,14 +840,65 @@ the "verbose" mode controls whether the system will print something when the bei
                     [main.cpp]: 2 error case(s) are found!
                     ```
             - 如果想要順便學用powershell寫測試腳本，可以參考[Pester官方文檔](https://pester.dev/docs/quick-start)及[微軟的測試檔解釋](https://devblogs.microsoft.com/scripting/unit-testing-powershell-code-with-pester/)
-    - 比對：
-        - 在大二的**組合語言與嵌入式系統**課程使用的[WinMerge](https://winmerge.org/downloads/?lang=zh_tw)是最熟悉的老熟人
-        - 但我自己的習慣是使用VScode內建的比對功能
-            ![image](./pictures/choose_to_compare.jpeg)
-            ![image](./pictures/compare_with_chosen.jpeg)
-            ![image](./pictures/native_compare.jpeg)
-        - 你也可以使用extension，例如[Compare Folders](https://marketplace.visualstudio.com/items?itemName=moshfeu.compare-folders)：
-            ![image](./pictures/compare_folders.jpeg)
+- Linux / macOS:
+    - 坑很多
+    - 所有測資應該使用```LF```而非```CRLF```
+    - 並且因為Unix系統要求每一行結尾必須要有換行```\n```，因此：
+        - 印出檔案最後一個字元
+            ```shell
+            # 例如 self_tests/project1/LF/test3.in 結尾有"\n"
+            tail -c 1 self_tests/project1/LF/test3.in | od -a | awk '{print $2}'
+            # 如果結尾有換行就會印出
+            nl
+            
+            # 例如 self_tests/project1/LF/test7.in 結尾沒有"\n"，則印出最後一個字元
+            tail -c 1 self_tests/project1/LF/test7.in | od -a | awk '{print $2}'
+            t
+
+            ```
+        - 使用指令在檔案末尾加上```\n```
+            ```shell
+            # 假設目前資料夾底下有個test.in結尾沒有換行
+            sed -i -e '$a\' test.in
+            ```
+    - 編譯：
+        ```shell
+        # main
+        g++ main.cpp -std=c++2a -o ./main
+        # project1 及其它
+        g++ CompleteCodeByProjects/project1.cpp -std=c++2a -o ../project1
+        ```
+    - 執行：
+        - Interactive I/O
+            ```shell
+            # main
+            ./main
+            # project1 及其它
+            ./project1
+            ```
+        - Batch I/O
+            - 單一檔案寫入：
+                ```shell
+                # 以project 1 test7.in為例
+                ./project1 < self_tests/project1/LF/test7.in > self_tests/project1/LF/test7.bug
+                ```
+            - 批次檔：在```run_projectBatchIO```中的check部分，如果你想要直接對沒有末尾換行的插入：
+                ```shell
+                # 檢查並插入
+                if [ "$(tail -c 1 "$input_file" | od -a | awk '{print $2}')" != "nl" ]; then
+                    sed -i -e '$a\' "$input_file"
+                fi
+                # 將輸入測資用程式寫輸出檔
+                "$exe_path" < "$input_file" > "$output_file"
+                ```
+- 比對：
+    - 在大二的**組合語言與嵌入式系統**課程使用的[WinMerge](https://winmerge.org/downloads/?lang=zh_tw)是最熟悉的老熟人
+    - 但我自己的習慣是使用VScode內建的比對功能
+        ![image](./pictures/choose_to_compare.jpeg)
+        ![image](./pictures/compare_with_chosen.jpeg)
+        ![image](./pictures/native_compare.jpeg)
+    - 你也可以使用extension，例如[Compare Folders](https://marketplace.visualstudio.com/items?itemName=moshfeu.compare-folders)：
+        ![image](./pictures/compare_folders.jpeg)
 
 ## Structure
 ```

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# NOTE: in project 1 test7, the last exit will miss, but exist when using powershell
-
 # set project serial number
 project_name="project1"
 
@@ -28,8 +26,12 @@ for input_file in "$test_dir"/*.in; do
     output_file="$output_dir/$filename.bug"
     correct_answer_file="$test_dir/$filename.out"
 
-    # run the program and produce .bug
-    "$exe_path" < "$input_file" > "$output_file"
+    # check if the file has newline at the end
+    if [ "$(tail -c 1 "$input_file" | od -a | awk '{print $2}')" = "nl" ]; then
+        "$exe_path" < "$input_file" > "$output_file"
+    else # if no, concatenate newline temporarily
+        (cat "$input_file"; printf '\n') | "$exe_path" > "$output_file"
+    fi
 
     # compare .bug and .out
     if ! diff -q "$output_file" "$correct_answer_file" > /dev/null; then
