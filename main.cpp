@@ -511,7 +511,12 @@ class S_Exp_Executor {
                     else {
                         // check the binding
                         if (! isDefined(cur->token.value)) throw SemanticException::UnboundSymbol(cur->token.value);
-                        else return env[cur->token.value];
+                        else {
+                            returnContent binding = env[cur->token.value];
+                            if (binding.returnType == evalReturnType::ATOM_BUT_NOT_SYMBOL) return returnContent(binding.result, cur, evalReturnType::ATOM_BUT_NOT_SYMBOL);
+                            else if (binding.returnType == evalReturnType::KEYWORD_PROCEDURE) return returnContent(binding.result, cur, evalReturnType::KEYWORD_PROCEDURE);
+                            //else my have to execute function
+                        }
                     }
                 }
             }
