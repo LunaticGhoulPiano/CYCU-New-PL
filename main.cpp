@@ -407,7 +407,20 @@ Printer gPrinter;
 /* S-Expression Evaluator */
 class S_Exp_Executor {
     private:
-        std::unordered_map<std::string, KeywordType> env; // to store the user-defined bindings
+        enum class evalReturnType {
+            ATOM_BUT_NOT_SYMBOL,
+            KEYWORD_PROCEDURE,
+            FUNCTION
+        };
+
+        struct returnContent {
+            std::string result;
+            std::shared_ptr<AST> root;
+            evalReturnType returnType;
+            returnContent(std::string r, std::shared_ptr<AST> ro, evalReturnType rt): result(std::move(r)), root(std::move(ro)), returnType(rt) {}
+        };
+
+        std::unordered_map<std::string, returnContent> env; // to store the user-defined bindings
 
         /* helper functions */
         bool isKeyword(const std::string &str) {
@@ -489,23 +502,21 @@ class S_Exp_Executor {
         */
 
     public:
-        std::string evaluate(std::shared_ptr<AST> cur) {
+        returnContent evaluate(std::shared_ptr<AST> cur) {
             // TODO: add the to-return-value (string or function in env) into AST and return std::shared_ptr<AST>
             if (cur->isAtom) {
-                if (cur->token.type != TokenType::SYMBOL) return (cur->token.value + "\n");
+                if (cur->token.type != TokenType::SYMBOL) return returnContent((cur->token.value + "\n"), cur, evalReturnType::ATOM_BUT_NOT_SYMBOL);
                 else {
-                    if (isAtomAFunctionName(cur->token.value)) return ("#<procedure " + cur->token.value + ">\n");
+                    if (isAtomAFunctionName(cur->token.value)) return returnContent(("#<procedure " + cur->token.value + ">\n"), cur, evalReturnType::KEYWORD_PROCEDURE);
                     else {
                         // check the binding
                         if (! isDefined(cur->token.value)) throw SemanticException::UnboundSymbol(cur->token.value);
-                        else {
-                            // TODO: get the bind of symbol, i.e. return gPrinter.getprettifiedSExp(env[cur->token.value]) or and internal function
-                            return "\n";
-                        }
+                        else return env[cur->token.value];
                     }
                 }
             }
-            else { // functions
+            else { // functions // recursive
+                // TODO: check left and right is nullptr or nil or keywords
 
                 /*
                 gDebugger.debugPrintAST(cur);
@@ -518,7 +529,8 @@ class S_Exp_Executor {
 
         void execute(std::shared_ptr<AST> root) {
             // TODO: if return a internal function, execute it
-            gPrinter.printResult(evaluate(root)); // temp
+            returnContent evalResult = evaluate(root);
+            gPrinter.printResult(evalResult.result); // temp
         }
 };
 
