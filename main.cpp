@@ -97,8 +97,8 @@ std::unordered_map<std::string, KeywordInfo> gKeywords = {
     {"list", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR, KeywordType::LIST}},
     {"quote", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}}, // returnType can be any of primitives
     {"define", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    {"let", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    {"set!", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    //{"let", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    //{"set!", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
     {"car", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
     {"cdr", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
     {"atom?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
@@ -133,18 +133,18 @@ std::unordered_map<std::string, KeywordInfo> gKeywords = {
     {"if", {false, ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
     {"else", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives // special case
     {"cond", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
-    {"read", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}}, // returnType can be any of primitives
-    {"write", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
-    {"display-string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
-    {"newline", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY, KeywordType::NIL}},
-    {"lambda", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
-    {"verbose", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
-    {"verbose?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
-    {"eval", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}}, // returnType can be any of primitives
-    {"symbol->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
-    {"number->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
-    {"create-error-object", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::ERROR_OBJECT}},
-    {"error-object?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::BOOLEAN}},
+    //{"read", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}}, // returnType can be any of primitives
+    //{"write", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
+    //{"display-string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
+    //{"newline", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY, KeywordType::NIL}},
+    //{"lambda", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
+    //{"verbose", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    //{"verbose?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    //{"eval", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}}, // returnType can be any of primitives
+    //{"symbol->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
+    //{"number->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
+    //{"create-error-object", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::ERROR_OBJECT}},
+    //{"error-object?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::BOOLEAN}},
     {"clean-environment", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::CLEAN_ENVIRONMENT}},
     {"exit", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::EXIT}}
 };
@@ -410,14 +410,15 @@ class S_Exp_Executor {
         enum class evalReturnType {
             ATOM_BUT_NOT_SYMBOL,
             KEYWORD_PROCEDURE,
-            FUNCTION
+            FUNCTION,
+            END
         };
 
         struct returnContent {
             std::string result;
-            std::shared_ptr<AST> root;
             evalReturnType returnType;
-            returnContent(std::string r, std::shared_ptr<AST> ro, evalReturnType rt): result(std::move(r)), root(std::move(ro)), returnType(rt) {}
+            returnContent(): result(""), returnType(evalReturnType::END) {}
+            returnContent(std::string r, evalReturnType rt): result(std::move(r)), returnType(rt) {}
         };
 
         std::unordered_map<std::string, returnContent> env; // to store the user-defined bindings
@@ -440,6 +441,12 @@ class S_Exp_Executor {
         bool isArgumentNumberCorrect(std::shared_ptr<AST> cur) {
             // TODO: only judge the current level
             return true;
+        }
+
+        bool checkPureList(std::shared_ptr<AST> cur) {
+            if (cur == nullptr) return true;
+            else if (cur->isAtom) return false;
+            else return checkPureList(cur->right);
         }
 
         /* primitive functions */
@@ -499,43 +506,70 @@ class S_Exp_Executor {
         // 2 ~ 4
         // KeywordType::CLEAN_ENVIRONMENT
         // KeywordType::EXIT
+
+        returnContent executeByFunctions(std::shared_ptr<AST> cur) {
+            //
+        }
         */
 
     public:
-        returnContent evaluate(std::shared_ptr<AST> cur) {
-            // TODO: add the to-return-value (string or function in env) into AST and return std::shared_ptr<AST>
+        returnContent evaluate(std::shared_ptr<AST> cur, int level) {
             if (cur->isAtom) {
-                if (cur->token.type != TokenType::SYMBOL) return returnContent((cur->token.value + "\n"), cur, evalReturnType::ATOM_BUT_NOT_SYMBOL);
+                if (cur->token.type != TokenType::SYMBOL) return returnContent(cur->token.value, evalReturnType::ATOM_BUT_NOT_SYMBOL);
                 else {
-                    if (isAtomAFunctionName(cur->token.value)) return returnContent(("#<procedure " + cur->token.value + ">\n"), cur, evalReturnType::KEYWORD_PROCEDURE);
+                    if (isAtomAFunctionName(cur->token.value)) return returnContent(("#<procedure " + cur->token.value + ">"), evalReturnType::KEYWORD_PROCEDURE);
                     else {
-                        // check the binding
                         if (! isDefined(cur->token.value)) throw SemanticException::UnboundSymbol(cur->token.value);
-                        else {
-                            returnContent binding = env[cur->token.value];
-                            if (binding.returnType == evalReturnType::ATOM_BUT_NOT_SYMBOL) return returnContent(binding.result, cur, evalReturnType::ATOM_BUT_NOT_SYMBOL);
-                            else if (binding.returnType == evalReturnType::KEYWORD_PROCEDURE) return returnContent(binding.result, cur, evalReturnType::KEYWORD_PROCEDURE);
-                            //else my have to execute function
+                        else { // get the binding
+                            if (env[cur->token.value].returnType == evalReturnType::ATOM_BUT_NOT_SYMBOL)
+                                return returnContent(env[cur->token.value].result, evalReturnType::ATOM_BUT_NOT_SYMBOL);
+                            else if (env[cur->token.value].returnType == evalReturnType::KEYWORD_PROCEDURE)
+                                return returnContent(("#<procedure " + env[cur->token.value].result + ">"), evalReturnType::KEYWORD_PROCEDURE);
+                            else if (env[cur->token.value].returnType == evalReturnType::FUNCTION) {
+                                // TODO: execute
+                                // TODO: return
+                                std::cout << "execute function\n";
+                                return returnContent();
+                            }
+                            else {
+                                // the type in env will never be END
+                                // so this should never happen
+                                std::cout << "ERROR: the type in env will never be END\n";
+                                exit(0);
+                            }
                         }
                     }
                 }
             }
-            else { // functions // recursive
-                // TODO: check left and right is nullptr or nil or keywords
+            else {
+                if (cur->token.type == TokenType::NIL) {
+                    if (cur->isEndNode()) return returnContent(); // the end of the current sub-AST
+                    else {
+                        bool isPureList = checkPureList(cur->right);
+                        if (cur->left->token.type != TokenType::QUOTE) throw SemanticException::NonList(gPrinter.getprettifiedSExp(cur));
 
-                /*
-                gDebugger.debugPrintAST(cur);
-                if (cur->token.value == "") std::cout << "cur->token.value == \"\"\n";
-                if (cur->isEndNode()) std::cout << "cur->isEndNode()\n";
-                return gDebugger.getType(cur->token) + "\n";
-                */
+                        returnContent left = evaluate(cur->left, level + 1);
+                        std::cout << ("[level " + std::to_string(level) + "] left: " + left.result + "\n");
+                        returnContent right = evaluate(cur->right, level + 1);
+                        std::cout << ("[level " + std::to_string(level) + "] right: " + right.result + "\n");
+
+                        std::cout << std::endl;
+                        //gDebugger.debugPrintAST(cur);
+                        return returnContent();
+                    }
+                }
+                else {
+                    std::cout << "cur node is neither ATOM nor NIL\n";
+                    //gDebugger.debugPrintAST(cur);
+                    return returnContent();
+                }
             }
         }
 
         void execute(std::shared_ptr<AST> root) {
             // TODO: if return a internal function, execute it
-            returnContent evalResult = evaluate(root);
-            gPrinter.printResult(evalResult.result); // temp
+            returnContent evalResult = evaluate(root, 0);
+            gPrinter.printResult("[level 0] cur: " + evalResult.result + "\n"); // temp
         }
 };
 

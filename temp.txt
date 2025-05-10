@@ -1,0 +1,119 @@
+> '(car '(1 2 3))
+[level 0] left: 
+[level 2] left: #<procedure car>
+[level 4] left:
+[level 6] left: 1
+[level 7] left: 2
+[level 8] left: 3
+[level 8] right: nil
+
+[level 7] right: 
+
+[level 6] right:
+
+[level 5] left:
+[level 5] right: nil
+
+[level 4] right:
+
+[level 3] left:
+[level 3] right: nil
+
+[level 2] right:
+
+[level 1] left:
+[level 1] right: nil
+
+[level 0] right:
+
+[level 0] cur:
+
+====================================================
+
+> '(car '(1 2 . 3)) 
+[level 0] left: 
+[level 2] left: #<procedure car>
+[level 4] left:
+[level 6] left: 1
+[level 7] left: 2
+[level 7] right: 3
+
+[level 6] right:
+
+[level 5] left:
+[level 5] right: nil
+
+[level 4] right:
+
+[level 3] left:
+[level 3] right: nil
+
+[level 2] right:
+
+[level 1] left:
+[level 5] left:
+[level 5] right: nil
+
+[level 4] right:
+
+[level 3] left:
+[level 3] right: nil
+
+[level 5] left:
+[level 5] right: nil
+
+[level 4] right:
+
+[level 3] left:
+[level 3] right: nil
+[level 5] left:
+[level 5] right: nil
+
+[level 4] right:
+
+[level 5] left:
+[level 5] right: nil
+
+[level 5] left:
+[level 5] right: nil
+[level 5] left:
+[level 5] left:
+[level 5] right: nil
+[level 5] left:
+[level 5] left:
+[level 5] left:
+[level 5] left:
+[level 5] left:
+[level 5] right: nil
+[level 5] left:
+[level 5] right: nil
+
+[level 4] right:
+[level 5] left:
+[level 5] right: nil
+
+[level 5] left:
+[level 5] right: nil
+[level 5] left:
+[level 5] right: nil
+
+[level 5] left:
+[level 5] right: nil
+
+[level 5] left:
+[level 5] right: nil
+[level 5] right: nil
+
+[level 4] right:
+
+[level 3] left:
+[level 3] right: nil
+
+[level 2] right:
+
+[level 1] left:
+[level 1] right: nil
+
+[level 0] right:
+
+[level 0] cur:
