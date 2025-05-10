@@ -443,10 +443,23 @@ class S_Exp_Executor {
             return true;
         }
 
-        bool checkPureList(std::shared_ptr<AST> cur) {
-            if (cur == nullptr) return true;
-            else if (cur->isAtom) return false;
-            else return checkPureList(cur->right);
+        void checkPureList(std::shared_ptr<AST> cur, std::shared_ptr<AST> error_function_node) {
+            if (cur == nullptr || cur->isEndNode()) return;
+            if (cur->left->isAtom && isAtomAFunctionName(cur->left->token.value)) error_function_node = cur; // update current judging function
+            if (cur->right->isAtom && cur->right->token.type != TokenType::NIL) throw SemanticException::NonList(gPrinter.getprettifiedSExp(error_function_node));
+            checkPureList(cur->right, error_function_node);
+        }
+
+        returnContent executeByFunction(std::string keyword, std::shared_ptr<AST> cur) {
+            KeywordInfo function = gKeywords[keyword];
+            switch (function.functionType) {
+                case KeywordType::BYPASS_EVALUATION: {
+                    return returnContent(gPrinter.getprettifiedSExp(cur->right), evalReturnType::END);
+                }
+                default: {
+                    return returnContent();
+                }
+            }
         }
 
         /* primitive functions */
@@ -513,7 +526,7 @@ class S_Exp_Executor {
         */
 
     public:
-        returnContent evaluate(std::shared_ptr<AST> cur, int level) {
+        returnContent evaluate(std::shared_ptr<AST> cur, int level, bool bypass = false) {
             if (cur->isAtom) {
                 if (cur->token.type != TokenType::SYMBOL) return returnContent(cur->token.value, evalReturnType::ATOM_BUT_NOT_SYMBOL);
                 else {
@@ -545,16 +558,18 @@ class S_Exp_Executor {
                 if (cur->token.type == TokenType::NIL) {
                     if (cur->isEndNode()) return returnContent(); // the end of the current sub-AST
                     else {
-                        bool isPureList = checkPureList(cur->right);
-                        if (cur->left->token.type != TokenType::QUOTE) throw SemanticException::NonList(gPrinter.getprettifiedSExp(cur));
+                        std::cout << "[level " + std::to_string(level) + "]\n";
+                        // if quote, bypass; if not bypass, checl if pure list
+                        if (cur->left->token.type == TokenType::QUOTE) bypass = true;
+                        if (! bypass) checkPureList(cur, cur);
+                        
+                        returnContent left = evaluate(cur->left, level + 1, bypass);
+                        returnContent right = evaluate(cur->right, level + 1, bypass);
 
-                        returnContent left = evaluate(cur->left, level + 1);
                         std::cout << ("[level " + std::to_string(level) + "] left: " + left.result + "\n");
-                        returnContent right = evaluate(cur->right, level + 1);
                         std::cout << ("[level " + std::to_string(level) + "] right: " + right.result + "\n");
 
                         std::cout << std::endl;
-                        //gDebugger.debugPrintAST(cur);
                         return returnContent();
                     }
                 }
@@ -695,6 +710,17 @@ class S_Exp_Parser {
             dot_info = std::stack<std::pair<bool, int>>();
         }
 
+        void convertToQuote(std::shared_ptr<AST> &cur_node) {
+            if (cur_node != nullptr) {
+                // convert the TokenType::SYMBOL with value "quote" to TokenType::QUOTE, TokenType::QUOTE with value "" to value "quote"
+                if (cur_node->token.type == TokenType::SYMBOL && cur_node->token.value == "quote") cur_node->token.type = TokenType::QUOTE;
+                else if (cur_node->token.type == TokenType::QUOTE) cur_node->token.value = "quote";
+            }
+            else return;
+            if (cur_node->left != nullptr) convertToQuote(cur_node->left);
+            if (cur_node->right != nullptr) convertToQuote(cur_node->right);
+        }
+
         void endSExp(std::shared_ptr<AST> cur_node, bool isAtom) {
             // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
             while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
@@ -712,6 +738,7 @@ class S_Exp_Parser {
             }
             else { // current <S-exp> is the most outer <S-exp>
                 if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
+                convertToQuote(cur_node);
                 executor.execute(cur_node);
                 resetInfos();
             }
