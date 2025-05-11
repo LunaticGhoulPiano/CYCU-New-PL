@@ -149,6 +149,25 @@ std::unordered_map<std::string, KeywordInfo> gKeywords = {
     {"exit", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::EXIT}}
 };
 
+/* Binding type */
+enum class BindingType {
+    ATOM_BUT_NOT_SYMBOL,
+    //FUNCTION,
+    PRIMITIVE_FUNCTION,
+    USER_FUNCTION,
+    END
+};
+
+/* Binding content */
+struct AST; // forward declare
+struct BindingContent {
+    std::string resultStr;
+    std::shared_ptr<AST> resultAST;
+    BindingType returnType;
+    BindingContent(): resultStr(""), resultAST(nullptr), returnType(BindingType::END) {}
+    BindingContent(std::string str, std::shared_ptr<AST> ast,  BindingType ert): resultStr(std::move(str)), resultAST(std::move(ast)), returnType(ert) {}
+};
+
 /* Token structure */
 struct Token {
     TokenType type = TokenType::NIL;
@@ -161,6 +180,7 @@ struct Token {
 struct AST {
     bool isAtom = false;
     Token token;
+    BindingContent binding = BindingContent();
     std::shared_ptr<AST> left = nullptr, right = nullptr;
     AST(Token t) : isAtom(true), token(std::move(t)) {}
     AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
@@ -170,7 +190,7 @@ struct AST {
 /* Debugger */
 class Debugger {
     public:
-        std::string getType(Token token) {
+        std::string getTokenType(Token token) {
             if (token.type == TokenType::LEFT_PAREN) return "LEFT_PAREN";
             else if (token.type == TokenType::RIGHT_PAREN) return "RIGHT_PAREN";
             else if (token.type == TokenType::INT) return "INT";
@@ -184,8 +204,50 @@ class Debugger {
             else return "ERROR: didn't judged!";
         }
 
-        void printType(Token token) {
-            std::cout << getType(token) << std::endl;
+        void printTokenType(Token token) {
+            std::cout << getTokenType(token) << std::endl;
+        }
+
+        std::string getBindingType(BindingType bindingType) {
+            if (bindingType == BindingType::ATOM_BUT_NOT_SYMBOL) return "ATOM_BUT_NOT_SYMBOL";
+            else if (bindingType == BindingType::PRIMITIVE_FUNCTION) return "PRIMITIVE_FUNCTION";
+            else if (bindingType == BindingType::USER_FUNCTION) return "USER_FUNCTION";
+            else if (bindingType == BindingType::END) return "END";
+            else return "ERROR: didn't judged!";
+        }
+
+        std::string getKeywordType(KeywordType keywordType) {
+            if (keywordType == KeywordType::INTEGER) return "INTEGER";
+            else if (keywordType == KeywordType::FLOAT) return "FLOAT";
+            else if (keywordType == KeywordType::STRING) return "STRING";
+            else if (keywordType == KeywordType::ERROR_OBJECT) return "ERROR_OBJECT";
+            else if (keywordType == KeywordType::BOOLEAN) return "BOOLEAN";
+            else if (keywordType == KeywordType::SYMBOL) return "SYMBOL";
+            else if (keywordType == KeywordType::REAL) return "REAL";
+            else if (keywordType == KeywordType::NUMBER) return "NUMBER";
+            else if (keywordType == KeywordType::ATOM) return "ATOM";
+            else if (keywordType == KeywordType::NIL) return "NIL";
+            else if (keywordType == KeywordType::LIST) return "LIST";
+            else if (keywordType == KeywordType::PAIR) return "PAIR";
+            else if (keywordType == KeywordType::CONSTRUCTOR) return "CONSTRUCTOR";
+            else if (keywordType == KeywordType::BYPASS_EVALUATION) return "BYPASS_EVALUATION";
+            else if (keywordType == KeywordType::BINDING) return "BINDING";
+            else if (keywordType == KeywordType::PART_ACCESSOR) return "PART_ACCESSOR";
+            else if (keywordType == KeywordType::PRIMITIVE_PREDICATE) return "PRIMITIVE_PREDICATE";
+            else if (keywordType == KeywordType::OPERATION) return "OPERATION";
+            else if (keywordType == KeywordType::EQIVALENCE_TESTER) return "EQIVALENCE_TESTER";
+            else if (keywordType == KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION) return "SEQUENCING_AND_FUNCTIONAL_COMPOSITION";
+            else if (keywordType == KeywordType::CONDITIONAL) return "CONDITIONAL";
+            else if (keywordType == KeywordType::READ) return "READ";
+            else if (keywordType == KeywordType::DISPLAY) return "DISPLAY";
+            else if (keywordType == KeywordType::LAMBDA) return "LAMBDA";
+            else if (keywordType == KeywordType::VERBOSE) return "VERBOSE";
+            else if (keywordType == KeywordType::EVALUATION) return "EVALUATION";
+            else if (keywordType == KeywordType::CONVERT_TO_STRING) return "CONVERT_TO_STRING";
+            else if (keywordType == KeywordType::ERROR_OBJECT_OPERATION) return "ERROR_OBJECT_OPERATION";
+            else if (keywordType == KeywordType::CLEAN_ENVIRONMENT) return "CLEAN_ENVIRONMENT";
+            else if (keywordType == KeywordType::EXIT) return "EXIT";
+            else return "";
         }
 
         void debugPrintAST(const std::shared_ptr<AST> node, int depth = 0, const std::string &prefix = "AST_root") {
@@ -194,7 +256,13 @@ class Debugger {
             std::string indent(depth * 2, ' ');
             std::cout << indent << prefix;
 
-            if (node->isAtom) std::cout << " (isAtom = true, atom = \"" << node->token.value << "\", type = " << getType(node->token) << ")\n";    
+            if (node->isAtom) {
+                std::cout << " (isAtom = true, atom = \"" << node->token.value << "\", token type = " << getTokenType(node->token);
+                // if is keyword and is defined, print the binding content
+                if (gKeywords.find(node->token.value) != gKeywords.end())
+                    std::cout << ", keyword type = " << getKeywordType(gKeywords[node->token.value].functionType);
+                std::cout << ", binding type = " << getBindingType(node->binding.returnType) << ", binding content = \"" << node->binding.resultStr << "\")\n";
+            }
             else {
                 std::cout << " (isAtom = false)\n";
                 debugPrintAST(node->left, depth + 1, "|--- left  -> ");
@@ -317,8 +385,8 @@ class SemanticException: public std::exception {
         }
 
         // function error
-        static SemanticException NonFunction(std::string arg) { // implemented in project 2
-            return SemanticException("ERROR (attempt to apply non-function) : " + arg + "\n");
+        static SemanticException NonFunction(std::string s_exp) { // implemented in project 2
+            return SemanticException("ERROR (attempt to apply non-function) : " + s_exp + "\n");
         }
         
         static SemanticException NoReturnValue(std::string s_exp) { // implemented in project 2
@@ -407,21 +475,7 @@ Printer gPrinter;
 /* S-Expression Evaluator */
 class S_Exp_Executor {
     private:
-        enum class evalReturnType {
-            ATOM_BUT_NOT_SYMBOL,
-            KEYWORD_PROCEDURE,
-            FUNCTION,
-            END
-        };
-
-        struct returnContent {
-            std::string result;
-            evalReturnType returnType;
-            returnContent(): result(""), returnType(evalReturnType::END) {}
-            returnContent(std::string r, evalReturnType rt): result(std::move(r)), returnType(rt) {}
-        };
-
-        std::unordered_map<std::string, returnContent> env; // to store the user-defined bindings
+        std::unordered_map<std::string, BindingContent> env; // to store the user-defined bindings
 
         /* helper functions */
         bool isKeyword(const std::string &str) {
@@ -432,7 +486,7 @@ class S_Exp_Executor {
             return env.find(str) != env.end();
         }
 
-        bool isAtomAFunctionName(std::string atom) {
+        bool isAtomAPrimitiveFunctionName(std::string atom) {
             // if the atom is a symbol that is bound to a function, will not check the bindings (cuz it should check outside)
             if (atom != "#t" && atom != "nil" && atom != "else" && isKeyword(atom)) return true;
             else return false;
@@ -445,66 +499,72 @@ class S_Exp_Executor {
 
         void checkPureList(std::shared_ptr<AST> cur, std::shared_ptr<AST> error_function_node) {
             if (cur == nullptr || cur->isEndNode()) return;
-            if (cur->left->isAtom && isAtomAFunctionName(cur->left->token.value)) error_function_node = cur; // update current judging function
+            if (cur->left->isAtom && isAtomAPrimitiveFunctionName(cur->left->token.value)) error_function_node = cur; // update current judging function
             if (cur->right->isAtom && cur->right->token.type != TokenType::NIL) throw SemanticException::NonList(gPrinter.getprettifiedSExp(error_function_node));
             checkPureList(cur->right, error_function_node);
         }
 
-        returnContent executeByFunction(std::string keyword, std::shared_ptr<AST> cur) {
-            KeywordInfo function = gKeywords[keyword];
-            switch (function.functionType) {
-                case KeywordType::BYPASS_EVALUATION: {
-                    return returnContent(gPrinter.getprettifiedSExp(cur->right), evalReturnType::END);
-                }
-                default: {
-                    return returnContent();
-                }
-            }
-        }
+        std::unordered_map<KeywordType, std::function<BindingContent(std::shared_ptr<AST>)>> function_map = {
+            {KeywordType::CONSTRUCTOR, [this](std::shared_ptr<AST> cur) { return construct(cur); }},
+            {KeywordType::BYPASS_EVALUATION, [this](std::shared_ptr<AST> cur) { return bypass(cur); }},
+            {KeywordType::BINDING, [this](std::shared_ptr<AST> cur) { return bind(cur); }},
+            {KeywordType::PART_ACCESSOR, [this](std::shared_ptr<AST> cur) { return getPart(cur); }},
+            {KeywordType::PRIMITIVE_PREDICATE, [this](std::shared_ptr<AST> cur) { return judgePrimitivePredicate(cur); }},
+            {KeywordType::OPERATION, [this](std::shared_ptr<AST> cur) { return operate(cur); }},
+            {KeywordType::EQIVALENCE_TESTER, [this](std::shared_ptr<AST> cur) { return judgeEqivalence(cur); }},
+            {KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, [this](std::shared_ptr<AST> cur) { return sequence(cur); }},
+            {KeywordType::CONDITIONAL, [this](std::shared_ptr<AST> cur) { return getCondition(cur); }},
+            {KeywordType::CLEAN_ENVIRONMENT, [this](std::shared_ptr<AST> cur) { return cleanEnvironment(cur); }},
+            {KeywordType::EXIT, [this](std::shared_ptr<AST> cur) { return exit(cur); }},
+        };
 
         /* primitive functions */
-        /*
         // KeywordType::CONSTRUCTOR
-        std::shared_ptr<AST> construct(std::shared_ptr<AST> cur) { // cons & list
-            //
+        BindingContent construct(std::shared_ptr<AST> cur) { // cons & list
+
+            return BindingContent(); // TODO
         }
 
         // KeywordType::BYPASS_EVALUATION
-        std::shared_ptr<AST> bypass(std::shared_ptr<AST> cur) { // quote
-            //
+        BindingContent bypass(std::shared_ptr<AST> cur) { // quote
+            return BindingContent(); // TODO
+            //return returnContent(gPrinter.getprettifiedSExp(cur->right), evalReturnType::END);
         }
 
         // KeywordType::BINDING
-        std::shared_ptr<AST> bind(std::shared_ptr<AST> cur) { // define, let (project 3), set! (project 4)
-            //
+        BindingContent bind(std::shared_ptr<AST> cur) { // define, let (project 3), set! (project 4)
+            return BindingContent(); // TODO
         }
 
         // KeywordType::PART_ACCESSOR
-        std::shared_ptr<AST> getPart(std::shared_ptr<AST> cur) { // car, cdr
-            //
+        BindingContent getPart(std::shared_ptr<AST> cur) { // car, cdr
+            return BindingContent(); // TODO
         }
 
         // KeywordType::PRIMITIVE_PREDICATE
-        std::shared_ptr<AST> judgePrimitivePredicate(std::shared_ptr<AST> cur) { // atom?, pair?, list?, null?, integer?, real?, number?, string?, boolean?, symbol?
-            //
+        BindingContent judgePrimitivePredicate(std::shared_ptr<AST> cur) { // atom?, pair?, list?, null?, integer?, real?, number?, string?, boolean?, symbol?
+            return BindingContent(); // TODO
         }
 
         // KeywordType::OPERATION
-        std::shared_ptr<AST> operate(std::shared_ptr<AST> cur) { // +, -, *, /, not, and, or, >, >=, <, <=, =, string-append, string>?, string<?, string=?
-            //
+        BindingContent operate(std::shared_ptr<AST> cur) { // +, -, *, /, not, and, or, >, >=, <, <=, =, string-append, string>?, string<?, string=?
+            return BindingContent(); // TODO
         }
 
         // KeywordType::EQIVALENCE_TESTER
-        std::shared_ptr<AST> judgeEqivalence(std::shared_ptr<AST> cur) { // eqv?, equal?
-            //
+        BindingContent judgeEqivalence(std::shared_ptr<AST> cur) { // eqv?, equal?
+            return BindingContent(); // TODO
         }
 
         // KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION
         // begin
+        BindingContent sequence(std::shared_ptr<AST> cur) {
+            return BindingContent(); // TODO
+        }
 
         // KeywordType::CONDITIONAL
-        std::shared_ptr<AST> getCondition(std::shared_ptr<AST> cur) { // if, else, cond
-            //
+        BindingContent getCondition(std::shared_ptr<AST> cur) { // if, else, cond
+            return BindingContent(); // TODO
         }
 
         // project 3 ~ 4
@@ -518,157 +578,172 @@ class S_Exp_Executor {
         
         // 2 ~ 4
         // KeywordType::CLEAN_ENVIRONMENT
-        // KeywordType::EXIT
-
-        returnContent executeByFunctions(std::shared_ptr<AST> cur) {
-            //
+        BindingContent cleanEnvironment(std::shared_ptr<AST> cur) {
+            env.clear();
+            return BindingContent(); // TODO
         }
+
+        // KeywordType::EXIT
+        BindingContent exit(std::shared_ptr<AST> cur) {
+            return BindingContent(); // TODO
+        }
+
+        struct Status {
+            std::shared_ptr<AST> function;
+            std::vector<std::shared_ptr<AST>> arguments;
+            std::vector<std::pair<std::shared_ptr<AST>, std::pair<std::vector<std::shared_ptr<AST>>, std::shared_ptr<AST>>>> conditions;
+
+        };
+
+        /*
+        // Status
+        | cur-function, arguments<...>, conditions<...>  | -> top
+        |                       ...                      |
+        | sub-function1, arguments<...>, conditions<...> |
+        | main-function, arguments<...>, conditions<...> | -> bottom
+        |________________________________________________|
+
+        // conditions
+        | {cur-condition, {actions<...>, to_return}} | -> front
+        |                      ...                   |
+        | sub-condition1, {actions<...>, to_return}} |
+        | cur-condition, {actions<...>, to_return}}  | -> back
+        
+        ex.1 (define (main x y) (+ x y (* x y)))) , (main 12 67)
+        main-function = main, arguments = {x = 12, y = 67}, conditions = {, {{(+ x y (* x y))}, (+ x y (* x y))}}
+
+        ex.2 ((lambda (x y) (+ x y (* x y))) 12 67)
+        main-function = lambda, arguments = {x = 12, y = 67}, conditions = {{}, {{(+ x y (* x y))}, (+ x y (* x y))}}
+
+        ex.3 (define b 40) , (cond ((> 3 b) 'bad) ((> b 3) 'good) (else "What happened?"))
+        main-function = cond, arguments = {b = 40}, conditions = {(> 3 b), {{'bad}, 'bad}}
         */
+        std::stack<Status> status;
 
     public:
-        returnContent evaluate(std::shared_ptr<AST> cur, int level, bool bypass = false) {
+        BindingContent evaluate(std::shared_ptr<AST> &cur, std::shared_ptr<AST> cur_prim_func, int level) {
             if (cur->isAtom) {
-                if (cur->token.type != TokenType::SYMBOL) return returnContent(cur->token.value, evalReturnType::ATOM_BUT_NOT_SYMBOL);
+                if (cur->token.type != TokenType::SYMBOL) return BindingContent(cur->token.value, nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
                 else {
-                    if (isAtomAFunctionName(cur->token.value)) return returnContent(("#<procedure " + cur->token.value + ">"), evalReturnType::KEYWORD_PROCEDURE);
+                    if (isAtomAPrimitiveFunctionName(cur->token.value)) return BindingContent(("#<procedure " + cur->token.value + ">"),  nullptr,BindingType::PRIMITIVE_FUNCTION);
                     else {
-                        if (! isDefined(cur->token.value)) throw SemanticException::UnboundSymbol(cur->token.value);
-                        else { // get the binding
-                            if (env[cur->token.value].returnType == evalReturnType::ATOM_BUT_NOT_SYMBOL)
-                                return returnContent(env[cur->token.value].result, evalReturnType::ATOM_BUT_NOT_SYMBOL);
-                            else if (env[cur->token.value].returnType == evalReturnType::KEYWORD_PROCEDURE)
-                                return returnContent(("#<procedure " + env[cur->token.value].result + ">"), evalReturnType::KEYWORD_PROCEDURE);
-                            else if (env[cur->token.value].returnType == evalReturnType::FUNCTION) {
-                                // TODO: execute
-                                // TODO: return
-                                std::cout << "execute function\n";
-                                return returnContent();
-                            }
-                            else {
-                                // the type in env will never be END
-                                // so this should never happen
-                                std::cout << "ERROR: the type in env will never be END\n";
-                                exit(0);
-                            }
+                        if (! isDefined(cur->token.value)) {
+                            if (cur_prim_func->left->token.type == TokenType::QUOTE) return BindingContent(); // bypass
+                            else throw SemanticException::UnboundSymbol(cur->token.value);
                         }
+                        else return env[cur->token.value]; // get the binding
                     }
                 }
             }
             else {
                 if (cur->token.type == TokenType::NIL) {
-                    if (cur->isEndNode()) return returnContent(); // the end of the current sub-AST
+                    if (cur->isEndNode()) return BindingContent(); // the end of the current sub-AST
                     else {
                         std::cout << "[level " + std::to_string(level) + "]\n";
-                        // if quote, bypass; if not bypass, checl if pure list
-                        if (cur->left->token.type == TokenType::QUOTE) bypass = true;
-                        if (! bypass) checkPureList(cur, cur);
+
+                        if (isAtomAPrimitiveFunctionName(cur->left->token.value)) cur_prim_func = cur; // update the current primitive function
+                        if (cur_prim_func->left->token.type != TokenType::QUOTE) checkPureList(cur, cur_prim_func); // check pure list
                         
-                        returnContent left = evaluate(cur->left, level + 1, bypass);
-                        returnContent right = evaluate(cur->right, level + 1, bypass);
+                        // get & check bindings
+                        cur->left->binding = evaluate(cur->left, cur_prim_func, level + 1);
+                        BindingContent left = cur->left->binding;
+                        std::cout << "\t" << left.resultStr + "\n";
+                        // throw SemanticException::NonFunction(gPrinter.getprettifiedSExp(cur));
+                        if (cur->left->binding.returnType == BindingType::PRIMITIVE_FUNCTION) {
+                            BindingContent result = function_map[gKeywords[cur->left->token.value].functionType](cur); // execute the function
+                        }
 
-                        std::cout << ("[level " + std::to_string(level) + "] left: " + left.result + "\n");
-                        std::cout << ("[level " + std::to_string(level) + "] right: " + right.result + "\n");
+                        //gDebugger.debugPrintAST(cur);
+                        std::cout << "\t[level " + std::to_string(level) + "] ";
+                        std::cout << ("left: " + left.resultStr + "\n");
+                        
+                        // check the followings
+                        BindingContent right = evaluate(cur->right, cur_prim_func, level + 1);
+                        if (cur->right->token.type == TokenType::NIL) cur->right->binding.resultStr = "nil"; // only set value when it is the end nil
+                        
+                        //gDebugger.debugPrintAST(cur);
+                        std::cout << "\t[level " + std::to_string(level) + "] ";
+                        std::cout << ("right: " + right.resultStr + "\n");
 
-                        std::cout << std::endl;
-                        return returnContent();
+                        // return
+                        return right;
                     }
                 }
-                else {
-                    std::cout << "cur node is neither ATOM nor NIL\n";
-                    //gDebugger.debugPrintAST(cur);
-                    return returnContent();
-                }
+                else throw std::exception(); // else means neither ATOM nor NIL, impossible
             }
         }
 
         void execute(std::shared_ptr<AST> root) {
+            // test case
+            env["x"] = BindingContent("1", nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
+            env["y"] = BindingContent("2", nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
+            env["z"] = BindingContent("cons", nullptr, BindingType::PRIMITIVE_FUNCTION);
+
             // TODO: if return a internal function, execute it
-            returnContent evalResult = evaluate(root, 0);
-            gPrinter.printResult("[level 0] cur: " + evalResult.result + "\n"); // temp
+            BindingContent evalResult = evaluate(root, root, 0);
+            root->binding = env[root->token.value]; // bind the main <S-exp>
+            gPrinter.printResult("[level 0] cur: " + evalResult.resultStr + "\n"); // temp
+            //gDebugger.debugPrintAST(root);
         }
 };
 
-/* Below comments are deprecated codes */
-// S-Expression Evaluator
-/*
-// just to record how to use std::functional
-//std::unordered_map<std::string, std::function<double(double, double)>> binary_operators = {
-//    {"+", [](double a, double b) { return a + b; }}, // a + b
-//    {"-", [](double a, double b) { return a - b; }}, // a - b
-//    {"*", [](double a, double b) { return a * b; }}, // a * b
-//    {"/", [](double a, double b) { return a / b; }}, // a / b
-//    {"<", [](double a, double b) { return a < b; }}, // a < b
-//    {">", [](double a, double b) { return a > b; }}, // a > b
-//    {"<=", [](double a, double b) { return a <= b; }}, // a <= b
-//    {">=", [](double a, double b) { return a >= b; }}, // a >= b
-//    {"=", [](double a, double b) { return a == b; }}, // a == b
-//    {"!=", [](double a, double b) { return a != b; }}, // a != b
-//};
-*/
-/*
-void checkLegalSExp(std::shared_ptr<AST> root, int layer) { // recursively judge
-    int increased_layer = layer;
-    std::shared_ptr<AST> temp = root;
-    
-    //while ({()}), i.e., there are ((((( ... then <keyword> {<arg>s} ... )))))
-    //after while, temp->left must be a symbol or <keyword>
-    //ex. (((just_a_atom) test a))
-    //    ^ ^     ^
-    //   /   \    |
-    // root temp temp->left
-    //  0     2   3 // increased_layer
-    while (temp->left->token.type == TokenType::NIL) { // while LP
-        increased_layer++;
-        temp = temp->left;
-    }
+class S_Exp_Executor2 {
+    private:
+        struct Function {
+            std::shared_ptr<AST> function;
+            std::vector<std::shared_ptr<AST>> arguments;
+            std::vector<std::pair<std::shared_ptr<AST>, std::vector<std::shared_ptr<AST>>>> conditions;
+            Function(std::shared_ptr<AST> root) {
+                // TODO
+            }
+        };
 
-    // judge if the root->left is a <keyword> or a bound/unbound symbol
-    // if (<keyword> {<arg>s}) -> root->left must be <keyword>
-    // if ({(<keyword> {<arg>s)}) -> root->left must be NIL
-    if (! isKeyword(root->left->token.value)) {
-        if (root->left->isAtom) {
-            //
-        }
-        else {
-            //
-        }
-    }
-    
-    // count count each number of argument of a complete non-<ATOM> <S-exp>s from the current layer (current <S-exp>)
-    int arg_num = 0;
-    std::shared_ptr<AST> temp = root->right;
-    while (temp->right != nullptr) {
-        arg_num++;
-        temp = temp->right;
-    }
+        std::unordered_map<std::string, BindingContent> env;
 
-    std::cout << "\n> " << root->left->token.value << ": there are " << arg_num << " arguments.\n"; // just for debug
-    
-    // judge the current layer
-    switch (keywords[root->left->token.value].second.first) {
-        case KEYWORD_NUM_MODE::AT_LEAST: {
-            if (arg_num < keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
-            break;
+        bool isPrimFunc(std::string sym) {
+            return (gKeywords.find(sym) != gKeywords.end() && sym != "#t" && sym != "nil" && sym != "else") ? // check keywords
+                (env.find(sym) != env.end() && env[sym].returnType == BindingType::PRIMITIVE_FUNCTION) : // check the binding
+                false;
         }
-        case KEYWORD_NUM_MODE::ONLY: {
-            if (arg_num != keywords[root->left->token.value].second.second[0]) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
-            break;
-        }
-        case KEYWORD_NUM_MODE::SPECIFIC: {
-            const std::vector<int> &arg_nums = keywords[root->left->token.value].second.second; // legal numbers
-            if (std::find(arg_nums.begin(), arg_nums.end(), arg_num) == arg_nums.end()) throw SemanticException::IncorrectNumOfArgs(root->left->token.value);
-            break;
-        }
-    }
+        bool isUserFunc(std::string sym) { return ((env.find(sym) != env.end()) && (env[sym].returnType == BindingType::USER_FUNCTION)); }
+        bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
+        bool isDefined(std::string sym) { return (env.find(sym) != env.end()); }
 
-    // if there are sub <S-exp>, judge the following
-    if (root->right->left != nullptr && ! root->right->left->isAtom) checkLegalSExp(root->right->left, layer + 2);
-    if (root->right->right != nullptr && root->right->right->left != nullptr
-        && (! root->right->right->left->isAtom
-            || (root->right->right->left->token.type == TokenType::NIL
-                && root->right->right->left->left != nullptr))) checkLegalSExp(root->right->right->left, layer + 3);
-}
-*/
+        BindingContent evaluate(std::shared_ptr<AST> &cur, std::shared_ptr<AST> cur_prim_func = nullptr, int level = 0) {
+            if (cur->isAtom) {
+                if (cur->token.type != TokenType::SYMBOL) return BindingContent(cur->token.value, nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
+                else {
+                    if (isFunction(cur->token.value)) {
+                        if (isPrimFunc(cur->token.value)) return BindingContent(("#<procedure " + cur->token.value + ">"), nullptr, BindingType::PRIMITIVE_FUNCTION);
+                        else return BindingContent(env[cur->token.value].resultStr, nullptr, BindingType::USER_FUNCTION);
+                    }
+                    else {
+                        if (! isDefined(cur->token.value)) {
+                            if (cur_prim_func->left->token.type == TokenType::QUOTE) return BindingContent(); // bypass
+                            else throw SemanticException::UnboundSymbol(cur->token.value);
+                        }
+                        else return env[cur->token.value]; // get the binding
+                    }
+                }
+            }
+            else {
+                if (cur->token.type == TokenType::NIL) {
+                    if (cur->isEndNode()) return BindingContent(); // the end of the current sub-AST
+                    else {
+                    }
+                }
+                else throw std::exception(); // else means neither ATOM nor NIL, impossible
+            }
+        }
+
+    public:
+        void execute(std::shared_ptr<AST> root) {
+            BindingContent result = evaluate(root);
+            //root->binding = env[root->token.value]; // bind the main <S-exp>
+            //gPrinter.printResult("[level 0] cur: " + evalResult.resultStr + "\n"); // temp
+            //gDebugger.debugPrintAST(root);
+        }
+};
 
 /* S-Expression Parser */
 // <S-exp> ::= <ATOM>
