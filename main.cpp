@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <memory>
 #include <regex>
+#include <cctype>
 
 std::string gTestNum; // note that it is int + '\n'
 
@@ -81,91 +82,68 @@ enum class ARGUMENT_NUMBER_MODE {
 /* KeywordInfo */
 // define the informations of primitives and functions
 struct KeywordInfo {
-    bool isPrimitive;
     ARGUMENT_NUMBER_MODE arg_mode;
     std::vector<int> arg_nums;
     KeywordType functionType, returnType;
 };
 
 /* Keywords */
-std::unordered_map<std::string, KeywordInfo> gKeywords = {
-    // primitives
-    {"#t", {true}},
-    {"nil", {true}},
+static std::unordered_map<std::string, KeywordInfo> gKeywords = {
     // functions
-    {"cons", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR, KeywordType::PAIR}},
-    {"list", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR, KeywordType::LIST}},
-    {"quote", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}}, // returnType can be any of primitives
-    {"define", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    //{"let", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    //{"set!", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    {"car", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
-    {"cdr", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
-    {"atom?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"pair?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"list?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"null?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"integer?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"real?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"number?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"string?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"boolean?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"symbol?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"+", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"-", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"*", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"/", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"not", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"and", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
-    {"or", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
-    {">", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {">=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"<", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"<=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"=", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"string-append", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::STRING}},
-    {"string>?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"string<?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"string=?", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"eqv?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
-    {"equal?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
-    {"begin", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}}, // returnType can be any of primitives
-    {"if", {false, ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
-    {"else", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives // special case
-    {"cond", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
-    //{"read", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}}, // returnType can be any of primitives
-    //{"write", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
-    //{"display-string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
-    //{"newline", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY, KeywordType::NIL}},
-    //{"lambda", {false, ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
-    //{"verbose", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
-    //{"verbose?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
-    //{"eval", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}}, // returnType can be any of primitives
-    //{"symbol->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
-    //{"number->string", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
-    //{"create-error-object", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::ERROR_OBJECT}},
-    //{"error-object?", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::BOOLEAN}},
-    {"clean-environment", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::CLEAN_ENVIRONMENT}},
-    {"exit", {false, ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::EXIT}}
-};
-
-/* Binding type */
-enum class BindingType {
-    ATOM_BUT_NOT_SYMBOL,
-    //FUNCTION,
-    PRIMITIVE_FUNCTION,
-    USER_FUNCTION,
-    END
-};
-
-/* Binding content */
-struct AST; // forward declare
-struct BindingContent {
-    std::string resultStr;
-    std::shared_ptr<AST> resultAST;
-    BindingType returnType;
-    BindingContent(): resultStr(""), resultAST(nullptr), returnType(BindingType::END) {}
-    BindingContent(std::string str, std::shared_ptr<AST> ast,  BindingType ert): resultStr(std::move(str)), resultAST(std::move(ast)), returnType(ert) {}
+    {"cons", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR, KeywordType::PAIR}},
+    {"list", {ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR, KeywordType::LIST}},
+    {"quote", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}}, // returnType can be any of primitives
+    {"define", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    //{"let", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    //{"set!", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    {"car", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
+    {"cdr", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
+    {"atom?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"pair?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"list?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"null?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"integer?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"real?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"number?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"string?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"boolean?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"symbol?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
+    {"+", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"-", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"*", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"/", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
+    {"not", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"and", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
+    {"or", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
+    {">", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {">=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"<", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"<=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"string-append", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::STRING}},
+    {"string>?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"string<?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"string=?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
+    {"eqv?", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
+    {"equal?", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
+    {"begin", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}}, // returnType can be any of primitives
+    {"if", {ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
+    {"else", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives // special case
+    {"cond", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
+    //{"read", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}}, // returnType can be any of primitives
+    //{"write", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
+    //{"display-string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
+    //{"newline", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY, KeywordType::NIL}},
+    //{"lambda", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
+    //{"verbose", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    //{"verbose?", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    //{"eval", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}}, // returnType can be any of primitives
+    //{"symbol->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
+    //{"number->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
+    //{"create-error-object", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::ERROR_OBJECT}},
+    //{"error-object?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::BOOLEAN}},
+    {"clean-environment", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::CLEAN_ENVIRONMENT}},
+    {"exit", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::EXIT}}
 };
 
 /* Token structure */
@@ -176,11 +154,36 @@ struct Token {
     Token(TokenType t, const std::string& v): type(t), value(v) {}
 };
 
+/* Binding types */
+enum class BindingType {
+    BYPASS,
+    ATOM_BUT_NOT_SYMBOL,
+    PRIMITIVE_FUNCTION,
+    USER_FUNCTION,
+    MID_NIL,
+    END_NIL
+};
+
+struct AST; // forward declaration
+
+/* Binding structure */
+struct Binding {
+    bool isFirstNode = false;
+    BindingType type;
+    std::string value;
+    std::shared_ptr<AST> root;
+    Binding(): type(BindingType::END_NIL), value(""), root(nullptr) {}
+    Binding(BindingType t, std::string v): type(t), value(v) {}
+    Binding(bool i, BindingType t, std::string v): isFirstNode(i), type(t), value(v) {}
+    Binding(BindingType t, std::string v, std::shared_ptr<AST> r): type(t), value(v), root(r) {}
+    Binding(bool i, BindingType t, std::string v, std::shared_ptr<AST> r): isFirstNode(i), type(t), value(v), root(r) {}
+};
+
 /* AST structure */
 struct AST {
     bool isAtom = false;
     Token token;
-    BindingContent binding = BindingContent();
+    Binding binding = Binding();
     std::shared_ptr<AST> left = nullptr, right = nullptr;
     AST(Token t) : isAtom(true), token(std::move(t)) {}
     AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
@@ -208,11 +211,13 @@ class Debugger {
             std::cout << getTokenType(token) << std::endl;
         }
 
-        std::string getBindingType(BindingType bindingType) {
-            if (bindingType == BindingType::ATOM_BUT_NOT_SYMBOL) return "ATOM_BUT_NOT_SYMBOL";
-            else if (bindingType == BindingType::PRIMITIVE_FUNCTION) return "PRIMITIVE_FUNCTION";
-            else if (bindingType == BindingType::USER_FUNCTION) return "USER_FUNCTION";
-            else if (bindingType == BindingType::END) return "END";
+        std::string getBindingType(BindingType type) {
+            if (type == BindingType::BYPASS) return "BYPASS";
+            else if (type == BindingType::ATOM_BUT_NOT_SYMBOL) return "ATOM_BUT_NOT_SYMBOL";
+            else if (type == BindingType::PRIMITIVE_FUNCTION) return "PRIMITIVE_FUNCTION";
+            else if (type == BindingType::USER_FUNCTION) return "USER_FUNCTION";
+            else if (type == BindingType::MID_NIL) return "MID_NIL";
+            else if (type == BindingType::END_NIL) return "END_NIL";
             else return "ERROR: didn't judged!";
         }
 
@@ -261,7 +266,7 @@ class Debugger {
                 // if is keyword and is defined, print the binding content
                 if (gKeywords.find(node->token.value) != gKeywords.end())
                     std::cout << ", keyword type = " << getKeywordType(gKeywords[node->token.value].functionType);
-                std::cout << ", binding type = " << getBindingType(node->binding.returnType) << ", binding content = \"" << node->binding.resultStr << "\")\n";
+                std::cout << ")\n";
             }
             else {
                 std::cout << " (isAtom = false)\n";
@@ -333,37 +338,17 @@ class SemanticException: public std::exception {
         }
 
         // level error
-        static SemanticException LevelOfCleanEnv() { // implemented in project 2
-            return SemanticException("ERROR (level of CLEAN-ENVIRONMENT)\n");
-        }
-
-        static SemanticException LevelOfDefine() { // implemented in project 2
-            return SemanticException("ERROR (level of DEFINE)\n");
-        }
-
-        static SemanticException LevelOfExit() { // implemented in project 2
-            return SemanticException("ERROR (level of EXIT)\n");
+        static SemanticException LevelError(std::string func_name) { // implemented in project 2
+            std::string upper;
+            for (char c: func_name) upper += toupper(c);
+            return SemanticException("ERROR (level of " + upper + ")\n"); // clean-environment, define, exit
         }
 
         // format error
-        static SemanticException CondFormat(std::string s_exp) { // implemented in project 2
-            return SemanticException("ERROR (COND format) : " + s_exp + "\n");
-        }
-
-        static SemanticException DefineFormat(std::string s_exp) { // implemented in project 2
-            return SemanticException("ERROR (DEFINE format) : " + s_exp + "\n");
-        }
-
-        static SemanticException SetFormat(std::string s_exp) { // implemented in project 4
-            return SemanticException("ERROR (SET! format) : " + s_exp + "\n");
-        }
-
-        static SemanticException LetFormat(std::string s_exp) { // implemented in project 3
-            return SemanticException("ERROR (LET format) : " + s_exp + "\n");
-        }
-
-        static SemanticException LambdaFormat(std::string s_exp) { // implemented in project 3
-            return SemanticException("ERROR (LAMBDA format) : " + s_exp + "\n");
+        static SemanticException FormatError(std::string func_name, std::string s_exp) { // implemented in project 2
+            std::string upper;
+            for (char c: func_name) upper += (('a' <= c && c <= 'z') ? toupper(c): c);
+            return SemanticException("ERROR (" + upper + " format) : " + s_exp + "\n"); // proj 2: cond, define, proj 3: let, lambda, proj 4: set!
         }
 
         // symbol error
@@ -475,35 +460,98 @@ Printer gPrinter;
 /* S-Expression Evaluator */
 class S_Exp_Executor {
     private:
-        std::unordered_map<std::string, BindingContent> env; // to store the user-defined bindings
+        struct Function {
+            std::string name = "";
+            bool isQuote = false;
+            BindingType type; // only primitive or user-defined
+            std::shared_ptr<AST> function; // the parent of the function node
+            std::vector<std::shared_ptr<AST>> arguments; // a vector of argument roots
+            std::vector<std::pair<std::shared_ptr<AST>, std::vector<std::shared_ptr<AST>>>> conditions; // condi, acts, and return is based on the function
+        };
 
-        /* helper functions */
-        bool isKeyword(const std::string &str) {
-            return gKeywords.find(str) != gKeywords.end();
+        std::unordered_map<std::string, Function> prim_func_map; // TODO
+        std::unordered_map<std::string, Function> user_func_map;
+        std::unordered_map<std::string, Binding> env;
+
+        bool isPrimFunc(std::string sym) {
+            return (gKeywords.find(sym) != gKeywords.end() && sym != "else") ? true : // check keywords
+                ((env.find(sym) != env.end() && env[sym].type == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
+        }
+        bool isUserFunc(std::string sym) { return ((env.find(sym) != env.end()) && (env[sym].type == BindingType::USER_FUNCTION)); }
+        bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
+        bool isDefined(std::string sym) { return (env.find(sym) != env.end()); }
+
+        Function constructFunction(std::shared_ptr<AST> root) { // TODO
+            Function func;
+            func.name = root->left->token.value;
+            func.isQuote = (root->left->token.type == TokenType::QUOTE);
+            if (isPrimFunc(func.name)) {
+                func.type = BindingType::PRIMITIVE_FUNCTION;
+                // TODO: construct a primitive function structure from a legal <S-exp> by it's function type (KeywordType)
+                KeywordInfo info = gKeywords[func.name];
+                //info.
+            }
+            else {
+                func.type = BindingType::USER_FUNCTION;
+                // TODO: construct a user-defined function structure from a legal <S-exp> by it's function type (KeywordType)
+                // if the function is still not defined (i.e. cur node is that function name), should stand-by
+                // else gat and construct the function
+            }
+            return func;
         }
 
-        bool isDefined(const std::string &str) {
-            return env.find(str) != env.end();
+        void checkPureList(std::shared_ptr<AST> cur_node, std::shared_ptr<AST> cur_func) {
+            if (cur_node == nullptr || cur_node->isEndNode()) return;
+            if (cur_node->right != nullptr && cur_node->right->token.type != TokenType::NIL)
+                throw SemanticException::NonList(gPrinter.getprettifiedSExp(cur_func));
+            checkPureList(cur_node->right, cur_func);
         }
 
-        bool isAtomAPrimitiveFunctionName(std::string atom) {
-            // if the atom is a symbol that is bound to a function, will not check the bindings (cuz it should check outside)
-            if (atom != "#t" && atom != "nil" && atom != "else" && isKeyword(atom)) return true;
-            else return false;
+        void checkLevelOfSpecifics(std::string func_name, int level) {
+            std::vector<std::string> specifics = {"clean-environment", "define", "exit"};
+            if ((std::find(specifics.begin(), specifics.end(), func_name) != specifics.end()) && level != 0)
+                throw SemanticException::LevelError(func_name);
         }
 
-        bool isArgumentNumberCorrect(std::shared_ptr<AST> cur) {
-            // TODO: only judge the current level
-            return true;
+        void checkArgumentsNumber(std::shared_ptr<AST> cur) {
+            if (cur->left->binding.type == BindingType::PRIMITIVE_FUNCTION) { // primitive function
+                // count
+                std::shared_ptr<AST> temp = cur->right;
+                int count = 0;
+                while (temp->binding.type != BindingType::END_NIL) {
+                    count++;
+                    temp = temp->right;
+                }
+
+                // check
+                KeywordInfo info = gKeywords[cur->left->token.value];
+                switch (info.arg_mode) {
+                    case ARGUMENT_NUMBER_MODE::AT_LEAST: {
+                        if (count < info.arg_nums[0]) throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
+                        break;
+                    }
+                    case ARGUMENT_NUMBER_MODE::MUST_BE: {
+                        if (count != info.arg_nums[0]) throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
+                        break;
+                    }
+                    default: { // specific
+                        if (std::find(info.arg_nums.begin(), info.arg_nums.end(), count) == info.arg_nums.end())
+                            throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
+                        break;
+                    }
+                }
+            }
+            else if (cur->left->binding.type == BindingType::USER_FUNCTION) { // user-defined function
+                // TODO
+            }
         }
 
-        void checkPureList(std::shared_ptr<AST> cur, std::shared_ptr<AST> error_function_node) {
-            if (cur == nullptr || cur->isEndNode()) return;
-            if (cur->left->isAtom && isAtomAPrimitiveFunctionName(cur->left->token.value)) error_function_node = cur; // update current judging function
-            if (cur->right->isAtom && cur->right->token.type != TokenType::NIL) throw SemanticException::NonList(gPrinter.getprettifiedSExp(error_function_node));
-            checkPureList(cur->right, error_function_node);
+        void checkFormat() {
+            //
         }
 
+        /*
+        // primitive functions
         std::unordered_map<KeywordType, std::function<BindingContent(std::shared_ptr<AST>)>> function_map = {
             {KeywordType::CONSTRUCTOR, [this](std::shared_ptr<AST> cur) { return construct(cur); }},
             {KeywordType::BYPASS_EVALUATION, [this](std::shared_ptr<AST> cur) { return bypass(cur); }},
@@ -517,228 +565,181 @@ class S_Exp_Executor {
             {KeywordType::CLEAN_ENVIRONMENT, [this](std::shared_ptr<AST> cur) { return cleanEnvironment(cur); }},
             {KeywordType::EXIT, [this](std::shared_ptr<AST> cur) { return exit(cur); }},
         };
-
-        /* primitive functions */
-        // KeywordType::CONSTRUCTOR
-        BindingContent construct(std::shared_ptr<AST> cur) { // cons & list
-
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::BYPASS_EVALUATION
-        BindingContent bypass(std::shared_ptr<AST> cur) { // quote
-            return BindingContent(); // TODO
-            //return returnContent(gPrinter.getprettifiedSExp(cur->right), evalReturnType::END);
-        }
-
-        // KeywordType::BINDING
-        BindingContent bind(std::shared_ptr<AST> cur) { // define, let (project 3), set! (project 4)
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::PART_ACCESSOR
-        BindingContent getPart(std::shared_ptr<AST> cur) { // car, cdr
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::PRIMITIVE_PREDICATE
-        BindingContent judgePrimitivePredicate(std::shared_ptr<AST> cur) { // atom?, pair?, list?, null?, integer?, real?, number?, string?, boolean?, symbol?
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::OPERATION
-        BindingContent operate(std::shared_ptr<AST> cur) { // +, -, *, /, not, and, or, >, >=, <, <=, =, string-append, string>?, string<?, string=?
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::EQIVALENCE_TESTER
-        BindingContent judgeEqivalence(std::shared_ptr<AST> cur) { // eqv?, equal?
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION
-        // begin
-        BindingContent sequence(std::shared_ptr<AST> cur) {
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::CONDITIONAL
-        BindingContent getCondition(std::shared_ptr<AST> cur) { // if, else, cond
-            return BindingContent(); // TODO
-        }
-
-        // project 3 ~ 4
-        // KeywordType::READ
-        // KeywordType::DISPLAY
-        // KeywordType::LAMBDA
-        // KeywordType::VERBOSE
-        // KeywordType::EVALUATION
-        // KeywordType::CONVERT_TO_STRING
-        // KeywordType::ERROR_OBJECT_OPERATION
-        
-        // 2 ~ 4
-        // KeywordType::CLEAN_ENVIRONMENT
-        BindingContent cleanEnvironment(std::shared_ptr<AST> cur) {
-            env.clear();
-            return BindingContent(); // TODO
-        }
-
-        // KeywordType::EXIT
-        BindingContent exit(std::shared_ptr<AST> cur) {
-            return BindingContent(); // TODO
-        }
-
-        struct Status {
-            std::shared_ptr<AST> function;
-            std::vector<std::shared_ptr<AST>> arguments;
-            std::vector<std::pair<std::shared_ptr<AST>, std::pair<std::vector<std::shared_ptr<AST>>, std::shared_ptr<AST>>>> conditions;
-
-        };
+        // project 2:
+        // counstruct
+        // bypass
+        // bind
+        // getPart
+        // judgePrimitivePredicate
+        // operate
+        // judgeEqivalence
+        // sequence
+        // getCondition
+        // cleanEnvironment
+        // exit
+        // project 3 & 4:
+        // read
+        // display
+        // lambda
+        // verbose
+        // evaluation
+        // convertToString
+        // errorObject
+        */
 
         /*
-        // Status
-        | cur-function, arguments<...>, conditions<...>  | -> top
-        |                       ...                      |
-        | sub-function1, arguments<...>, conditions<...> |
-        | main-function, arguments<...>, conditions<...> | -> bottom
-        |________________________________________________|
-
-        // conditions
-        | {cur-condition, {actions<...>, to_return}} | -> front
-        |                      ...                   |
-        | sub-condition1, {actions<...>, to_return}} |
-        | cur-condition, {actions<...>, to_return}}  | -> back
+        [status 0 input] (define f (lambda (x y) (+ x y)))
+        [status 1 input] (define opr-list (list (list cons car cdr) () '(this is a quote) f (f 4 5) 123 "test" (list + - * /) (list pair? atom?)))
         
-        ex.1 (define (main x y) (+ x y (* x y)))) , (main 12 67)
-        main-function = main, arguments = {x = 12, y = 67}, conditions = {, {{(+ x y (* x y))}, (+ x y (* x y))}}
-
-        ex.2 ((lambda (x y) (+ x y (* x y))) 12 67)
-        main-function = lambda, arguments = {x = 12, y = 67}, conditions = {{}, {{(+ x y (* x y))}, (+ x y (* x y))}}
-
-        ex.3 (define b 40) , (cond ((> 3 b) 'bad) ((> b 3) 'good) (else "What happened?"))
-        main-function = cond, arguments = {b = 40}, conditions = {(> 3 b), {{'bad}, 'bad}}
+        [status 1] stack:
+        |--------------------------------------------------------------------------------------------------------------------------------------------| -> top
+        | [level 2] func: list, func_name: list, args: {pair?, atom?}, acts: {<pair?>, <atom?>}, return: (list <pair?>, <atom?>)
+        | [level 2] func: list, func_name: list, args: {+, -, *, /}, acts: {<+>, <->, <*>, </>}, return: (list <+>, <->, <*>, </>)
+        | [level 2] atom: string, return: "test"
+        | [level 2] func: lambda, func_name: f, args: {4, 5}, acts: {(+ 4 5)}, return: {9}
+        | [level 2] func: lambda, func_name: f, args: null, acts: {<lambda>}, return: {<lambda>}
+        | [level 2] func: quote, func_name: quote, args: {this, is, a, quote}, acts: null, return: (quote (this is a quote))
+        | [level 2] atom: nil, return: nil
+        | [level 2] func: list, func_name: list, args: {cons, car, cdr}, acts: {<cons>, <car>, <cdr>}, return: (list <cons>, <car>, <cdr>)
+        | [level 1] func: list, func_name: list,
+        |    args: {(list <cons>, <car>, <cdr>), nil, (quote (this is a quote)), <lambda>, 9, 123, "test", (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)},
+        |    acts: {(list {(list <cons>, <car>, <cdr>), nil, (quote (this is a quote)), <lambda>, 9, 123, "test",
+        |     (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)}), (list (list <cons>, <car>, <cdr>), (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)})},
+        |    return: (list {(list <cons>, <car>, <cdr>), nil, (quote (this is a quote)), <lambda>, 9, 123, "test",
+        |     (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)}), (list (list <cons>, <car>, <cdr>), (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)})
+        | [level 0] func: define, func_name: opr-list,
+        |    args: {(list {(list <cons>, <car>, <cdr>), nil, (quote (this is a quote)), <lambda>, 9, 123, "test",
+        |     (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)}), (list (list <cons>, <car>, <cdr>), (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)})},
+        |    acts: {(define opr-list (list {(list <cons>, <car>, <cdr>), nil, (quote (this is a quote)), <lambda>, 9, 123, "test",
+        |     (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)}), (list (list <cons>, <car>, <cdr>), (list <+>, <->, <*>, </>), (list <pair?>, <atom?>)})},
+        |    return: {opr-list defined}
+        |____________________________________________________________________________________________________________________________________________| -> bottom
         */
-        std::stack<Status> status;
 
-    public:
-        BindingContent evaluate(std::shared_ptr<AST> &cur, std::shared_ptr<AST> cur_prim_func, int level) {
-            if (cur->isAtom) {
-                if (cur->token.type != TokenType::SYMBOL) return BindingContent(cur->token.value, nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
-                else {
-                    if (isAtomAPrimitiveFunctionName(cur->token.value)) return BindingContent(("#<procedure " + cur->token.value + ">"),  nullptr,BindingType::PRIMITIVE_FUNCTION);
-                    else {
-                        if (! isDefined(cur->token.value)) {
-                            if (cur_prim_func->left->token.type == TokenType::QUOTE) return BindingContent(); // bypass
-                            else throw SemanticException::UnboundSymbol(cur->token.value);
-                        }
-                        else return env[cur->token.value]; // get the binding
-                    }
-                }
+        void labelFirstNode(std::shared_ptr<AST> &cur, int level = 0) { // TODO: fix ((list)) didn't set list to true
+            /*
+            ex. input: (car (cdr (list 123 (+ 89 00 999) (* 89 889 998 9) "" "test)" + - * /)))
+            only car, cdr, list, these 3 nodes are considered as functions
+            other nodesare not the first left node of the function (sub tree), or the value not a keyword function name
+            */
+            // the head of a <S-exp> (sub) tree is not list
+            if (cur == nullptr || cur->isAtom) return;
+            // first node is function
+            if (cur->left != nullptr && cur->left->isAtom) cur->left->binding.isFirstNode = true;
+            // first node if non-end-nil, i.e. the head of a <S-exp> (sub) tree
+            if(cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) {
+                cur->left->binding.isFirstNode = true;
+                labelFirstNode(cur->left, level + 1);
             }
-            else {
-                if (cur->token.type == TokenType::NIL) {
-                    if (cur->isEndNode()) return BindingContent(); // the end of the current sub-AST
-                    else {
-                        std::cout << "[level " + std::to_string(level) + "]\n";
-
-                        if (isAtomAPrimitiveFunctionName(cur->left->token.value)) cur_prim_func = cur; // update the current primitive function
-                        if (cur_prim_func->left->token.type != TokenType::QUOTE) checkPureList(cur, cur_prim_func); // check pure list
-                        
-                        // get & check bindings
-                        cur->left->binding = evaluate(cur->left, cur_prim_func, level + 1);
-                        BindingContent left = cur->left->binding;
-                        std::cout << "\t" << left.resultStr + "\n";
-                        // throw SemanticException::NonFunction(gPrinter.getprettifiedSExp(cur));
-                        if (cur->left->binding.returnType == BindingType::PRIMITIVE_FUNCTION) {
-                            BindingContent result = function_map[gKeywords[cur->left->token.value].functionType](cur); // execute the function
-                        }
-
-                        //gDebugger.debugPrintAST(cur);
-                        std::cout << "\t[level " + std::to_string(level) + "] ";
-                        std::cout << ("left: " + left.resultStr + "\n");
-                        
-                        // check the followings
-                        BindingContent right = evaluate(cur->right, cur_prim_func, level + 1);
-                        if (cur->right->token.type == TokenType::NIL) cur->right->binding.resultStr = "nil"; // only set value when it is the end nil
-                        
-                        //gDebugger.debugPrintAST(cur);
-                        std::cout << "\t[level " + std::to_string(level) + "] ";
-                        std::cout << ("right: " + right.resultStr + "\n");
-
-                        // return
-                        return right;
-                    }
-                }
-                else throw std::exception(); // else means neither ATOM nor NIL, impossible
+            // check right remainings
+            std::shared_ptr<AST> remainings = cur->right;
+            while (remainings != nullptr && remainings->token.type == TokenType::NIL) {
+                // if the remainings is a <S-exp> sub tree, recursively do
+                if (remainings->left != nullptr && ! remainings->left->isAtom) labelFirstNode(remainings->left, level + 1);
+                remainings = remainings->right;
             }
         }
+        
+        void evaluate(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1, bool bypass = false) {
+            std::cout << "[level " << level << "] cur node: " << cur->token.value << "\n";
 
-        void execute(std::shared_ptr<AST> root) {
-            // test case
-            env["x"] = BindingContent("1", nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
-            env["y"] = BindingContent("2", nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
-            env["z"] = BindingContent("cons", nullptr, BindingType::PRIMITIVE_FUNCTION);
+            if (cur->isAtom && cur->token.type != TokenType::NIL) {
+                bool temp = cur->binding.isFirstNode;
 
-            // TODO: if return a internal function, execute it
-            BindingContent evalResult = evaluate(root, root, 0);
-            root->binding = env[root->token.value]; // bind the main <S-exp>
-            gPrinter.printResult("[level 0] cur: " + evalResult.resultStr + "\n"); // temp
-            //gDebugger.debugPrintAST(root);
-        }
-};
-
-class S_Exp_Executor2 {
-    private:
-        struct Function {
-            std::shared_ptr<AST> function;
-            std::vector<std::shared_ptr<AST>> arguments;
-            std::vector<std::pair<std::shared_ptr<AST>, std::vector<std::shared_ptr<AST>>>> conditions;
-            Function(std::shared_ptr<AST> root) {
-                // TODO
-            }
-        };
-
-        std::unordered_map<std::string, BindingContent> env;
-
-        bool isPrimFunc(std::string sym) {
-            return (gKeywords.find(sym) != gKeywords.end() && sym != "#t" && sym != "nil" && sym != "else") ? // check keywords
-                (env.find(sym) != env.end() && env[sym].returnType == BindingType::PRIMITIVE_FUNCTION) : // check the binding
-                false;
-        }
-        bool isUserFunc(std::string sym) { return ((env.find(sym) != env.end()) && (env[sym].returnType == BindingType::USER_FUNCTION)); }
-        bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
-        bool isDefined(std::string sym) { return (env.find(sym) != env.end()); }
-
-        BindingContent evaluate(std::shared_ptr<AST> &cur, std::shared_ptr<AST> cur_prim_func = nullptr, int level = 0) {
-            if (cur->isAtom) {
-                if (cur->token.type != TokenType::SYMBOL) return BindingContent(cur->token.value, nullptr, BindingType::ATOM_BUT_NOT_SYMBOL);
+                if (cur->token.type != TokenType::SYMBOL && cur->token.type != TokenType::QUOTE)
+                    cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
                 else {
                     if (isFunction(cur->token.value)) {
-                        if (isPrimFunc(cur->token.value)) return BindingContent(("#<procedure " + cur->token.value + ">"), nullptr, BindingType::PRIMITIVE_FUNCTION);
-                        else return BindingContent(env[cur->token.value].resultStr, nullptr, BindingType::USER_FUNCTION);
+                        if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
+                        else cur->binding = env[cur->token.value]; // may error here, should copy ? // TODO
                     }
                     else {
-                        if (! isDefined(cur->token.value)) {
-                            if (cur_prim_func->left->token.type == TokenType::QUOTE) return BindingContent(); // bypass
-                            else throw SemanticException::UnboundSymbol(cur->token.value);
+                        if (isDefined(cur->token.value)) cur->binding = env[cur->token.value]; // get the binding
+                        else {
+                            if (! bypass) throw SemanticException::UnboundSymbol(cur->token.value);
+                            else cur->binding.value = cur->token.value; // bind the symbol's value to token value when bypassing
                         }
-                        else return env[cur->token.value]; // get the binding
                     }
                 }
+
+                // set type to BYPASS when the current function is QUOTE and the current node is not QUOTE (cuz QUOTE is PRIMITIVE_FUNCTION) after binding
+                if (bypass && (cur->token.type != TokenType::QUOTE)|| (cur->token.type == TokenType::QUOTE && bypassLevel + 1 != level))
+                    cur->binding.type = BindingType::BYPASS;
+                // set back, to prevent wrong cover
+                cur->binding.isFirstNode = temp;
             }
             else {
                 if (cur->token.type == TokenType::NIL) {
-                    if (cur->isEndNode()) return BindingContent(); // the end of the current sub-AST
+                    if (cur->isEndNode()) cur->binding = Binding(cur->binding.isFirstNode, BindingType::END_NIL, "nil"); // nil is end node
                     else {
+                        // set current
+                        cur->binding.type = BindingType::MID_NIL;
+
+                        // update bypass and check pure list
+                        if (isFunction(cur->left->token.value)) { // isPrimFunc(cur->left->token.value)
+                            cur->left->binding.root = cur; // points to the root of function, i.e. parent node
+                            if (! bypass && cur->left->token.type == TokenType::QUOTE) bypassLevel = level, bypass = true; // bypass
+                            if (! bypass && cur->left->binding.isFirstNode) {
+                                checkPureList(cur, cur); // check pure list
+                                checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
+                            }
+                        }
+                        
+                        // get binding
+                        evaluate(cur->left, level + 1, bypassLevel, bypass);
+                        if (cur->left->binding.type == BindingType::ATOM_BUT_NOT_SYMBOL) throw SemanticException::NonFunction(cur->left->token.value);
+                        // check if non-function error (after binding?) , ex. ((+ 1 2) 4 5) -> error 3
+                        if (cur->left->binding.type == BindingType::MID_NIL) {
+                            // TODO: check the binding throw SemanticException::NonFunction(cur->left->token.value);
+                            // ex. ((cdr (list 1 2 3))) -> (cdr (list 1 2 3)): ERROR (attempt to apply non-function) : ( 2 3 )
+                        }
+
+                        // if cur->left is a function name but not the first node, treat it as a symbol (procedure), ex. (begin list + - * / cons car cdr)
+
+                        std::cout << "\t[level " << level << " left]: " << cur->left->binding.value << " ";
+                        std::cout << gDebugger.getBindingType(cur->left->binding.type) << ", is first node: " << cur->left->binding.isFirstNode << "\n";
+
+                        // get remainigs' bindings
+                        evaluate(cur->right, level + 1, bypassLevel, bypass);
+                        
+                        std::cout << "\t[level " << level << " right]: " << cur->right->binding.value << " ";
+                        std::cout << gDebugger.getBindingType(cur->right->binding.type) << ", is first node: " << cur->right->binding.isFirstNode << "\n";
+                        
+                        // end the current function
+                        if (cur->left->binding.isFirstNode) {
+                            if (cur->left->binding.type == BindingType::MID_NIL) {
+                                // TODO: set the binding, ex.((list list list)) -> set the binding of (list list list)
+                                std::cout << "\t================ get binding: middle nil at level " << level << "================\n";
+                            }
+                            else if (isFunction(cur->left->token.value)) {
+                                // reset bypass if quote
+                                if (cur->left->token.type == TokenType::QUOTE && bypassLevel == level) bypassLevel = -1, bypass = false;
+                                if (! bypass) {
+                                    checkFormat(); // TODO: check format: define, set!, let, cond, lambda
+                                    checkArgumentsNumber(cur); // check primitive argument number
+                                    // TODO: check non-function error, but not here, should check after binding
+
+                                    // execute if the current is function
+                                    if (cur->left->binding.type == BindingType::PRIMITIVE_FUNCTION) { // primitive function
+                                        std::cout << "\t================ execute primitive function: " << cur->left->token.value << " at level " << level << "================\n";
+                                    }
+                                    else { // user-defined function
+                                        std::cout << "\t================ execute user-defined function: " << cur->left->token.value << " at level " << level << "================\n";
+                                    }
+                                }
+                                // else do-nothing
+                            }
+                        }
                     }
                 }
-                else throw std::exception(); // else means neither ATOM nor NIL, impossible
+                // else neither ATOM nor NIL, never happen
             }
         }
 
     public:
         void execute(std::shared_ptr<AST> root) {
-            BindingContent result = evaluate(root);
+            labelFirstNode(root);
+            evaluate(root, 0);
             //root->binding = env[root->token.value]; // bind the main <S-exp>
             //gPrinter.printResult("[level 0] cur: " + evalResult.resultStr + "\n"); // temp
             //gDebugger.debugPrintAST(root);
