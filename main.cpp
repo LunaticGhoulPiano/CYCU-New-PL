@@ -157,11 +157,10 @@ struct Token {
 /* Binding types */
 enum class BindingType {
     BYPASS,
+    MID,
     ATOM_BUT_NOT_SYMBOL,
     PRIMITIVE_FUNCTION,
-    USER_FUNCTION,
-    MID_NIL,
-    END_NIL
+    USER_FUNCTION
 };
 
 struct AST; // forward declaration
@@ -171,12 +170,7 @@ struct Binding {
     bool isFirstNode = false;
     BindingType type;
     std::string value;
-    std::shared_ptr<AST> root;
-    Binding(): type(BindingType::END_NIL), value(""), root(nullptr) {}
-    Binding(BindingType t, std::string v): type(t), value(v) {}
-    Binding(bool i, BindingType t, std::string v): isFirstNode(i), type(t), value(v) {}
-    Binding(BindingType t, std::string v, std::shared_ptr<AST> r): type(t), value(v), root(r) {}
-    Binding(bool i, BindingType t, std::string v, std::shared_ptr<AST> r): isFirstNode(i), type(t), value(v), root(r) {}
+    Binding(BindingType t = BindingType::ATOM_BUT_NOT_SYMBOL, std::string v = ""): type(t), value(v) {}
 };
 
 /* AST structure */
@@ -216,8 +210,7 @@ class Debugger {
             else if (type == BindingType::ATOM_BUT_NOT_SYMBOL) return "ATOM_BUT_NOT_SYMBOL";
             else if (type == BindingType::PRIMITIVE_FUNCTION) return "PRIMITIVE_FUNCTION";
             else if (type == BindingType::USER_FUNCTION) return "USER_FUNCTION";
-            else if (type == BindingType::MID_NIL) return "MID_NIL";
-            else if (type == BindingType::END_NIL) return "END_NIL";
+            else if (type == BindingType::MID) return "MID";
             else return "ERROR: didn't judged!";
         }
 
@@ -518,7 +511,7 @@ class S_Exp_Executor {
                 // count
                 std::shared_ptr<AST> temp = cur->right;
                 int count = 0;
-                while (temp->binding.type != BindingType::END_NIL) {
+                while (! temp->isEndNode()) {
                     count++;
                     temp = temp->right;
                 }
@@ -640,106 +633,122 @@ class S_Exp_Executor {
             }
         }
         
+        void executeByFunction(std::shared_ptr<AST> &cur, int level = 0) {
+            std::cout << "[level " << level << "] cur node token: " << cur->token.value;
+            std::cout << ", cur node binding value: " << cur->binding.value;
+            std::cout << ", type: " << gDebugger.getBindingType(cur->binding.type) << "\n";
+
+            executeByFunction(cur->left, level + 1);
+            executeByFunction(cur->right, level + 1);
+        }
+
+        void getBinding(std::shared_ptr<AST> &cur, int level, int bypassLevel, bool bypass = false) {
+            bool temp = cur->binding.isFirstNode;
+
+            // bind
+            if (isDefined(cur->token.value)) cur->binding = env[cur->token.value]; // get the binding: symbol or user-defined function
+            else if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
+            else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
+            else if (bypass) cur->binding.value = cur->token.value; // bind the symbol's value to token value when bypassing
+            else throw SemanticException::UnboundSymbol(cur->token.value);
+
+            // set type to BYPASS when the current function is QUOTE and the current node is not QUOTE (cuz QUOTE is PRIMITIVE_FUNCTION) after binding
+            if ((bypass && cur->token.type != TokenType::QUOTE) // cur is the nodes after bypass is activated -> should bypass
+                || (cur->token.type == TokenType::QUOTE && bypassLevel + 1 != level)) // cur is quote after bypass is activated -> should bypass
+                cur->binding.type = BindingType::BYPASS;
+            
+            // set back isFirstNode to prevent wrong cover
+            cur->binding.isFirstNode = temp;
+        }
+
+        void debugPrintLevelLR(std::string lr, std::shared_ptr<AST> cur, int level) {
+            std::cout << "\t[level " << level << " " << lr << "]: " << cur->binding.value << " ";
+            std::cout << gDebugger.getBindingType(cur->binding.type) << ", is first node: " << cur->binding.isFirstNode << "\n";
+        }
+        
         void evaluate(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1, bool bypass = false) {
             std::cout << "[level " << level << "] cur node: " << cur->token.value << "\n";
 
-            if (cur->isAtom && cur->token.type != TokenType::NIL) {
-                bool temp = cur->binding.isFirstNode;
+            if (cur->isAtom || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level, bypassLevel, bypass);
+            else if (cur->token.type == TokenType::NIL) { // middle nil
+                // set current
+                cur->binding.type = BindingType::MID;
 
-                if (cur->token.type != TokenType::SYMBOL && cur->token.type != TokenType::QUOTE)
-                    cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
-                else {
-                    if (isFunction(cur->token.value)) {
-                        if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
-                        else cur->binding = env[cur->token.value]; // may error here, should copy ? // TODO
-                    }
-                    else {
-                        if (isDefined(cur->token.value)) cur->binding = env[cur->token.value]; // get the binding
-                        else {
-                            if (! bypass) throw SemanticException::UnboundSymbol(cur->token.value);
-                            else cur->binding.value = cur->token.value; // bind the symbol's value to token value when bypassing
-                        }
-                    }
-                }
+                // if cur is a function name and also the first left node of the current sub-tree
+                if (isFunction(cur->left->token.value)) {
+                    if (cur->left->binding.isFirstNode) {
+                        // activate bypass
+                        if (! bypass && cur->left->token.type == TokenType::QUOTE) bypassLevel = level, bypass = true;
+                        // if don't bypass, check the function
+                        if (! bypass) {
+                            checkPureList(cur, cur); // check pure list
+                            checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
 
-                // set type to BYPASS when the current function is QUOTE and the current node is not QUOTE (cuz QUOTE is PRIMITIVE_FUNCTION) after binding
-                if (bypass && (cur->token.type != TokenType::QUOTE)|| (cur->token.type == TokenType::QUOTE && bypassLevel + 1 != level))
-                    cur->binding.type = BindingType::BYPASS;
-                // set back, to prevent wrong cover
-                cur->binding.isFirstNode = temp;
-            }
-            else {
-                if (cur->token.type == TokenType::NIL) {
-                    if (cur->isEndNode()) cur->binding = Binding(cur->binding.isFirstNode, BindingType::END_NIL, "nil"); // nil is end node
-                    else {
-                        // set current
-                        cur->binding.type = BindingType::MID_NIL;
-
-                        // update bypass and check pure list
-                        if (isFunction(cur->left->token.value)) { // isPrimFunc(cur->left->token.value)
-                            cur->left->binding.root = cur; // points to the root of function, i.e. parent node
-                            if (! bypass && cur->left->token.type == TokenType::QUOTE) bypassLevel = level, bypass = true; // bypass
-                            if (! bypass && cur->left->binding.isFirstNode) {
-                                checkPureList(cur, cur); // check pure list
-                                checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
+                            // TODO: check by primitive / user-defined function
+                            
+                            // special cases: with arguments, those arguments should't be unbound symbol
+                            if (cur->left->token.value == "define") {
+                                // TODO: seperate the argument tree and the remainings
                             }
+                            // else if (cur->left->token.value == "let")
+                            // else if (cur->left->token.value == "lambda")
+                            // else if (cur->left->token.value == "set!")
+                            else {
+                                // get binding
+                                evaluate(cur->left, level + 1, bypassLevel, bypass);
+                                debugPrintLevelLR("left", cur->left, level);
+                                // get remainigs' bindings
+                                evaluate(cur->right, level + 1, bypassLevel, bypass);
+                                debugPrintLevelLR("right", cur->right, level);
+                            }
+
+                            // execute if the current is function
+                            if (cur->left->binding.type == BindingType::PRIMITIVE_FUNCTION) // primitive function
+                                std::cout << "\t======== execute primitive function: " << cur->left->token.value << " at level " << level << " ========\n";
+                            else // user-defined function
+                                std::cout << "\t======== execute user-defined function: " << cur->left->token.value << " at level " << level << " ========\n";
                         }
-                        
-                        // get binding
-                        evaluate(cur->left, level + 1, bypassLevel, bypass);
-                        if (cur->left->binding.type == BindingType::ATOM_BUT_NOT_SYMBOL) throw SemanticException::NonFunction(cur->left->token.value);
-                        // check if non-function error (after binding?) , ex. ((+ 1 2) 4 5) -> error 3
-                        if (cur->left->binding.type == BindingType::MID_NIL) {
-                            // TODO: check the binding throw SemanticException::NonFunction(cur->left->token.value);
-                            // ex. ((cdr (list 1 2 3))) -> (cdr (list 1 2 3)): ERROR (attempt to apply non-function) : ( 2 3 )
-                        }
-
-                        // if cur->left is a function name but not the first node, treat it as a symbol (procedure), ex. (begin list + - * / cons car cdr)
-
-                        std::cout << "\t[level " << level << " left]: " << cur->left->binding.value << " ";
-                        std::cout << gDebugger.getBindingType(cur->left->binding.type) << ", is first node: " << cur->left->binding.isFirstNode << "\n";
-
+                    }
+                    else { // # <procedure function_name>, treat it as a normal atom node, and recursively check it
                         // get remainigs' bindings
                         evaluate(cur->right, level + 1, bypassLevel, bypass);
+                        debugPrintLevelLR("right", cur->right, level);
                         
-                        std::cout << "\t[level " << level << " right]: " << cur->right->binding.value << " ";
-                        std::cout << gDebugger.getBindingType(cur->right->binding.type) << ", is first node: " << cur->right->binding.isFirstNode << "\n";
-                        
-                        // end the current function
-                        if (cur->left->binding.isFirstNode) {
-                            if (cur->left->binding.type == BindingType::MID_NIL) {
-                                // TODO: set the binding, ex.((list list list)) -> set the binding of (list list list)
-                                std::cout << "\t================ get binding: middle nil at level " << level << "================\n";
-                            }
-                            else if (isFunction(cur->left->token.value)) {
-                                // reset bypass if quote
-                                if (cur->left->token.type == TokenType::QUOTE && bypassLevel == level) bypassLevel = -1, bypass = false;
-                                if (! bypass) {
-                                    checkFormat(); // TODO: check format: define, set!, let, cond, lambda
-                                    checkArgumentsNumber(cur); // check primitive argument number
-                                    // TODO: check non-function error, but not here, should check after binding
-
-                                    // execute if the current is function
-                                    if (cur->left->binding.type == BindingType::PRIMITIVE_FUNCTION) { // primitive function
-                                        std::cout << "\t================ execute primitive function: " << cur->left->token.value << " at level " << level << "================\n";
-                                    }
-                                    else { // user-defined function
-                                        std::cout << "\t================ execute user-defined function: " << cur->left->token.value << " at level " << level << "================\n";
-                                    }
-                                }
-                                // else do-nothing
-                            }
-                        }
+                        // TODO: end the current tree
                     }
                 }
-                // else neither ATOM nor NIL, never happen
+                else if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) { // middle nil, i.e. a new (sub) tree encounter
+                    // TODO: get the binding value of the (sub) tree
+                    // get binding
+                    evaluate(cur->left, level + 1, bypassLevel, bypass);
+                    debugPrintLevelLR("left", cur->left, level);
+                    // get remainigs' bindings
+                    evaluate(cur->right, level + 1, bypassLevel, bypass);
+                    debugPrintLevelLR("right", cur->right, level);
+                    // after binding, cur->left->binding.type == BindingType::MID
+                    // TODO: set the binding, ex.((list list list)) -> set the binding of (list list list)
+                    std::cout << "\t======== get binding: middle nil at level " << level << " ========\n";
+                }
+                else { // left is atom, recursively check
+                    if (cur->left->binding.isFirstNode) throw SemanticException::NonFunction(cur->left->token.value); // non-func-atom at first left node
+                    else { // atom_value, treat it as a normal atom node, and recursively check it
+                        // cuz rightiest tree, so atom must at left, and the atom (cur->left) must be end node
+                        // get remainigs' bindings
+                        evaluate(cur->right, level + 1, bypassLevel, bypass);
+                        debugPrintLevelLR("right", cur->right, level);
+                        
+                        // TODO: end the current tree
+                    }
+                }
             }
+            // else neither ATOM nor NIL, never happen
         }
 
     public:
         void execute(std::shared_ptr<AST> root) {
             labelFirstNode(root);
             evaluate(root, 0);
+            //executeByFunction(root);
             //root->binding = env[root->token.value]; // bind the main <S-exp>
             //gPrinter.printResult("[level 0] cur: " + evalResult.resultStr + "\n"); // temp
             //gDebugger.debugPrintAST(root);
