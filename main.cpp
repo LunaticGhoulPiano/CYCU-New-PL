@@ -159,7 +159,8 @@ enum class BindingType {
     MID,
     ATOM_BUT_NOT_SYMBOL,
     PRIMITIVE_FUNCTION,
-    USER_FUNCTION
+    USER_FUNCTION,
+    RESULT
 };
 
 struct AST; // forward declaration
@@ -168,10 +169,10 @@ struct AST; // forward declaration
 struct Binding {
     bool isRoot = false;
     bool isFirstNode = false;
-    BindingType type;
+    KeywordType dataType;
+    BindingType bindingType;
     std::string value;
-    std::shared_ptr<AST> result = nullptr;
-    Binding(BindingType t = BindingType::ATOM_BUT_NOT_SYMBOL, std::string v = ""): type(t), value(v) {}
+    Binding(BindingType t = BindingType::ATOM_BUT_NOT_SYMBOL, std::string v = ""): bindingType(t), value(v) {}
 };
 
 /* AST structure */
@@ -180,6 +181,7 @@ struct AST {
     Token token;
     Binding binding = Binding();
     std::shared_ptr<AST> left = nullptr, right = nullptr;
+    AST() {} // only used for inintializing result node
     AST(Token t) : isAtom(true), token(std::move(t)) {}
     AST(std::shared_ptr<AST> l, std::shared_ptr<AST> r) : isAtom(false), left(std::move(l)), right(std::move(r)) {}
     bool isEndNode() { return left == nullptr && right == nullptr; }
@@ -207,10 +209,11 @@ class Debugger {
         }
 
         std::string getBindingType(BindingType type) {
-            if (type == BindingType::ATOM_BUT_NOT_SYMBOL) return "ATOM_BUT_NOT_SYMBOL";
+            if (type == BindingType::MID) return "MID";
+            else if (type == BindingType::ATOM_BUT_NOT_SYMBOL) return "ATOM_BUT_NOT_SYMBOL";
             else if (type == BindingType::PRIMITIVE_FUNCTION) return "PRIMITIVE_FUNCTION";
             else if (type == BindingType::USER_FUNCTION) return "USER_FUNCTION";
-            else if (type == BindingType::MID) return "MID";
+            else if (type == BindingType::RESULT) return "RESULT";
             else return "ERROR: didn't judged!";
         }
 
@@ -455,13 +458,14 @@ class S_Exp_Executor {
     private:
         std::unordered_map<std::string, Binding> env;
 
-        bool isPrimFunc(std::string sym) {
-            return (gKeywords.find(sym) != gKeywords.end() && sym != "else") ? true : // check keywords
-                ((env.find(sym) != env.end() && env[sym].type == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
-        }
-        bool isUserFunc(std::string sym) { return ((env.find(sym) != env.end()) && (env[sym].type == BindingType::USER_FUNCTION)); }
-        bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
+        bool isKeyword(std::string sym) { return (gKeywords.find(sym) != gKeywords.end() && sym != "else" && sym != "#t" && sym != "nil"); }
         bool isDefined(std::string sym) { return (env.find(sym) != env.end()); }
+        bool isPrimFunc(std::string sym) {
+            return isKeyword(sym) ? true : // check keywords
+                ((isDefined(sym) && env[sym].bindingType == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
+        }
+        bool isUserFunc(std::string sym) { return (isDefined(sym) && (env[sym].bindingType == BindingType::USER_FUNCTION)); }
+        bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
 
         void checkPureList(std::shared_ptr<AST> cur_node, std::shared_ptr<AST> cur_func) {
             if (cur_node == nullptr || cur_node->isEndNode()) return;
@@ -477,7 +481,7 @@ class S_Exp_Executor {
         }
 
         void checkArgumentsNumber(std::shared_ptr<AST> cur) {
-            if (cur->left->binding.type == BindingType::PRIMITIVE_FUNCTION) { // primitive function
+            if (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION) { // primitive function
                 // count
                 std::shared_ptr<AST> temp = cur->right;
                 int count = 0;
@@ -504,45 +508,129 @@ class S_Exp_Executor {
                     }
                 }
             }
-            else if (cur->left->binding.type == BindingType::USER_FUNCTION) { // user-defined function
+            else if (cur->left->binding.bindingType == BindingType::USER_FUNCTION) { // user-defined function
                 // TODO
             }
         }
 
         std::unordered_map<std::string, std::function<void(std::shared_ptr<AST> &)>> prim_func_map = {
+            // construct
             {"cons", [this](std::shared_ptr<AST> &cur) { construct(cur); } },
             {"list", [this](std::shared_ptr<AST> &cur) { construct(cur); } },
+            // bypass
             {"quote", [this](std::shared_ptr<AST> &cur) { bypass(cur); } },
+            // bind
+            // get part
+            {"car", [this](std::shared_ptr<AST> &cur) { getPart(cur); } },
+            {"cdr", [this](std::shared_ptr<AST> &cur) { getPart(cur); } },
+            // judge primitive predicates
+            {"atom?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"pair?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"list?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"null?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"integer?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"real?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"number?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"string?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"boolean?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            {"symbol?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } }
         };
 
-        // project 2:
         // counstruct
-        void construct(std::shared_ptr<AST> &cur) { // list, cons
+        void construct(std::shared_ptr<AST> &cur) { // project 2: list, cons
+            std::shared_ptr<AST> temp = std::make_shared<AST>();
+            temp->token.type = TokenType::NIL;
+            temp->binding.bindingType = BindingType::RESULT;
+            temp->binding.isRoot = true;
+
             if (cur->left->token.value == "cons") { // result type: pair
-                // ex. (cons (cons 1 2) (cons 2 1)) ; ((1 . 2) 2 . 1)
-                std::shared_ptr<AST> a, b, c;
-                // if each node has binding, use it (i.e. binding->result != nullptr)
-                // else use the current node's pointer
-                // TODO: may bind the result to pointer at getBinding() ?
-                if (cur->left->binding.result != nullptr) a = cur->left->binding.result;
-                else a = cur->left;
-                if (cur->right->left->binding.result != nullptr) b = cur->right->left->binding.result;
-                else b = cur->right->left;
-                if (cur->right->right->binding.result != nullptr) c = cur->right->right->binding.result;
-                else c = cur->right->right;
+                temp->binding.dataType = KeywordType::PAIR;
+
+                temp->left = cur->right->left;
+                temp->right = cur->right->right->left;
+
+                cur = temp;
             }
             else { // result type: list
-                //
+                temp->binding.dataType = KeywordType::LIST;
+                cur = cur->right;
+                cur->binding = temp->binding;
             }
+
+            std::cout << gPrinter.getprettifiedSExp(cur); // debug
         }
+
         // bypass
-        void bypass(std::shared_ptr<AST> &cur) { // quote
-            cur->binding.result = cur->right->left;
-            gPrinter.printResult(gPrinter.getprettifiedSExp(cur->binding.result));
+        void bypass(std::shared_ptr<AST> &cur) { // project 2: quote
+            cur = cur->right->left;
+            cur->token.type = TokenType::NIL;
+            cur->binding.bindingType = BindingType::RESULT;
+            cur->binding.isRoot = true;
+            cur->binding.dataType = KeywordType::BYPASS_EVALUATION;
+
+            std::cout << gPrinter.getprettifiedSExp(cur); // debug
         }
+
         // bind
+        
         // getPart
+        void getPart(std::shared_ptr<AST> &cur) {
+            std::shared_ptr<AST> temp = std::make_shared<AST>();
+
+            if (cur->left->token.value == "car") temp = cur->right->left->left;
+            else temp = cur->right->left->right; // cdr
+            cur = temp;
+
+            cur->token.type = TokenType::NIL;
+            cur->binding.bindingType = BindingType::RESULT;
+            cur->binding.isRoot = true;
+            cur->binding.dataType = KeywordType::PART_ACCESSOR;
+
+            std::cout << gPrinter.getprettifiedSExp(cur); // debug
+        }
+
         // judgePrimitivePredicate
+        void judgePrimitivePredicate(std::shared_ptr<AST> &cur) {
+            bool result = false;
+            if (cur->left->token.value == "atom?"
+                && cur->right->left->isEndNode()) result = true;
+            else if (cur->left->token.value == "pair?"
+                && cur->right->left->binding.dataType == KeywordType::PAIR) result = true;
+            else if (cur->left->token.value == "list?"
+                && cur->right->left->binding.dataType == KeywordType::LIST) result = true;
+            else if (cur->left->token.value == "null?"
+                && cur->right->left->token.type == TokenType::NIL && cur->right->left->isEndNode()) result = true;
+            else if (cur->left->token.value == "integer?"
+                && cur->right->left->token.type == TokenType::INT) result = true;
+            else if ((cur->left->token.value == "real?" || cur->left->token.value == "number?")
+                && (cur->right->left->token.type == TokenType::INT || cur->right->left->token.type == TokenType::FLOAT)) result = true;
+            else if (cur->left->token.value == "string?"
+                && cur->right->left->token.type == TokenType::STRING) result = true;
+            else if (cur->left->token.value == "boolean?"
+                && (cur->right->left->token.type == TokenType::T
+                    || (cur->right->left->token.type == TokenType::NIL && cur->right->left->isEndNode()))) result = true;
+            else if (cur->left->token.value == "symbol?"
+                && cur->right->left->binding.bindingType == BindingType::ATOM_BUT_NOT_SYMBOL
+                && cur->right->left->token.type != TokenType::NIL
+                && ! isKeyword(cur->right->left->token.value)
+                && cur->right->left->isEndNode()) result = true;
+            
+            std::cout << "before:\n";
+            debugPrintAST(cur);
+
+            cur = std::make_shared<AST>();
+            cur->token.value = result ? "#t" : "nil";
+            cur->binding.value = cur->token.value;
+            cur->token.type = result ? TokenType::T : TokenType::NIL;
+            cur->binding.bindingType = BindingType::RESULT;
+            cur->binding.dataType = KeywordType::BOOLEAN;
+            cur->binding.isRoot = true;
+
+            std::cout << "after:\n";
+            debugPrintAST(cur);
+
+            std::cout << gPrinter.getprettifiedSExp(cur); // debug
+        }
         // operate
         // judgeEqivalence
         // sequence
@@ -597,6 +685,7 @@ class S_Exp_Executor {
             bool temp = cur->binding.isFirstNode;
 
             // bind
+            if (cur->binding.bindingType == BindingType::RESULT) return;
             if (isDefined(cur->token.value)) cur->binding = env[cur->token.value]; // get the binding: symbol or user-defined function
             else if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
             else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
@@ -609,7 +698,7 @@ class S_Exp_Executor {
 
         void debugPrintNode(std::string pos, std::shared_ptr<AST> cur, int level) {
             std::cout << "\t[level " << level << " " << pos << "]: " << "token = " << cur->token.value;
-            std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.type);
+            std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.bindingType);
             std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode << "\n";
         }
         
@@ -619,7 +708,7 @@ class S_Exp_Executor {
             if (cur->isAtom || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level); // , bypassLevel, bypass
             else if (cur->token.type == TokenType::NIL) { // middle nil
                 // set current
-                cur->binding.type = BindingType::MID;
+                cur->binding.bindingType = BindingType::MID;
 
                 // if cur is a function name and also the first left node of the current sub-tree
                 if (isFunction(cur->left->token.value) || (cur->left->token.value == "else" && elseOn)) {
@@ -661,6 +750,8 @@ class S_Exp_Executor {
                                 // get remainigs' bindings
                                 evaluate(cur->right, level + 1);
                                 debugPrintNode("right", cur->right, level);
+
+                                // TODO: check argument type
                             }
 
                             std::cout << "\t======== end evaluating primitive function: " << cur->left->token.value << " at level " << level << " ========\n";
