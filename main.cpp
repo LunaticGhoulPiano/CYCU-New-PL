@@ -213,7 +213,6 @@ class Debugger {
             else if (type == BindingType::ATOM_BUT_NOT_SYMBOL) return "ATOM_BUT_NOT_SYMBOL";
             else if (type == BindingType::PRIMITIVE_FUNCTION) return "PRIMITIVE_FUNCTION";
             else if (type == BindingType::USER_FUNCTION) return "USER_FUNCTION";
-            else if (type == BindingType::RESULT) return "RESULT";
             else return "ERROR: didn't judged!";
         }
 
@@ -456,17 +455,19 @@ Printer gPrinter;
 /* S-Expression Evaluator */
 class S_Exp_Executor {
     private:
-        std::unordered_map<std::string, Binding> env;
+        std::unordered_map<std::string, Binding> globalVars, localVars;
 
+        /* judgers */
         bool isKeyword(std::string sym) { return (gKeywords.find(sym) != gKeywords.end() && sym != "else" && sym != "#t" && sym != "nil"); }
-        bool isDefined(std::string sym) { return (env.find(sym) != env.end()); }
+        bool isDefined(std::string sym) { return (globalVars.find(sym) != globalVars.end()); }
         bool isPrimFunc(std::string sym) {
             return isKeyword(sym) ? true : // check keywords
-                ((isDefined(sym) && env[sym].bindingType == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
+                ((isDefined(sym) && globalVars[sym].bindingType == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
         }
-        bool isUserFunc(std::string sym) { return (isDefined(sym) && (env[sym].bindingType == BindingType::USER_FUNCTION)); }
+        bool isUserFunc(std::string sym) { return (isDefined(sym) && (globalVars[sym].bindingType == BindingType::USER_FUNCTION)); }
         bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
 
+        /* error checkers */
         void checkPureList(std::shared_ptr<AST> cur_node, std::shared_ptr<AST> cur_func) {
             if (cur_node == nullptr || cur_node->isEndNode()) return;
             if (cur_node->right != nullptr && cur_node->right->token.type != TokenType::NIL)
@@ -513,36 +514,67 @@ class S_Exp_Executor {
             }
         }
 
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<AST> &)>> prim_func_map = {
-            // construct
-            {"cons", [this](std::shared_ptr<AST> &cur) { construct(cur); } },
-            {"list", [this](std::shared_ptr<AST> &cur) { construct(cur); } },
-            // bypass
-            {"quote", [this](std::shared_ptr<AST> &cur) { bypass(cur); } },
+        /* data & binding setters */ 
+        void getBinding(std::shared_ptr<AST> &cur, int level) {
+            bool temp = cur->binding.isFirstNode;
+
             // bind
-            // get part
-            {"car", [this](std::shared_ptr<AST> &cur) { getPart(cur); } },
-            {"cdr", [this](std::shared_ptr<AST> &cur) { getPart(cur); } },
-            // judge primitive predicates
-            {"atom?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"pair?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"list?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"null?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"integer?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"real?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"number?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"string?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"boolean?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            {"symbol?", [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } }
+            if (isDefined(cur->token.value)) cur->binding = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
+            else if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
+            else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
+            else throw SemanticException::UnboundSymbol(cur->token.value);
+            
+            // set back isFirstNode to prevent wrong cover
+            cur->binding.isFirstNode = temp;
+            // set the minor data type of the token in binding
+            cur->binding.dataType = getNodeMinorBindingDataTypeByTokenValue(cur);
+        }
+
+        KeywordType getNodeMinorBindingDataTypeByTokenValue(std::shared_ptr<AST> cur) {
+            // judge by token value
+            if (std::regex_match(cur->token.value, std::regex("^-?\\d+$"))) return KeywordType::INTEGER;
+            else if (std::regex_match(cur->token.value, std::regex("^-?\\d+\\.\\d+$"))) return KeywordType::FLOAT;
+            else if (cur->token.type == TokenType::T
+                || (cur->token.value == "nil" && cur->binding.bindingType == BindingType::ATOM_BUT_NOT_SYMBOL)) return KeywordType::BOOLEAN;
+            else if (cur->token.type == TokenType::STRING) return KeywordType::STRING;
+            else return KeywordType::SYMBOL;
+        }
+        
+        /* Primitive functions */
+        std::unordered_map<KeywordType, std::function<void(std::shared_ptr<AST> &)>> prim_func_map = {
+            {KeywordType::CONSTRUCTOR, [this](std::shared_ptr<AST> &cur) { construct(cur); } },
+            {KeywordType::BYPASS_EVALUATION, [this](std::shared_ptr<AST> &cur) { bypass(cur); } },
+            // KeywordType::BINDING
+            // KeywordType::PART_ACCESSOR
+            {KeywordType::PART_ACCESSOR, [this](std::shared_ptr<AST> &cur) { getPart(cur); } },
+            {KeywordType::PRIMITIVE_PREDICATE, [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
+            // KeywordType::OPERATION
+            {KeywordType::OPERATION, [this](std::shared_ptr<AST> &cur) { operate(cur); } }
+            // KeywordType::EQIVALENCE_TESTER
+            // KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION
+            // KeywordType::CONDITIONAL
+            // KeywordType::READ
+            // KeywordType::DISPLAY
+            // KeywordType::LAMBDA
+            // KeywordType::VERBOSE
+            // KeywordType::EVALUATION
+            // KeywordType::CONVERT_TO_STRING
+            // KeywordType::ERROR_OBJECT_OPERATION
+            // {KeywordType::CLEAN_ENVIRONMENT, [this](std::shared_ptr<AST> &cur) { cleanEnvironment(cur); } },
+            // {KeywordType::EXIT, [this](std::shared_ptr<AST> &cur) { exit(cur); } }
         };
 
         // counstruct
         void construct(std::shared_ptr<AST> &cur) { // project 2: list, cons
+            // init middle nil node
             std::shared_ptr<AST> temp = std::make_shared<AST>();
             temp->token.type = TokenType::NIL;
-            temp->binding.bindingType = BindingType::RESULT;
+            temp->token.value = "";
+            temp->binding.bindingType = BindingType::MID;
+            temp->binding.dataType = KeywordType::NIL;
             temp->binding.isRoot = true;
-
+            
+            // construct
             if (cur->left->token.value == "cons") { // result type: pair
                 temp->binding.dataType = KeywordType::PAIR;
 
@@ -560,27 +592,17 @@ class S_Exp_Executor {
 
         // bypass
         void bypass(std::shared_ptr<AST> &cur) { // project 2: quote
-            cur = cur->right->left;
-            cur->token.type = TokenType::NIL;
-            cur->binding.bindingType = BindingType::RESULT;
+            cur = cur->right->left; // pull up
             cur->binding.isRoot = true;
-            cur->binding.dataType = KeywordType::BYPASS_EVALUATION;
         }
 
-        // bind
+        // bind: define, let, set!
         
         // getPart
         void getPart(std::shared_ptr<AST> &cur) {
-            std::shared_ptr<AST> temp = std::make_shared<AST>();
-
-            if (cur->left->token.value == "car") temp = cur->right->left->left;
-            else temp = cur->right->left->right; // cdr
-            cur = temp;
-
-            cur->token.type = TokenType::NIL;
-            cur->binding.bindingType = BindingType::RESULT;
+            if (cur->left->token.value == "car") cur = cur->right->left->left; // car
+            else cur = cur->right->left->right; // cdr
             cur->binding.isRoot = true;
-            cur->binding.dataType = KeywordType::PART_ACCESSOR;
         }
 
         // judgePrimitivePredicate
@@ -589,9 +611,16 @@ class S_Exp_Executor {
             if (cur->left->token.value == "atom?"
                 && cur->right->left->isEndNode()) result = true;
             else if (cur->left->token.value == "pair?"
-                && cur->right->left->binding.dataType == KeywordType::PAIR) result = true;
-            else if (cur->left->token.value == "list?"
-                && cur->right->left->binding.dataType == KeywordType::LIST) result = true;
+                && ! cur->right->left->isEndNode()) result = true;
+            else if (cur->left->token.value == "list?") {
+                try {
+                    checkPureList(cur->right->left, cur);
+                    result = true;
+                    if (cur->right->left->isEndNode() && cur->right->left->token.type != TokenType::NIL) result = false;
+                }
+                catch (...) { // false
+                }
+            }
             else if (cur->left->token.value == "null?"
                 && cur->right->left->token.type == TokenType::NIL && cur->right->left->isEndNode()) result = true;
             else if (cur->left->token.value == "integer?"
@@ -603,23 +632,46 @@ class S_Exp_Executor {
             else if (cur->left->token.value == "boolean?"
                 && (cur->right->left->token.type == TokenType::T
                     || (cur->right->left->token.type == TokenType::NIL && cur->right->left->isEndNode()))) result = true;
-            else if (cur->left->token.value == "symbol?"
-                && cur->right->left->binding.bindingType == BindingType::ATOM_BUT_NOT_SYMBOL
-                && cur->right->left->token.type != TokenType::NIL
-                && ! isKeyword(cur->right->left->token.value)
-                && cur->right->left->isEndNode()) result = true;
+            else if (cur->left->token.value == "symbol?") {
+               KeywordType minorType = getNodeMinorBindingDataTypeByTokenValue(cur->right->left);
+               if (cur->right->left->binding.bindingType == BindingType::ATOM_BUT_NOT_SYMBOL
+                    && minorType == KeywordType::SYMBOL
+                    && ! isKeyword(cur->right->left->token.value)
+                    && cur->right->left->isEndNode()) result = true;
+            }
 
+            // create result boolean node
             cur = std::make_shared<AST>();
             cur->isAtom = true; // crucial
             cur->token.value = result ? "#t" : "nil";
             cur->binding.value = cur->token.value;
             cur->token.type = result ? TokenType::T : TokenType::NIL;
             cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
-            cur->binding.bindingType = BindingType::RESULT;
             cur->binding.dataType = KeywordType::BOOLEAN;
             cur->binding.isRoot = true;
         }
         // operate
+        void operate(std::shared_ptr<AST> &cur) {
+            /*
+            "+"
+            "-"
+            "*"
+            "/"
+            "not"
+            "and"
+            "or"
+            ">"
+            ">="
+            "<"
+            "<="
+            "="
+            "string-append"
+            "string>?"
+            "string<?"
+            "string=?"
+            */
+        }
+
         // judgeEqivalence
         // sequence
         // getCondition
@@ -633,7 +685,21 @@ class S_Exp_Executor {
         // evaluation
         // convertToString
         // errorObject
+        
+        void debugPrintAST(std::shared_ptr<AST> &cur, int level = -1, std::string pos = "root") {
+            if (cur == nullptr) return;
+            debugPrintNode(pos, cur, (pos == "root") ? 0 : level);
+            debugPrintAST(cur->left, level + 1, "left");
+            debugPrintAST(cur->right, level + 1, "right");
+        }
 
+        void debugPrintNode(std::string pos, std::shared_ptr<AST> cur, int level) {
+            std::cout << "\t[level " << level << " " << pos << "]: " << "token = " << cur->token.value << ", token type = " << gDebugger.getTokenType(cur->token);
+            std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.bindingType);
+            std::cout << ", data type = " << gDebugger.getKeywordType(cur->binding.dataType);
+            std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode << "\n";
+        }
+        
         void labelRootAndFirstNode(std::shared_ptr<AST> &cur, int level = 0) { // TODO: fix ((list)) didn't set list to true
             /*
             ex. input: (car (cdr (list 123 (+ 89 00 999) (* 89 889 998 9) "" "test)" + - * /)))
@@ -660,33 +726,6 @@ class S_Exp_Executor {
                 if (remainings->left != nullptr && ! remainings->left->isAtom) labelRootAndFirstNode(remainings->left, level + 1);
                 remainings = remainings->right;
             }
-        }
-        
-        void debugPrintAST(std::shared_ptr<AST> &cur, int level = -1, std::string pos = "root") {
-            if (cur == nullptr) return;
-            debugPrintNode(pos, cur, (pos == "root") ? 0 : level);
-            debugPrintAST(cur->left, level + 1, "left");
-            debugPrintAST(cur->right, level + 1, "right");
-        }
-
-        void getBinding(std::shared_ptr<AST> &cur, int level) {
-            bool temp = cur->binding.isFirstNode;
-
-            // bind
-            //if (cur->binding.bindingType == BindingType::RESULT) return;
-            if (isDefined(cur->token.value)) cur->binding = env[cur->token.value]; // get the binding: symbol or user-defined function
-            else if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
-            else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
-            else throw SemanticException::UnboundSymbol(cur->token.value);
-            
-            // set back isFirstNode to prevent wrong cover
-            cur->binding.isFirstNode = temp;
-        }
-
-        void debugPrintNode(std::string pos, std::shared_ptr<AST> cur, int level) {
-            std::cout << "\t[level " << level << " " << pos << "]: " << "token = " << cur->token.value << ", token type = " << gDebugger.getTokenType(cur->token);
-            std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.bindingType);
-            std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode << "\n";
         }
         
         void evaluate(std::shared_ptr<AST> &cur, int level, bool elseOn = false) {
@@ -746,7 +785,7 @@ class S_Exp_Executor {
                             //std::cout << "before:\n";
                             //debugPrintAST(cur);
                             //std::cout << gPrinter.getprettifiedSExp(cur); // debug
-                            prim_func_map[cur->left->token.value](cur);
+                            prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
                             //std::cout << "after:\n";
                             //debugPrintAST(cur);
                             //std::cout << gPrinter.getprettifiedSExp(cur); // debug
