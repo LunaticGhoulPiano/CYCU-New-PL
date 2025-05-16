@@ -556,8 +556,6 @@ class S_Exp_Executor {
                 cur = cur->right;
                 cur->binding = temp->binding;
             }
-
-            std::cout << gPrinter.getprettifiedSExp(cur); // debug
         }
 
         // bypass
@@ -567,8 +565,6 @@ class S_Exp_Executor {
             cur->binding.bindingType = BindingType::RESULT;
             cur->binding.isRoot = true;
             cur->binding.dataType = KeywordType::BYPASS_EVALUATION;
-
-            std::cout << gPrinter.getprettifiedSExp(cur); // debug
         }
 
         // bind
@@ -585,8 +581,6 @@ class S_Exp_Executor {
             cur->binding.bindingType = BindingType::RESULT;
             cur->binding.isRoot = true;
             cur->binding.dataType = KeywordType::PART_ACCESSOR;
-
-            std::cout << gPrinter.getprettifiedSExp(cur); // debug
         }
 
         // judgePrimitivePredicate
@@ -614,22 +608,16 @@ class S_Exp_Executor {
                 && cur->right->left->token.type != TokenType::NIL
                 && ! isKeyword(cur->right->left->token.value)
                 && cur->right->left->isEndNode()) result = true;
-            
-            std::cout << "before:\n";
-            debugPrintAST(cur);
 
             cur = std::make_shared<AST>();
+            cur->isAtom = true; // crucial
             cur->token.value = result ? "#t" : "nil";
             cur->binding.value = cur->token.value;
             cur->token.type = result ? TokenType::T : TokenType::NIL;
+            cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
             cur->binding.bindingType = BindingType::RESULT;
             cur->binding.dataType = KeywordType::BOOLEAN;
             cur->binding.isRoot = true;
-
-            std::cout << "after:\n";
-            debugPrintAST(cur);
-
-            std::cout << gPrinter.getprettifiedSExp(cur); // debug
         }
         // operate
         // judgeEqivalence
@@ -685,11 +673,10 @@ class S_Exp_Executor {
             bool temp = cur->binding.isFirstNode;
 
             // bind
-            if (cur->binding.bindingType == BindingType::RESULT) return;
+            //if (cur->binding.bindingType == BindingType::RESULT) return;
             if (isDefined(cur->token.value)) cur->binding = env[cur->token.value]; // get the binding: symbol or user-defined function
             else if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
             else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
-            //else if (bypass) cur->binding.value = cur->token.value; // bind the symbol's value to token value when bypassing
             else throw SemanticException::UnboundSymbol(cur->token.value);
             
             // set back isFirstNode to prevent wrong cover
@@ -697,15 +684,14 @@ class S_Exp_Executor {
         }
 
         void debugPrintNode(std::string pos, std::shared_ptr<AST> cur, int level) {
-            std::cout << "\t[level " << level << " " << pos << "]: " << "token = " << cur->token.value;
+            std::cout << "\t[level " << level << " " << pos << "]: " << "token = " << cur->token.value << ", token type = " << gDebugger.getTokenType(cur->token);
             std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.bindingType);
             std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode << "\n";
         }
         
         void evaluate(std::shared_ptr<AST> &cur, int level, bool elseOn = false) {
-            // DEBUG: std::cout << "[level " << level << "] cur node: " << cur->token.value << "\n";
-
-            if (cur->isAtom || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level); // , bypassLevel, bypass
+            if (cur->token.type != TokenType::NIL
+                || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level); // , bypassLevel, bypass
             else if (cur->token.type == TokenType::NIL) { // middle nil
                 // set current
                 cur->binding.bindingType = BindingType::MID;
@@ -736,55 +722,61 @@ class S_Exp_Executor {
                             else if (cur->left->token.value == "quote") {
                                 // get function binding
                                 evaluate(cur->left, level + 1);
-                                debugPrintNode("left", cur->left, level);
+                                //debugPrintNode("left", cur->left, level);
                                 checkArgumentsNumber(cur);
                                 // bypass, i.e. don't evaluate the remainings (left)
                             }
                             else {
                                 // get function binding
                                 evaluate(cur->left, level + 1);
-                                debugPrintNode("left", cur->left, level);
+                                //debugPrintNode("left", cur->left, level);
 
                                 checkArgumentsNumber(cur);
 
                                 // get remainigs' bindings
                                 evaluate(cur->right, level + 1);
-                                debugPrintNode("right", cur->right, level);
+                                //debugPrintNode("right", cur->right, level);
 
                                 // TODO: check argument type
                             }
 
-                            std::cout << "\t======== end evaluating primitive function: " << cur->left->token.value << " at level " << level << " ========\n";
+                            //std::cout << "\t======== end evaluating primitive function: " << cur->left->token.value << " at level " << level << " ========\n";
 
                             // execute
+                            //std::cout << "before:\n";
+                            //debugPrintAST(cur);
+                            //std::cout << gPrinter.getprettifiedSExp(cur); // debug
                             prim_func_map[cur->left->token.value](cur);
+                            //std::cout << "after:\n";
+                            //debugPrintAST(cur);
+                            //std::cout << gPrinter.getprettifiedSExp(cur); // debug
                         }
                         else { // user-defined
                             // project 3
-                            std::cout << "\t======== end evaluating user-defined function: " << cur->left->token.value << " at level " << level << " ========\n";
+                            //std::cout << "\t======== end evaluating user-defined function: " << cur->left->token.value << " at level " << level << " ========\n";
                         }
                     }
                     else { // # <procedure function_name>, treat it as a normal atom node, and recursively check it
                         evaluate(cur->left, level + 1);
-                        debugPrintNode("left", cur->left, level);
+                        //debugPrintNode("left", cur->left, level);
                         evaluate(cur->right, level + 1);
-                        debugPrintNode("right", cur->right, level);
+                        //debugPrintNode("right", cur->right, level);
                     }
                 }
                 else if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) { // middle nil, i.e. a new (sub) tree encounter
                     evaluate(cur->left, level + 1);
-                    debugPrintNode("left", cur->left, level);
+                    //debugPrintNode("left", cur->left, level);
                     evaluate(cur->right, level + 1);
-                    debugPrintNode("right", cur->right, level);
+                    //debugPrintNode("right", cur->right, level);
                 }
                 else { // left is atom, check if non-func-atom at first left node
-                    if (cur->left->binding.isFirstNode) throw SemanticException::NonFunction(cur->left->token.value);
-                    else { // atom_value, treat it as a normal atom node, and recursively check it
-                        evaluate(cur->left, level + 1);
-                        debugPrintNode("left", cur->left, level);
-                        evaluate(cur->right, level + 1);
-                        debugPrintNode("right", cur->right, level);
-                    }
+                    evaluate(cur->left, level + 1);
+                    // check non-function error
+                    if (! (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION || cur->left->binding.bindingType == BindingType::USER_FUNCTION)
+                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(cur->left->token.value);
+                    //debugPrintNode("left", cur->left, level);
+                    evaluate(cur->right, level + 1);
+                    //debugPrintNode("right", cur->right, level);
                 }
             }
             // else neither ATOM nor NIL, never happen
@@ -796,7 +788,11 @@ class S_Exp_Executor {
             evaluate(root, 0);
             getBinding(root, 0); // bind the main <S-exp>
             root->binding.isRoot = true;
-            // DEBUG: debugPrintAST(root);
+            // debug
+            //d::cout << "main s-exp:\n";
+            //debugPrintAST(root);
+            if (root->binding.value != "") gPrinter.printResult(root->binding.value + "\n");
+            else gPrinter.printResult(gPrinter.getprettifiedSExp(root));
         }
 };
 
@@ -1009,13 +1005,9 @@ class S_Exp_Lexer {
                 token = Token(); // reset
                 return res;
             }
-            catch (SyntaxException &e) {
+            catch (...) {
                 parser.resetInfos();
                 if (eat) eatALine(); // eat: if need to eat a line when error encountered
-                throw;
-            }
-            catch (...) { // if error encountered, need to reset
-                parser.resetInfos();
                 throw;
             }
         }
