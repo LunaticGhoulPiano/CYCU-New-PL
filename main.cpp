@@ -6,6 +6,7 @@
 #include <stack>
 #include <string>
 #include <unordered_map>
+#include <functional>
 #include <memory>
 #include <regex>
 #include <cctype>
@@ -650,8 +651,109 @@ class S_Exp_Executor {
             cur->binding.dataType = KeywordType::BOOLEAN;
             cur->binding.isRoot = true;
         }
+
         // operate
+        std::unordered_map<std::string, std::function<double(std::string a, std::string b)>> arithmeticAndLogicalOperateMap = {
+            // result in double
+            {"+", [](std::string a, std::string b) { return std::stod(a) + std::stod(b); }},
+            {"-", [](std::string a, std::string b) { return std::stod(a) - std::stod(b); }},
+            {"*", [](std::string a, std::string b) { return std::stod(a) * std::stod(b); }},
+            {"/", [](std::string a, std::string b) { return std::stod(a) / std::stod(b); }},
+            // 1 or 0, must be int
+            {">", [](std::string a, std::string b) { return int(std::stod(a) > std::stod(b)); }},
+            {">=", [](std::string a, std::string b) { return int(std::stod(a) >= std::stod(b)); }},
+            {"<", [](std::string a, std::string b) { return int(std::stod(a) < std::stod(b)); }},
+            {"<=", [](std::string a, std::string b) { return int(std::stod(a) <= std::stod(b)); }},
+            {"=", [](std::string a, std::string b) { return int(std::stod(a) == std::stod(b)); }}
+        };
+
+        std::string arithmeticOperations(std::string op, std::string a, std::string b, bool convertToFloat) {
+            double r = arithmeticAndLogicalOperateMap[op](a, b);
+            if (convertToFloat) { // float, round float to "%.3f"
+                std::stringstream oss;
+                oss << std::fixed << std::setprecision(3) << r;
+                return oss.str();
+            }
+            else return std::to_string(int(r)); // int
+        }
+
+        std::shared_ptr<AST> makeBooleanNode(bool b) {
+            std::shared_ptr<AST> result = std::make_shared<AST>();
+            result->isAtom = true; // crucial
+            result->token.value = b ? "#t" : "nil";
+            result->token.type = b ? TokenType::T : TokenType::NIL;
+            result->binding.value = result->token.value;
+            result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
+            result->binding.dataType = KeywordType::BOOLEAN;
+            result->binding.isRoot = true;
+            return result;
+        }
+
         void operate(std::shared_ptr<AST> &cur) {
+            // init result node
+            //std::function func = operateMap[cur->left->token.value];
+            std::string op = cur->left->token.value;
+            std::shared_ptr<AST> r = cur->right;
+            std::shared_ptr<AST> result = cur->right->left, mid = cur->right->right;
+            // get the operator
+            
+            // operate
+            do {
+                if (op == "+" || op == "-" || op == "*" || op == "/") { // result must be real(number), int or float
+                    bool convertToFloat = false; // if one of the operands is float, result must be float
+                    if (result->binding.value.find('.') != std::string::npos
+                        || mid->left->binding.value.find('.') != std::string::npos) convertToFloat = true;
+                    std::string r = arithmeticOperations(op, result->binding.value, mid->left->binding.value, convertToFloat);
+                    // set result
+                    result = std::make_shared<AST>();
+                    result->isAtom = true; // crucial
+                    result->token.value = r;
+                    result->token.type = convertToFloat ? TokenType::FLOAT : TokenType::INT;
+                    result->binding.value = result->token.value;
+                    result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
+                    result->binding.dataType = convertToFloat ? KeywordType::FLOAT : KeywordType::INTEGER;
+                    result->binding.isRoot = true;
+                }
+                else {
+                    std::string r = "";
+                    if (op == "not") {
+                        result = makeBooleanNode(result->binding.value == "nil");
+                        break; // must only one argument
+                    }
+                    else if (op == "and" || op == "or") {
+                        // and: while #t, skip, else return
+                        // or: while nil, skip, else return
+                        // mid is useless
+                        if ((op == "and" && result->binding.value != "#t")
+                            || (op == "or" && result->binding.value != "nil")) {
+                            // set result
+                            /*
+                            result = std::make_shared<AST>();
+                            result->isAtom = true; // crucial
+                            result->token.value = r;
+                            result->token.type = convertToFloat ? TokenType::FLOAT : TokenType::INT;
+                            result->binding.value = result->token.value;
+                            result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
+                            result->binding.dataType = convertToFloat ? KeywordType::FLOAT : KeywordType::INTEGER;
+                            result->binding.isRoot = true;
+                            */
+                            break;
+                        }
+                        // else if the most-do function (ex. newline), do it and check the remainings
+                        // else check the remainings
+                    }
+                    else if (op == ">" || op == ">=" || op == "<" || op == "<=" || op == "=") {
+                        //
+                    }
+                    else {
+                        //
+                    }
+                }
+
+                // check the remainings
+                if (mid->right->isEndNode()) break;
+                else mid = mid->right;
+            } while (true);
             /*
             "+"
             "-"
@@ -670,6 +772,7 @@ class S_Exp_Executor {
             "string<?"
             "string=?"
             */
+           cur = result;
         }
 
         // judgeEqivalence
