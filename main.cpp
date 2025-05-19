@@ -541,6 +541,18 @@ class S_Exp_Executor {
             else return KeywordType::SYMBOL;
         }
         
+        std::shared_ptr<AST> makeBooleanNode(bool b) {
+            std::shared_ptr<AST> result = std::make_shared<AST>();
+            result->isAtom = true; // crucial
+            result->token.value = b ? "#t" : "nil";
+            result->token.type = b ? TokenType::T : TokenType::NIL;
+            result->binding.value = result->token.value;
+            result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
+            result->binding.dataType = KeywordType::BOOLEAN;
+            result->binding.isRoot = true;
+            return result;
+        }
+        
         /* Primitive functions */
         std::unordered_map<KeywordType, std::function<void(std::shared_ptr<AST> &)>> prim_func_map = {
             {KeywordType::CONSTRUCTOR, [this](std::shared_ptr<AST> &cur) { construct(cur); } },
@@ -641,15 +653,7 @@ class S_Exp_Executor {
                     && cur->right->left->isEndNode()) result = true;
             }
 
-            // create result boolean node
-            cur = std::make_shared<AST>();
-            cur->isAtom = true; // crucial
-            cur->token.value = result ? "#t" : "nil";
-            cur->binding.value = cur->token.value;
-            cur->token.type = result ? TokenType::T : TokenType::NIL;
-            cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
-            cur->binding.dataType = KeywordType::BOOLEAN;
-            cur->binding.isRoot = true;
+            cur = makeBooleanNode(result);
         }
 
         // operate
@@ -677,25 +681,11 @@ class S_Exp_Executor {
             else return std::to_string(int(r)); // int
         }
 
-        std::shared_ptr<AST> makeBooleanNode(bool b) {
-            std::shared_ptr<AST> result = std::make_shared<AST>();
-            result->isAtom = true; // crucial
-            result->token.value = b ? "#t" : "nil";
-            result->token.type = b ? TokenType::T : TokenType::NIL;
-            result->binding.value = result->token.value;
-            result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
-            result->binding.dataType = KeywordType::BOOLEAN;
-            result->binding.isRoot = true;
-            return result;
-        }
-
         void operate(std::shared_ptr<AST> &cur) {
             // init result node
-            //std::function func = operateMap[cur->left->token.value];
             std::string op = cur->left->token.value;
-            std::shared_ptr<AST> r = cur->right;
-            std::shared_ptr<AST> result = cur->right->left, mid = cur->right->right;
-            // get the operator
+            std::shared_ptr<AST> result = cur->right->left, mid = cur->right->right; // use for at least 2 operands
+            std::shared_ptr<AST> iter = cur->right; // use for at least 1 operand
             
             // operate
             do {
@@ -713,46 +703,44 @@ class S_Exp_Executor {
                     result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
                     result->binding.dataType = convertToFloat ? KeywordType::FLOAT : KeywordType::INTEGER;
                     result->binding.isRoot = true;
+                    
+                    // check the remainings
+                    if (mid->right->isEndNode()) break;
+                    else mid = mid->right;
                 }
-                else {
-                    std::string r = "";
-                    if (op == "not") {
-                        result = makeBooleanNode(result->binding.value == "nil");
-                        break; // must only one argument
-                    }
-                    else if (op == "and" || op == "or") {
-                        // and: while #t, skip, else return
-                        // or: while nil, skip, else return
-                        // mid is useless
-                        if ((op == "and" && result->binding.value != "#t")
-                            || (op == "or" && result->binding.value != "nil")) {
-                            // set result
-                            /*
-                            result = std::make_shared<AST>();
-                            result->isAtom = true; // crucial
-                            result->token.value = r;
-                            result->token.type = convertToFloat ? TokenType::FLOAT : TokenType::INT;
-                            result->binding.value = result->token.value;
-                            result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
-                            result->binding.dataType = convertToFloat ? KeywordType::FLOAT : KeywordType::INTEGER;
-                            result->binding.isRoot = true;
-                            */
-                            break;
-                        }
-                        // else if the most-do function (ex. newline), do it and check the remainings
-                        // else check the remainings
-                    }
-                    else if (op == ">" || op == ">=" || op == "<" || op == "<=" || op == "=") {
-                        //
+                else if (op == "not") {
+                    result = makeBooleanNode(result->binding.value == "nil");
+                    break; // must only one argument
+                }
+                else if (op == "and" || op == "or") {
+                    if ((op == "and" && iter->left->binding.value == "nil") // return the first nil, else return the last that must != nil
+                        || (op == "or" && iter->left->binding.value != "nil") // return the first != nil, else return the last that must == nil
+                        || iter->right->isEndNode()) { // the above "else" conditions 
+                        // set result
+                        result = std::make_shared<AST>();
+                        result->isAtom = true; // crucial
+                        result->token.value = iter->left->token.value;
+                        result->token.type = iter->left->token.type;
+                        result->binding.value = iter->left->binding.value;
+                        result->binding.bindingType = iter->left->binding.bindingType;
+                        result->binding.dataType = iter->left->binding.dataType;
+                        result->binding.isRoot = true;
+                        break;
                     }
                     else {
-                        //
+                        // if the most-do function (ex. newline), do it and check the remainings
+                        // else do-nothing
+
+                        // check the remainings
+                        iter = iter->right;
                     }
                 }
-
-                // check the remainings
-                if (mid->right->isEndNode()) break;
-                else mid = mid->right;
+                else if (op == ">" || op == ">=" || op == "<" || op == "<=" || op == "=") {
+                    //
+                }
+                else { // string operations
+                    //
+                }
             } while (true);
             /*
             "+"
