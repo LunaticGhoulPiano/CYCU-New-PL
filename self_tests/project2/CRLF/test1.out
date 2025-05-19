@@ -1,96 +1,76 @@
 Welcome to OurScheme!
 
-> #<procedure cons>
+> #t
 
-> #<procedure list>
+> #t
 
-> #<procedure quote>
+> #t
 
-> "quote is special"
+> #t
 
-> #<procedure define>
+> #t
 
-> #<procedure set!>
+> #t
 
-> ERROR (unbound symbol) : set-car!
+> #t
 
-> ERROR (unbound symbol) : set-cdr!
+> #t
 
-> #<procedure let>
+> #t
 
-> #<procedure car>
+> #t
 
-> #<procedure cdr>
+> #t
 
-> #<procedure atom?>
+> #t
 
-> #<procedure pair?>
+> #t
 
-> #<procedure list?>
+> #t
 
-> #<procedure null?>
+> #t
 
-> #<procedure integer?>
+> #t
 
-> #<procedure real?>
+> #t
 
-> #<procedure number?>
+> #t
 
-> #<procedure string?>
+> #t
 
-> #<procedure boolean?>
+> #t
 
-> #<procedure symbol?>
+> #t
 
-> #<procedure +>
+> nil
 
-> #<procedure ->
+> nil
 
-> #<procedure *>
+> nil
 
-> #<procedure />
+> #t
 
-> #<procedure not>
+> #t
 
-> #<procedure and>
+> #t
 
-> #<procedure or>
+> #t
 
-> #<procedure >>
+> #t
 
-> #<procedure >=>
+> #t
 
-> #<procedure <>
+> #t
 
-> #<procedure <=>
+> #t
 
-> #<procedure =>
+> nil
 
-> #<procedure string-append>
+> #t
 
-> #<procedure string>?>
+> #t
 
-> #<procedure string<?>
-
-> #<procedure string=?>
-
-> #<procedure display-string>
-
-> #<procedure eqv?>
-
-> #<procedure equal?>
-
-> #<procedure begin>
-
-> #<procedure lambda>
-
-> #<procedure if>
-
-> #<procedure cond>
-
-> #<procedure clean-environment>
-
-> #<procedure exit>
+> nil
 
 > 
 Thanks for using OurScheme!

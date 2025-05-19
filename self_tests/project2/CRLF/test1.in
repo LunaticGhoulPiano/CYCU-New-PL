@@ -1,49 +1,81 @@
 1
-; test when <ATOM> is keywords
-cons
-list
-quote ; quote is special
-'"quote is special" ; quote is special
-define
-set!
-set-car! ; old OurScheme has, new OurScheme don't have
-set-cdr! ; old OurScheme has, new OurScheme don't have
-let
-car
-cdr
-atom?
-pair?
-list?
-null?
-integer?
-real?
-number?
-string?
-boolean?
-symbol?
-+
--
-*
-/
-not
-and
-or
->
->=
-<
-<=
-=
-string-append
-string>?
-string<?
-string=?
-display-string
-eqv?
-equal?
-begin
-lambda
-if
-cond
-clean-environment
-exit
+; pure int
+(> 5 3)
+(< -1 0)
+(= 42 42)
+(<= 2 2)
+(>= -10 -20)
+; pure float
+(> 3.1 2.9)
+(< -0.5 0.0)
+(= 1.234 1.234)
+(<= 0.0001 0.0002)
+(>= -1.5 -3.0)
+; int & float
+(> 5 4.5)
+(< 1.0 2)
+(= 7.0 7)
+(<= 2 2.5)
+(>= -3.0 -3)
+; multi-operands
+(> 9 8 7 6 5)
+(< -5 -3 -1 0)
+(= 2 2 2 2 2)
+(<= 1 2 3 4 5)
+(>= 5 5 5 5 5)
+(< -1.1 0.0 1.1 2.2 3.3)
+(> 9 8 7 10 5)
+(< 0 1 2 3 2)
+(= 1 1 2 1)
+; positive & negative
+(> 10 -1)
+(< -9 0 9)
+(= -2.5 -2.5)
+(<= -10 -10 0 10)
+(>= 100 -50 -100)
+; logical
+(and (> 5 4) (< 1 2))
+(or (= 3 3) (> 1 2))
+(not (> 2 5)) ; ➜ #t
+(not (< 1 2)) ; ➜ nil
+; complex
+(not
+  (or
+    (and
+      (> 1 2 3)
+      (not (<= 1.2 3 0 14 2444 32323.440394))
+    )
+    (or
+      (> 1 23)
+      (< 0 9.123 -9 3902)
+    )
+    (<= 1.2 3 0 14 2444 32323.440394)
+  )
+)
+(not
+  (and
+    (and
+      (> 1 2 3)
+      (not (<= 1.2 3 0 14 2444 32323.440394))
+    )
+    (or
+      (> 1 23)
+      (< 0 9.123 -9 3902)
+    )
+    (<= 1.2 3 0 14 2444 32323.440394)
+  )
+)
+(not
+  (or
+    (or
+      (> 1 2 3)
+      (not (<= 1.2 3 0 14 2444 32323.440394))
+    )
+    (or
+      (> 1 23)
+      (< 0 9.123 -9 3902)
+    )
+    (<= 1.2 3 0 14 2444 32323.440394)
+  )
+)
 (exit)

@@ -686,6 +686,7 @@ class S_Exp_Executor {
             std::string op = cur->left->token.value;
             std::shared_ptr<AST> result = cur->right->left, mid = cur->right->right; // use for at least 2 operands
             std::shared_ptr<AST> iter = cur->right; // use for at least 1 operand
+            bool compareStatus = false; // for >, >=, <, <=, =
             
             // operate
             do {
@@ -736,7 +737,12 @@ class S_Exp_Executor {
                     }
                 }
                 else if (op == ">" || op == ">=" || op == "<" || op == "<=" || op == "=") {
-                    //
+                    compareStatus = bool(arithmeticAndLogicalOperateMap[op](iter->left->binding.value, iter->right->left->binding.value));
+                    if (iter->right->right->isEndNode() || ! compareStatus) { // return when the last or the first false, cuz the comparison is continuous "and"
+                        result = makeBooleanNode(compareStatus);
+                        break;
+                    }
+                    else iter = iter->right;
                 }
                 else { // string operations
                     //
