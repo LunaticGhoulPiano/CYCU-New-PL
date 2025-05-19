@@ -657,7 +657,7 @@ class S_Exp_Executor {
         }
 
         // operate
-        std::unordered_map<std::string, std::function<double(std::string a, std::string b)>> arithmeticAndLogicalOperateMap = {
+        std::unordered_map<std::string, std::function<double(std::string a, std::string b)>> arithmeticAndLogicalAndCompareOperateMap = {
             // result in double
             {"+", [](std::string a, std::string b) { return std::stod(a) + std::stod(b); }},
             {"-", [](std::string a, std::string b) { return std::stod(a) - std::stod(b); }},
@@ -668,11 +668,15 @@ class S_Exp_Executor {
             {">=", [](std::string a, std::string b) { return int(std::stod(a) >= std::stod(b)); }},
             {"<", [](std::string a, std::string b) { return int(std::stod(a) < std::stod(b)); }},
             {"<=", [](std::string a, std::string b) { return int(std::stod(a) <= std::stod(b)); }},
-            {"=", [](std::string a, std::string b) { return int(std::stod(a) == std::stod(b)); }}
+            {"=", [](std::string a, std::string b) { return int(std::stod(a) == std::stod(b)); }},
+            // string compare
+            {"string>?", [](std::string a, std::string b) { return int(a.compare(b) > 0); }},
+            {"string<?", [](std::string a, std::string b) { return int(a.compare(b) < 0); }},
+            {"string=?", [](std::string a, std::string b) { return int(a.compare(b) == 0); }}
         };
 
         std::string arithmeticOperations(std::string op, std::string a, std::string b, bool convertToFloat) {
-            double r = arithmeticAndLogicalOperateMap[op](a, b);
+            double r = arithmeticAndLogicalAndCompareOperateMap[op](a, b);
             if (convertToFloat) { // float, round float to "%.3f"
                 std::stringstream oss;
                 oss << std::fixed << std::setprecision(3) << r;
@@ -683,7 +687,7 @@ class S_Exp_Executor {
 
         void operate(std::shared_ptr<AST> &cur) {
             // init result node
-            std::string op = cur->left->token.value;
+            std::string op = cur->left->token.value, str_result = "";
             std::shared_ptr<AST> result = cur->right->left, mid = cur->right->right; // use for at least 2 operands
             std::shared_ptr<AST> iter = cur->right; // use for at least 1 operand
             bool compareStatus = false; // for >, >=, <, <=, =
@@ -694,6 +698,7 @@ class S_Exp_Executor {
                     bool convertToFloat = false; // if one of the operands is float, result must be float
                     if (result->binding.value.find('.') != std::string::npos
                         || mid->left->binding.value.find('.') != std::string::npos) convertToFloat = true;
+                    if (op == "/" && std::stoi(mid->left->binding.value) == 0) throw RuntimeException::DivisionByZero(); // division by zero
                     std::string r = arithmeticOperations(op, result->binding.value, mid->left->binding.value, convertToFloat);
                     // set result
                     result = std::make_shared<AST>();
@@ -737,36 +742,43 @@ class S_Exp_Executor {
                     }
                 }
                 else if (op == ">" || op == ">=" || op == "<" || op == "<=" || op == "=") {
-                    compareStatus = bool(arithmeticAndLogicalOperateMap[op](iter->left->binding.value, iter->right->left->binding.value));
-                    if (iter->right->right->isEndNode() || ! compareStatus) { // return when the last or the first false, cuz the comparison is continuous "and"
+                    compareStatus = bool(arithmeticAndLogicalAndCompareOperateMap[op](iter->left->binding.value, iter->right->left->binding.value));
+                    if (iter->right->right->isEndNode() || ! compareStatus) { // return when the last or the first false, cuz the continuous "and" operation
                         result = makeBooleanNode(compareStatus);
                         break;
                     }
                     else iter = iter->right;
                 }
                 else { // string operations
-                    //
+                    if (op == "string-append") {
+                        str_result += iter->left->binding.value.substr(1, iter->left->binding.value.size() - 2);
+                        if (iter->right->isEndNode()) {
+                            // set result
+                            result = std::make_shared<AST>();
+                            result->isAtom = true; // crucial
+                            result->token.value = "\"" + str_result + "\"";
+                            result->token.type = TokenType::STRING;
+                            result->binding.value = result->token.value;
+                            result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
+                            result->binding.dataType = KeywordType::STRING;
+                            result->binding.isRoot = true;
+                            break;
+                        }
+                        else iter = iter->right;
+                    }
+                    else { // same as number comparisons
+                        compareStatus = arithmeticAndLogicalAndCompareOperateMap[op](iter->left->binding.value, iter->right->left->binding.value);
+                        if (iter->right->right->isEndNode() || ! compareStatus) { // return when the last or the first false, cuz the continuous "and" operation
+                            result = makeBooleanNode(compareStatus);
+                            break;
+                        }
+                        else iter = iter->right;
+                    }
                 }
             } while (true);
-            /*
-            "+"
-            "-"
-            "*"
-            "/"
-            "not"
-            "and"
-            "or"
-            ">"
-            ">="
-            "<"
-            "<="
-            "="
-            "string-append"
-            "string>?"
-            "string<?"
-            "string=?"
-            */
-           cur = result;
+
+            // set result
+            cur = result;
         }
 
         // judgeEqivalence
@@ -1396,6 +1408,9 @@ int main() {
             gPrinter.printError(e);
         }
         catch (SemanticException &e) {
+            gPrinter.printError(e);
+        }
+        catch (RuntimeException &e) {
             gPrinter.printError(e);
         }
         catch (...) {
