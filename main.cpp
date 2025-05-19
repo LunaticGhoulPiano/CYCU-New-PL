@@ -90,7 +90,7 @@ struct KeywordInfo {
 
 /* Keywords */
 static std::unordered_map<std::string, KeywordInfo> gKeywords = {
-    // functions
+    // {function name, {arg_mode, arg_nums, function type, return type}}
     {"cons", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR, KeywordType::PAIR}},
     {"list", {ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR, KeywordType::LIST}},
     {"quote", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}}, // returnType can be any of primitives
@@ -357,7 +357,7 @@ class SemanticException: public std::exception {
             return SemanticException("ERROR (incorrect number of arguments) : " + arg + "\n");
         }
         
-        static SemanticException IncorrectCarArgType(std::string op, std::string arg) { // implemented in project 2
+        static SemanticException IncorrectArgType(std::string op, std::string arg) { // implemented in project 2
             return SemanticException("ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
         }
 
@@ -515,6 +515,11 @@ class S_Exp_Executor {
             }
         }
 
+        void checkArgumentType(std::shared_ptr<AST> cur) { // TODO
+            std::shared_ptr<AST> temp = cur->right;
+            //while () {}
+        }
+
         /* data & binding setters */ 
         void getBinding(std::shared_ptr<AST> &cur, int level) {
             bool temp = cur->binding.isFirstNode;
@@ -541,6 +546,7 @@ class S_Exp_Executor {
             else return KeywordType::SYMBOL;
         }
         
+        /* make an atom boolean node */
         std::shared_ptr<AST> makeBooleanNode(bool b) {
             std::shared_ptr<AST> result = std::make_shared<AST>();
             result->isAtom = true; // crucial
@@ -861,70 +867,43 @@ class S_Exp_Executor {
                             else if (cur->left->token.value == "cond") {
                                 //
                             }
-                            if (cur->left->token.value == "if") {
+                            else if (cur->left->token.value == "if") {
                                 //
                             }
-                            if (cur->left->token.value == "else") {
+                            else if (cur->left->token.value == "else") {
                                 //
-                            }
-                            else if (cur->left->token.value == "quote") {
-                                // get function binding
-                                evaluate(cur->left, level + 1);
-                                //debugPrintNode("left", cur->left, level);
-                                checkArgumentsNumber(cur);
-                                // bypass, i.e. don't evaluate the remainings (left)
                             }
                             else {
-                                // get function binding
-                                evaluate(cur->left, level + 1);
-                                //debugPrintNode("left", cur->left, level);
-
+                                evaluate(cur->left, level + 1); // get function binding
                                 checkArgumentsNumber(cur);
-
-                                // get remainigs' bindings
-                                evaluate(cur->right, level + 1);
-                                //debugPrintNode("right", cur->right, level);
-
-                                // TODO: check argument type
+                                if (cur->left->token.value != "quote") evaluate(cur->right, level + 1); // get remainigs' bindings
+                                // else QUOTE should bypass the remainings (left), i.e. don't evaluate
+                                checkArgumentType(cur);
                             }
 
-                            //std::cout << "\t======== end evaluating primitive function: " << cur->left->token.value << " at level " << level << " ========\n";
-
                             // execute
-                            //std::cout << "before:\n";
-                            //debugPrintAST(cur);
-                            //std::cout << gPrinter.getprettifiedSExp(cur); // debug
                             prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
-                            //std::cout << "after:\n";
-                            //debugPrintAST(cur);
-                            //std::cout << gPrinter.getprettifiedSExp(cur); // debug
                         }
                         else { // user-defined
                             // project 3
-                            //std::cout << "\t======== end evaluating user-defined function: " << cur->left->token.value << " at level " << level << " ========\n";
                         }
                     }
                     else { // # <procedure function_name>, treat it as a normal atom node, and recursively check it
                         evaluate(cur->left, level + 1);
-                        //debugPrintNode("left", cur->left, level);
                         evaluate(cur->right, level + 1);
-                        //debugPrintNode("right", cur->right, level);
+                        cur->left->token.value = cur->left->binding.value; // replace #<procedure function_name> with function name in token value
                     }
                 }
                 else if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) { // middle nil, i.e. a new (sub) tree encounter
                     evaluate(cur->left, level + 1);
-                    //debugPrintNode("left", cur->left, level);
                     evaluate(cur->right, level + 1);
-                    //debugPrintNode("right", cur->right, level);
                 }
                 else { // left is atom, check if non-func-atom at first left node
                     evaluate(cur->left, level + 1);
                     // check non-function error
                     if (! (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION || cur->left->binding.bindingType == BindingType::USER_FUNCTION)
                         && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(cur->left->token.value);
-                    //debugPrintNode("left", cur->left, level);
                     evaluate(cur->right, level + 1);
-                    //debugPrintNode("right", cur->right, level);
                 }
             }
             // else neither ATOM nor NIL, never happen
@@ -936,9 +915,6 @@ class S_Exp_Executor {
             evaluate(root, 0);
             getBinding(root, 0); // bind the main <S-exp>
             root->binding.isRoot = true;
-            // debug
-            //d::cout << "main s-exp:\n";
-            //debugPrintAST(root);
             if (root->binding.value != "") gPrinter.printResult(root->binding.value + "\n");
             else gPrinter.printResult(gPrinter.getprettifiedSExp(root));
         }
