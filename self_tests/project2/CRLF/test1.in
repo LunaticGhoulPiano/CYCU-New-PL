@@ -1,4 +1,5 @@
 1
+; test operations
 ; pure int
 (> 5 3)
 (< -1 0)
@@ -78,4 +79,17 @@
     (<= 1.2 3 0 14 2444 32323.440394)
   )
 )
+; strings
+(string-append "Hello," " there!")
+(string-append "Hello," " there!" " Wait!")
+(string>? "az" "aw")
+(string<? "az" "aw")
+(string=? "az" "aw")
+(string=? "az" (string-append "a" "z"))
+(string>? "az" "aw" "ax")
+(string<? "az" "aw" "ax")
+(string=? "az" "aw" "ax")
+(string>? "az" "aw" "atuv")
+(string>? "hi" "there" about)
+(string>? "hi" "there" about a)
 (exit)

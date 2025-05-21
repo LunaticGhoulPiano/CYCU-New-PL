@@ -72,5 +72,29 @@ Welcome to OurScheme!
 
 > nil
 
+> "Hello, there!"
+
+> "Hello, there! Wait!"
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> nil
+
+> nil
+
+> nil
+
+> #t
+
+> ERROR (unbound symbol) : about
+
+> ERROR (unbound symbol) : about
+
 > 
 Thanks for using OurScheme!

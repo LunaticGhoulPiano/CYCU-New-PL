@@ -170,7 +170,8 @@ struct AST; // forward declaration
 struct Binding {
     bool isRoot = false;
     bool isFirstNode = false;
-    KeywordType dataType;
+    bool isBypassHead = false;
+    KeywordType dataType = KeywordType::NIL;
     BindingType bindingType;
     std::string value;
     Binding(BindingType t = BindingType::ATOM_BUT_NOT_SYMBOL, std::string v = ""): bindingType(t), value(v) {}
@@ -414,11 +415,12 @@ class Printer { // all outputs are dealed here
             printPrompt();
         }
 
+        // use cur->token.value for project 1, cur->binding.value for projecet 2, 3, 4
         std::string getprettifiedSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively append into the string
             if (cur != nullptr) {
                 if (cur->isAtom) { // <S-exp> ::= <ATOM>
                     if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
-                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->token.value + "\n");
+                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->binding.value + "\n");
                 }
                 else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
                     // LP: new list started
@@ -517,18 +519,28 @@ class S_Exp_Executor {
 
         void checkArgumentType(std::shared_ptr<AST> cur) { // TODO
             std::shared_ptr<AST> temp = cur->right;
+            /*
+            car, cdr: list/pair/quote
+            +, -, *, /, %, =, <, >, <=, >=: number(real)
+            string-append, string>?, string<?, string=?: string
+            */
+            
             //while () {}
         }
 
-        /* data & binding setters */ 
-        void getBinding(std::shared_ptr<AST> &cur, int level) {
+        /* data & binding setters */
+        void getBinding(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1) {
             bool temp = cur->binding.isFirstNode;
 
             // bind
             if (isDefined(cur->token.value)) cur->binding = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
-            else if (isPrimFunc(cur->token.value)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
+            else if (isPrimFunc(cur->token.value)) {
+                if (bypassLevel == -1) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
+                else cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, cur->token.value);
+            }
             else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
-            else throw SemanticException::UnboundSymbol(cur->token.value);
+            else if (bypassLevel == -1) throw SemanticException::UnboundSymbol(cur->token.value);
+            else cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
             
             // set back isFirstNode to prevent wrong cover
             cur->binding.isFirstNode = temp;
@@ -564,13 +576,11 @@ class S_Exp_Executor {
             {KeywordType::CONSTRUCTOR, [this](std::shared_ptr<AST> &cur) { construct(cur); } },
             {KeywordType::BYPASS_EVALUATION, [this](std::shared_ptr<AST> &cur) { bypass(cur); } },
             // KeywordType::BINDING
-            // KeywordType::PART_ACCESSOR
             {KeywordType::PART_ACCESSOR, [this](std::shared_ptr<AST> &cur) { getPart(cur); } },
             {KeywordType::PRIMITIVE_PREDICATE, [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
-            // KeywordType::OPERATION
-            {KeywordType::OPERATION, [this](std::shared_ptr<AST> &cur) { operate(cur); } }
-            // KeywordType::EQIVALENCE_TESTER
-            // KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION
+            {KeywordType::OPERATION, [this](std::shared_ptr<AST> &cur) { operate(cur); } },
+            {KeywordType::EQIVALENCE_TESTER, [this](std::shared_ptr<AST> &cur) { judgeEqivalence(cur); } },
+            {KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, [this](std::shared_ptr<AST> &cur) { sequence(cur); } },
             // KeywordType::CONDITIONAL
             // KeywordType::READ
             // KeywordType::DISPLAY
@@ -579,8 +589,8 @@ class S_Exp_Executor {
             // KeywordType::EVALUATION
             // KeywordType::CONVERT_TO_STRING
             // KeywordType::ERROR_OBJECT_OPERATION
-            // {KeywordType::CLEAN_ENVIRONMENT, [this](std::shared_ptr<AST> &cur) { cleanEnvironment(cur); } },
-            // {KeywordType::EXIT, [this](std::shared_ptr<AST> &cur) { exit(cur); } }
+            {KeywordType::CLEAN_ENVIRONMENT, [this](std::shared_ptr<AST> &cur) { cleanEnvironment(cur); } },
+            {KeywordType::EXIT, [this](std::shared_ptr<AST> &cur) { exit(cur); } }
         };
 
         // counstruct
@@ -595,7 +605,7 @@ class S_Exp_Executor {
             
             // construct
             if (cur->left->token.value == "cons") { // result type: pair
-                temp->binding.dataType = KeywordType::PAIR;
+                //temp->binding.dataType = KeywordType::PAIR;
 
                 temp->left = cur->right->left;
                 temp->right = cur->right->right->left;
@@ -603,16 +613,20 @@ class S_Exp_Executor {
                 cur = temp;
             }
             else { // result type: list
-                temp->binding.dataType = KeywordType::LIST;
+                //temp->binding.dataType = KeywordType::LIST;
                 cur = cur->right;
                 cur->binding = temp->binding;
+                if (cur->isEndNode()) getBinding(cur, 0); // bind if the result is single atom
             }
         }
 
         // bypass
         void bypass(std::shared_ptr<AST> &cur) { // project 2: quote
+            bool tempBypassHead = cur->binding.isBypassHead, tempFirstNode = cur->binding.isFirstNode;
             cur = cur->right->left; // pull up
             cur->binding.isRoot = true;
+            cur->binding.isBypassHead = tempBypassHead;
+            cur->binding.isFirstNode = tempFirstNode;
         }
 
         // bind: define, let, set!
@@ -704,7 +718,10 @@ class S_Exp_Executor {
                     bool convertToFloat = false; // if one of the operands is float, result must be float
                     if (result->binding.value.find('.') != std::string::npos
                         || mid->left->binding.value.find('.') != std::string::npos) convertToFloat = true;
-                    if (op == "/" && std::stoi(mid->left->binding.value) == 0) throw RuntimeException::DivisionByZero(); // division by zero
+                    if (op == "/"
+                        && ((mid->left->binding.value.find('.') == std::string::npos && std::stoi(mid->left->binding.value) == 0) // int is 0
+                        || (mid->left->binding.value.find('.') != std::string::npos && std::stof(mid->left->binding.value)) == 0.000000) // float is 0.000
+                        ) throw RuntimeException::DivisionByZero(); // division by zero
                     std::string r = arithmeticOperations(op, result->binding.value, mid->left->binding.value, convertToFloat);
                     // set result
                     result = std::make_shared<AST>();
@@ -727,15 +744,9 @@ class S_Exp_Executor {
                 else if (op == "and" || op == "or") {
                     if ((op == "and" && iter->left->binding.value == "nil") // return the first nil, else return the last that must != nil
                         || (op == "or" && iter->left->binding.value != "nil") // return the first != nil, else return the last that must == nil
-                        || iter->right->isEndNode()) { // the above "else" conditions 
+                        || iter->right->isEndNode()) { // the above "else" conditions
                         // set result
-                        result = std::make_shared<AST>();
-                        result->isAtom = true; // crucial
-                        result->token.value = iter->left->token.value;
-                        result->token.type = iter->left->token.type;
-                        result->binding.value = iter->left->binding.value;
-                        result->binding.bindingType = iter->left->binding.bindingType;
-                        result->binding.dataType = iter->left->binding.dataType;
+                        result = iter->left;
                         result->binding.isRoot = true;
                         break;
                     }
@@ -788,10 +799,39 @@ class S_Exp_Executor {
         }
 
         // judgeEqivalence
+        void judgeEqivalence(std::shared_ptr<AST> &cur) {
+            // TODO
+        }
+        
         // sequence
+        void sequence(std::shared_ptr<AST> &cur) {
+            std::shared_ptr<AST> temp = cur;
+            while (temp->right->token.value != "nil" && ! temp->right->isEndNode()) temp = temp->right;
+            cur = temp->left;
+            cur->binding.isRoot = true;
+        }
+
         // getCondition
+
         // cleanEnvironment
+        void cleanEnvironment(std::shared_ptr<AST> &cur) {
+            globalVars.clear();
+            localVars.clear();
+            cur = std::make_shared<AST>();
+            cur->token.type = TokenType::SYMBOL;
+            cur->token.value = "environment cleaned";
+            cur->isAtom = true;
+            cur->binding.isRoot = true;
+            cur->binding.dataType = KeywordType::SYMBOL;
+            cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
+            cur->binding.value = cur->token.value;
+        }
+
         // exit
+        void exit(std::shared_ptr<AST> &cur) {
+            throw ExitException::CorrectExit();
+        }
+
         // project 3 & 4:
         // read
         // display
@@ -812,7 +852,8 @@ class S_Exp_Executor {
             std::cout << "\t[level " << level << " " << pos << "]: " << "token = " << cur->token.value << ", token type = " << gDebugger.getTokenType(cur->token);
             std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.bindingType);
             std::cout << ", data type = " << gDebugger.getKeywordType(cur->binding.dataType);
-            std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode << "\n";
+            std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode;
+            std::cout << ", is bypass head: " << cur->binding.isBypassHead << "\n";
         }
         
         void labelRootAndFirstNode(std::shared_ptr<AST> &cur, int level = 0) { // TODO: fix ((list)) didn't set list to true
@@ -843,16 +884,18 @@ class S_Exp_Executor {
             }
         }
         
-        void evaluate(std::shared_ptr<AST> &cur, int level, bool elseOn = false) {
+        void evaluate(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1, bool elseOn = false) {
+            //std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << std::endl;
+            
             if (cur->token.type != TokenType::NIL
-                || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level); // , bypassLevel, bypass
+                || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level, bypassLevel); // , bypassLevel, bypass
             else if (cur->token.type == TokenType::NIL) { // middle nil
                 // set current
                 cur->binding.bindingType = BindingType::MID;
 
                 // if cur is a function name and also the first left node of the current sub-tree
                 if (isFunction(cur->left->token.value) || (cur->left->token.value == "else" && elseOn)) {
-                    if (cur->left->binding.isFirstNode) {
+                    if (cur->left->binding.isFirstNode && bypassLevel == -1) {
                         checkPureList(cur, cur); // check pure list
                         checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
                         if (isPrimFunc(cur->left->token.value) || cur->left->token.value == "else") { // primitive
@@ -874,36 +917,49 @@ class S_Exp_Executor {
                                 //
                             }
                             else {
-                                evaluate(cur->left, level + 1); // get function binding
+                                if (cur->left->token.value == "quote") bypassLevel = level;
+                                
+                                evaluate(cur->left, level + 1, bypassLevel); // get function binding
                                 checkArgumentsNumber(cur);
-                                if (cur->left->token.value != "quote") evaluate(cur->right, level + 1); // get remainigs' bindings
-                                // else QUOTE should bypass the remainings (left), i.e. don't evaluate
+                                evaluate(cur->right, level + 1, bypassLevel); // get remainigs' bindings
+                                
+                                if (bypassLevel == level) {
+                                    cur->binding.isBypassHead = true;
+                                    bypassLevel = -1; // reset
+                                }
+                                
                                 checkArgumentType(cur);
+                                //std::cout << "Before\n";
+                                //debugPrintAST(cur);
                             }
 
                             // execute
                             prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
+                            if (cur->binding.isBypassHead && cur->binding.isFirstNode) throw SemanticException::NonFunction(cur->binding.value);
+                            //std::cout << "After\n";
+                            //debugPrintAST(cur);
                         }
                         else { // user-defined
                             // project 3
                         }
                     }
                     else { // # <procedure function_name>, treat it as a normal atom node, and recursively check it
-                        evaluate(cur->left, level + 1);
-                        evaluate(cur->right, level + 1);
-                        cur->left->token.value = cur->left->binding.value; // replace #<procedure function_name> with function name in token value
+                        evaluate(cur->left, level + 1, bypassLevel);
+                        evaluate(cur->right, level + 1, bypassLevel);
+                        //cur->left->token.value = cur->left->binding.value; // replace #<procedure function_name> with function name in token value
                     }
                 }
                 else if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) { // middle nil, i.e. a new (sub) tree encounter
-                    evaluate(cur->left, level + 1);
-                    evaluate(cur->right, level + 1);
+                    evaluate(cur->left, level + 1, bypassLevel);
+                    evaluate(cur->right, level + 1, bypassLevel);
                 }
                 else { // left is atom, check if non-func-atom at first left node
-                    evaluate(cur->left, level + 1);
+                    evaluate(cur->left, level + 1, bypassLevel);
                     // check non-function error
-                    if (! (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION || cur->left->binding.bindingType == BindingType::USER_FUNCTION)
-                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(cur->left->token.value);
-                    evaluate(cur->right, level + 1);
+                    if (bypassLevel == -1
+                        && ! (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION || cur->left->binding.bindingType == BindingType::USER_FUNCTION)
+                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(cur->left->binding.value);
+                    evaluate(cur->right, level + 1, bypassLevel);
                 }
             }
             // else neither ATOM nor NIL, never happen
@@ -913,10 +969,9 @@ class S_Exp_Executor {
         void run(std::shared_ptr<AST> &root) {
             labelRootAndFirstNode(root);
             evaluate(root, 0);
-            getBinding(root, 0); // bind the main <S-exp>
             root->binding.isRoot = true;
-            if (root->binding.value != "") gPrinter.printResult(root->binding.value + "\n");
-            else gPrinter.printResult(gPrinter.getprettifiedSExp(root));
+            //debugPrintAST(root);
+            gPrinter.printResult(gPrinter.getprettifiedSExp(root));
         }
 };
 
@@ -946,12 +1001,6 @@ class S_Exp_Parser {
             std::shared_ptr<AST> res = cdr;
             for (int i = static_cast<int>(tree_root.size()) - 1; i >= 0; --i) res = std::make_shared<AST>(tree_root[i], res);
             return res;
-        }
-
-        void checkExit(const std::shared_ptr<AST> &tree_root) {
-            if (! tree_root || tree_root->isAtom) return;
-            if (tree_root->left && tree_root->left->isAtom && tree_root->left->token.type == TokenType::SYMBOL && tree_root->left->token.value == "exit"
-                && (! tree_root->right || (tree_root->right->isAtom && tree_root->right->token.type == TokenType::NIL))) throw ExitException::CorrectExit();
         }
     
     public:
@@ -987,7 +1036,6 @@ class S_Exp_Parser {
                 if (lists_info.top().first == LIST_MODE::WITH_DOT) dot_info.top().second++;
             }
             else { // current <S-exp> is the most outer <S-exp>
-                if (! isAtom) checkExit(cur_node); // check if car == "exit" && cdr == "nil"
                 convertToQuote(cur_node);
                 executor.run(cur_node);
                 resetInfos();
