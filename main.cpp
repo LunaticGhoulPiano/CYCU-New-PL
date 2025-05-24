@@ -170,7 +170,7 @@ struct AST; // forward declaration
 struct Binding {
     bool isRoot = false;
     bool isFirstNode = false;
-    bool isBypassHead = false;
+    bool isReturnOfQuote = false;
     KeywordType dataType = KeywordType::NIL;
     BindingType bindingType;
     std::string value;
@@ -368,7 +368,7 @@ class SemanticException: public std::exception {
 
         // function error
         static SemanticException NonFunction(std::string s_exp) { // implemented in project 2
-            return SemanticException("ERROR (attempt to apply non-function) : " + s_exp + "\n");
+            return SemanticException("ERROR (attempt to apply non-function) : " + s_exp);
         }
         
         static SemanticException NoReturnValue(std::string s_exp) { // implemented in project 2
@@ -416,11 +416,11 @@ class Printer { // all outputs are dealed here
         }
 
         // use cur->token.value for project 1, cur->binding.value for projecet 2, 3, 4
-        std::string getprettifiedSExp(const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively append into the string
+        std::string getprettifiedSExp(bool useToken, const std::shared_ptr<AST> &cur, std::string s_exp = "", int depth = 0, bool isRoot = true, bool isFirstTokenOfLine = true) { // recursively append into the string
             if (cur != nullptr) {
                 if (cur->isAtom) { // <S-exp> ::= <ATOM>
                     if (cur->token.type == TokenType::QUOTE) s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + "quote\n");
-                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + cur->binding.value + "\n");
+                    else s_exp += ((isFirstTokenOfLine ? std::string(depth * 2, ' ') : " ") + (useToken ? cur->token.value : cur->binding.value) + "\n");
                 }
                 else { // <S-exp> ::= LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN | <S-exp> ::= QUOTE <S-exp>
                     // LP: new list started
@@ -430,17 +430,17 @@ class Printer { // all outputs are dealed here
                         isFirstTokenOfLine = false;
                     }
                     // car
-                    s_exp = getprettifiedSExp(cur->left, s_exp, depth, true, isFirstTokenOfLine);
+                    s_exp = getprettifiedSExp(useToken, cur->left, s_exp, depth, true, isFirstTokenOfLine);
                     // cdr
                     if (cur->right && cur->right->isAtom && cur->right->token.type != TokenType::NIL) {
                         s_exp += (std::string(depth * 2, ' ') + ".\n");
-                        s_exp = getprettifiedSExp(cur->right, s_exp, depth, true, true);
+                        s_exp = getprettifiedSExp(useToken, cur->right, s_exp, depth, true, true);
                     }
-                    else if (cur->right && ! cur->right->isAtom) s_exp = getprettifiedSExp(cur->right, s_exp, depth, false, true);
+                    else if (cur->right && ! cur->right->isAtom) s_exp = getprettifiedSExp(useToken, cur->right, s_exp, depth, false, true);
                     else if (! cur->right || cur->right->token.type == TokenType::NIL) ; // nothing
                     else {
                         s_exp += (std::string(depth * 2, ' ') + ".\n");
-                        s_exp = getprettifiedSExp(cur->right, s_exp, depth, true, true);
+                        s_exp = getprettifiedSExp(useToken, cur->right, s_exp, depth, true, true);
                     }
                     // RP: cur list ended
                     if (isRoot) {
@@ -474,7 +474,7 @@ class S_Exp_Executor {
         void checkPureList(std::shared_ptr<AST> cur_node, std::shared_ptr<AST> cur_func) {
             if (cur_node == nullptr || cur_node->isEndNode()) return;
             if (cur_node->right != nullptr && cur_node->right->token.type != TokenType::NIL)
-                throw SemanticException::NonList(gPrinter.getprettifiedSExp(cur_func));
+                throw SemanticException::NonList(gPrinter.getprettifiedSExp(false, cur_func));
             checkPureList(cur_node->right, cur_func);
         }
 
@@ -528,22 +528,29 @@ class S_Exp_Executor {
             //while () {}
         }
 
+        void checkHasReturnValue(std::shared_ptr<AST> cur) {
+            //
+        }
+
         /* data & binding setters */
         void getBinding(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1) {
-            bool temp = cur->binding.isFirstNode;
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode;
 
             // bind
             if (isDefined(cur->token.value)) cur->binding = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
             else if (isPrimFunc(cur->token.value)) {
-                if (bypassLevel == -1) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
+                if (bypassLevel == -1
+                    || (cur->token.value == "quote"
+                        && level == bypassLevel + 1)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
                 else cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, cur->token.value);
             }
             else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
             else if (bypassLevel == -1) throw SemanticException::UnboundSymbol(cur->token.value);
             else cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
             
-            // set back isFirstNode to prevent wrong cover
-            cur->binding.isFirstNode = temp;
+            // set back to prevent wrong cover
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
             // set the minor data type of the token in binding
             cur->binding.dataType = getNodeMinorBindingDataTypeByTokenValue(cur);
         }
@@ -575,13 +582,13 @@ class S_Exp_Executor {
         std::unordered_map<KeywordType, std::function<void(std::shared_ptr<AST> &)>> prim_func_map = {
             {KeywordType::CONSTRUCTOR, [this](std::shared_ptr<AST> &cur) { construct(cur); } },
             {KeywordType::BYPASS_EVALUATION, [this](std::shared_ptr<AST> &cur) { bypass(cur); } },
-            // KeywordType::BINDING
+            {KeywordType::BINDING, [this](std::shared_ptr<AST> &cur) { bind(cur); } },
             {KeywordType::PART_ACCESSOR, [this](std::shared_ptr<AST> &cur) { getPart(cur); } },
             {KeywordType::PRIMITIVE_PREDICATE, [this](std::shared_ptr<AST> &cur) { judgePrimitivePredicate(cur); } },
             {KeywordType::OPERATION, [this](std::shared_ptr<AST> &cur) { operate(cur); } },
             {KeywordType::EQIVALENCE_TESTER, [this](std::shared_ptr<AST> &cur) { judgeEqivalence(cur); } },
             {KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, [this](std::shared_ptr<AST> &cur) { sequence(cur); } },
-            // KeywordType::CONDITIONAL
+            {KeywordType::CONDITIONAL, [this](std::shared_ptr<AST> &cur) { getCondition(cur); } },
             // KeywordType::READ
             // KeywordType::DISPLAY
             // KeywordType::LAMBDA
@@ -595,25 +602,24 @@ class S_Exp_Executor {
 
         // counstruct
         void construct(std::shared_ptr<AST> &cur) { // project 2: list, cons
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             // init middle nil node
             std::shared_ptr<AST> temp = std::make_shared<AST>();
             temp->token.type = TokenType::NIL;
             temp->token.value = "";
             temp->binding.bindingType = BindingType::MID;
             temp->binding.dataType = KeywordType::NIL;
-            temp->binding.isRoot = true;
+            temp->binding.isRoot = tempRoot;
+            temp->binding.isFirstNode = tempFirstNode;
+            temp->binding.isReturnOfQuote = tempQHead;
             
             // construct
-            if (cur->left->token.value == "cons") { // result type: pair
-                //temp->binding.dataType = KeywordType::PAIR;
-
+            if (cur->left->token.value == "cons") { // return: pair
                 temp->left = cur->right->left;
                 temp->right = cur->right->right->left;
-
                 cur = temp;
             }
-            else { // result type: list
-                //temp->binding.dataType = KeywordType::LIST;
+            else { // return: list
                 cur = cur->right;
                 cur->binding = temp->binding;
                 if (cur->isEndNode()) getBinding(cur, 0); // bind if the result is single atom
@@ -622,25 +628,32 @@ class S_Exp_Executor {
 
         // bypass
         void bypass(std::shared_ptr<AST> &cur) { // project 2: quote
-            bool tempBypassHead = cur->binding.isBypassHead, tempFirstNode = cur->binding.isFirstNode;
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             cur = cur->right->left; // pull up
-            cur->binding.isRoot = true;
-            cur->binding.isBypassHead = tempBypassHead;
+            cur->binding.isRoot = tempRoot;
             cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
         }
 
         // bind: define, let, set!
+        void bind(std::shared_ptr<AST> &cur) {
+            // TODO
+        }
         
         // getPart
         void getPart(std::shared_ptr<AST> &cur) {
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             if (cur->left->token.value == "car") cur = cur->right->left->left; // car
             else cur = cur->right->left->right; // cdr
-            cur->binding.isRoot = true;
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
         }
 
         // judgePrimitivePredicate
         void judgePrimitivePredicate(std::shared_ptr<AST> &cur) {
             bool result = false;
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             if (cur->left->token.value == "atom?"
                 && cur->right->left->isEndNode()) result = true;
             else if (cur->left->token.value == "pair?"
@@ -674,6 +687,9 @@ class S_Exp_Executor {
             }
 
             cur = makeBooleanNode(result);
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
         }
 
         // operate
@@ -711,6 +727,7 @@ class S_Exp_Executor {
             std::shared_ptr<AST> result = cur->right->left, mid = cur->right->right; // use for at least 2 operands
             std::shared_ptr<AST> iter = cur->right; // use for at least 1 operand
             bool compareStatus = false; // for >, >=, <, <=, =
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             
             // operate
             do {
@@ -718,10 +735,7 @@ class S_Exp_Executor {
                     bool convertToFloat = false; // if one of the operands is float, result must be float
                     if (result->binding.value.find('.') != std::string::npos
                         || mid->left->binding.value.find('.') != std::string::npos) convertToFloat = true;
-                    if (op == "/"
-                        && ((mid->left->binding.value.find('.') == std::string::npos && std::stoi(mid->left->binding.value) == 0) // int is 0
-                        || (mid->left->binding.value.find('.') != std::string::npos && std::stof(mid->left->binding.value)) == 0.000000) // float is 0.000
-                        ) throw RuntimeException::DivisionByZero(); // division by zero
+                    if (op == "/" && std::stof(mid->left->binding.value) == 0.000000) throw RuntimeException::DivisionByZero(); // division by zero
                     std::string r = arithmeticOperations(op, result->binding.value, mid->left->binding.value, convertToFloat);
                     // set result
                     result = std::make_shared<AST>();
@@ -796,32 +810,59 @@ class S_Exp_Executor {
 
             // set result
             cur = result;
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
         }
 
         // judgeEqivalence
         void judgeEqivalence(std::shared_ptr<AST> &cur) {
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             // TODO
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
         }
         
         // sequence
         void sequence(std::shared_ptr<AST> &cur) {
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             std::shared_ptr<AST> temp = cur;
             while (temp->right->token.value != "nil" && ! temp->right->isEndNode()) temp = temp->right;
             cur = temp->left;
-            cur->binding.isRoot = true;
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
         }
 
         // getCondition
+        void getCondition(std::shared_ptr<AST> &cur) {
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
+            if (cur->left->token.value == "if") {
+                if (cur->right->left->binding.value != "nil") cur = cur->right->right->left; // true, ex. (if t 6), (if 8 9 10)
+                else cur = cur->right->right->right->left; // false
+            }
+            else { // cond, else
+                //
+            }
+
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
+        }
 
         // cleanEnvironment
         void cleanEnvironment(std::shared_ptr<AST> &cur) {
             globalVars.clear();
             localVars.clear();
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             cur = std::make_shared<AST>();
             cur->token.type = TokenType::SYMBOL;
             cur->token.value = "environment cleaned";
             cur->isAtom = true;
-            cur->binding.isRoot = true;
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
             cur->binding.dataType = KeywordType::SYMBOL;
             cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
             cur->binding.value = cur->token.value;
@@ -853,7 +894,7 @@ class S_Exp_Executor {
             std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.bindingType);
             std::cout << ", data type = " << gDebugger.getKeywordType(cur->binding.dataType);
             std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode;
-            std::cout << ", is bypass head: " << cur->binding.isBypassHead << "\n";
+            std::cout << ", is return of quote: " << cur->binding.isReturnOfQuote << std::endl;
         }
         
         void labelRootAndFirstNode(std::shared_ptr<AST> &cur, int level = 0) { // TODO: fix ((list)) didn't set list to true
@@ -884,8 +925,55 @@ class S_Exp_Executor {
             }
         }
         
+        void execute(std::shared_ptr<AST> &cur, int level, int &bypassLevel, bool elseOn) {
+            checkPureList(cur, cur); // check pure list
+            checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
+            if (isPrimFunc(cur->left->token.value) || cur->left->token.value == "else") { // primitive
+                // special cases: with arguments, those arguments should't be unbound symbol
+                // TODO: check format error of define, set!, let, cond, lambda
+                if (cur->left->token.value == "define") {
+                    // TODO: seperate the argument tree and the remainings
+                }
+                // else if (cur->left->token.value == "let") // project 3
+                // else if (cur->left->token.value == "lambda") // project 3
+                // else if (cur->left->token.value == "set!") // project 4
+                else if (cur->left->token.value == "cond") {
+                    //
+                }
+                else {
+                    if (cur->left->token.value == "quote") {
+                        cur->binding.isReturnOfQuote = true;
+                        bypassLevel = level;
+                    }
+                    evaluate(cur->left, level + 1, bypassLevel); // get function binding
+                    
+                    checkArgumentsNumber(cur);
+                    evaluate(cur->right, level + 1, bypassLevel); // get remainigs' bindings
+
+                    checkArgumentType(cur);
+                }
+
+                if (bypassLevel == level) bypassLevel = -1; // reset
+
+                // execute
+                if (bypassLevel == -1) {
+                    std::cout << "level " << level << ": " << "Before\n";
+                    debugPrintAST(cur);
+
+                    std::cout << "execute " << cur->left->token.value << std::endl;
+                    prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
+
+                    std::cout << "level " << level << ": " << "After\n";
+                    debugPrintAST(cur);
+                }
+            }
+            else { // user-defined
+                // project 3
+            }
+        }
+
         void evaluate(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1, bool elseOn = false) {
-            //std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << std::endl;
+            std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << std::endl;
             
             if (cur->token.type != TokenType::NIL
                 || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level, bypassLevel); // , bypassLevel, bypass
@@ -895,70 +983,39 @@ class S_Exp_Executor {
 
                 // if cur is a function name and also the first left node of the current sub-tree
                 if (isFunction(cur->left->token.value) || (cur->left->token.value == "else" && elseOn)) {
-                    if (cur->left->binding.isFirstNode && bypassLevel == -1) {
-                        checkPureList(cur, cur); // check pure list
-                        checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
-                        if (isPrimFunc(cur->left->token.value) || cur->left->token.value == "else") { // primitive
-                            // special cases: with arguments, those arguments should't be unbound symbol
-                            if (cur->left->token.value == "define") {
-                                // TODO: seperate the argument tree and the remainings
-                            }
-                            // else if (cur->left->token.value == "let") // project 3
-                            // else if (cur->left->token.value == "lambda") // project 3
-                            // else if (cur->left->token.value == "set!") // project 4
-                            // special cases: conditinal
-                            else if (cur->left->token.value == "cond") {
-                                //
-                            }
-                            else if (cur->left->token.value == "if") {
-                                //
-                            }
-                            else if (cur->left->token.value == "else") {
-                                //
-                            }
-                            else {
-                                if (cur->left->token.value == "quote") bypassLevel = level;
-                                
-                                evaluate(cur->left, level + 1, bypassLevel); // get function binding
-                                checkArgumentsNumber(cur);
-                                evaluate(cur->right, level + 1, bypassLevel); // get remainigs' bindings
-                                
-                                if (bypassLevel == level) {
-                                    cur->binding.isBypassHead = true;
-                                    bypassLevel = -1; // reset
-                                }
-                                
-                                checkArgumentType(cur);
-                                //std::cout << "Before\n";
-                                //debugPrintAST(cur);
-                            }
-
-                            // execute
-                            prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
-                            if (cur->binding.isBypassHead && cur->binding.isFirstNode) throw SemanticException::NonFunction(cur->binding.value);
-                            //std::cout << "After\n";
-                            //debugPrintAST(cur);
-                        }
-                        else { // user-defined
-                            // project 3
-                        }
-                    }
-                    else { // # <procedure function_name>, treat it as a normal atom node, and recursively check it
+                    // the function name is the first left node of mid nil and no bypass
+                    if (cur->left->binding.isFirstNode && bypassLevel == -1) execute(cur, level, bypassLevel, elseOn);
+                    else { // # <procedure function_name> (i.e. funciton name not the first left node of mid nil)
+                        // treat it as a normal atom node, and recursively check it
                         evaluate(cur->left, level + 1, bypassLevel);
                         evaluate(cur->right, level + 1, bypassLevel);
-                        //cur->left->token.value = cur->left->binding.value; // replace #<procedure function_name> with function name in token value
                     }
                 }
                 else if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) { // middle nil, i.e. a new (sub) tree encounter
+                    // ex. ('list) -> return of left = list, but cuz it's return of quote, so should be non-function error
                     evaluate(cur->left, level + 1, bypassLevel);
+
+                    // ex. ((begin list)) -> return of left = # <procedure list> -> because should be function to execute, replace binding to original token
+                    if (cur->left->binding.isFirstNode && isFunction(cur->left->token.value)) cur->left->binding.value = cur->left->token.value;
+
+                    // check non-function error:
+                    // ex1. ((car (cons 1 2)) list) -> return of left = 1, isReturnOfQuote = false
+                    // ex2. ((begin list)) -> return of left = list, isReturnOfQuote = false
+                    // ex3. ('list) -> return of left = list, isReturnOfQuote = true
+                    if (bypassLevel == -1
+                        && (! isFunction(cur->left->token.value) || (isFunction(cur->left->token.value) && cur->left->binding.isReturnOfQuote))
+                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(gPrinter.getprettifiedSExp(true, cur->left));
                     evaluate(cur->right, level + 1, bypassLevel);
+
+                    // if the return is a function-to-execute, execute, ex. ((begin list)) -> (list) -> nil; else bind the remainings
+                    if (! cur->left->binding.isReturnOfQuote) execute(cur, level, bypassLevel, elseOn); // execute if the return is a function-to-execute
                 }
                 else { // left is atom, check if non-func-atom at first left node
                     evaluate(cur->left, level + 1, bypassLevel);
-                    // check non-function error
+                    // check non-function error: ex. (1 list) -> binding of left = 1
                     if (bypassLevel == -1
-                        && ! (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION || cur->left->binding.bindingType == BindingType::USER_FUNCTION)
-                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(cur->left->binding.value);
+                        && (! isFunction(cur->left->token.value) || (isFunction(cur->left->token.value) && cur->left->binding.isReturnOfQuote))
+                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(gPrinter.getprettifiedSExp(true, cur->left));
                     evaluate(cur->right, level + 1, bypassLevel);
                 }
             }
@@ -971,7 +1028,7 @@ class S_Exp_Executor {
             evaluate(root, 0);
             root->binding.isRoot = true;
             //debugPrintAST(root);
-            gPrinter.printResult(gPrinter.getprettifiedSExp(root));
+            gPrinter.printResult(gPrinter.getprettifiedSExp(false, root));
         }
 };
 
@@ -1177,7 +1234,7 @@ class S_Exp_Lexer {
                 token = Token(); // reset
                 return res;
             }
-            catch (...) {
+            catch (SyntaxException &e) {
                 parser.resetInfos();
                 if (eat) eatALine(); // eat: if need to eat a line when error encountered
                 throw;
