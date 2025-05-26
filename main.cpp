@@ -358,8 +358,8 @@ class SemanticException: public std::exception {
             return SemanticException("ERROR (incorrect number of arguments) : " + arg + "\n");
         }
         
-        static SemanticException IncorrectArgType(std::string op, std::string arg) { // implemented in project 2
-            return SemanticException("ERROR (" + op +" with incorrect argument type) : " + arg + "\n");
+        static SemanticException IncorrectArgType(std::string op, std::string s_exp) { // implemented in project 2
+            return SemanticException("ERROR (" + op +" with incorrect argument type) : " + s_exp);
         }
 
         static SemanticException NonList(std::string s_exp) { // implemented in project 2
@@ -483,7 +483,7 @@ class S_Exp_Executor {
             if ((std::find(specifics.begin(), specifics.end(), func_name) != specifics.end()) && level != 0)
                 throw SemanticException::LevelError(func_name);
         }
-
+        
         void checkArgumentsNumber(std::shared_ptr<AST> cur) {
             if (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION) { // primitive function
                 // count
@@ -517,15 +517,19 @@ class S_Exp_Executor {
             }
         }
 
-        void checkArgumentType(std::shared_ptr<AST> cur) { // TODO
-            std::shared_ptr<AST> temp = cur->right;
-            /*
-            car, cdr: list/pair/quote
-            +, -, *, /, %, =, <, >, <=, >=: number(real)
-            string-append, string>?, string<?, string=?: string
-            */
-            
-            //while () {}
+        void checkArgumentType(std::string func_name, std::shared_ptr<AST> arg) {
+            if (func_name == "car" || func_name == "cdr") {
+                if (arg->isEndNode()) throw SemanticException::IncorrectArgType(func_name, gPrinter.getprettifiedSExp(false, arg));
+            }
+            else if (func_name == "+" || func_name == "-" || func_name == "*" || func_name == "/"
+                || func_name == ">" || func_name == ">=" || func_name == "<" || func_name == "<=" || func_name == "=") {
+                    try { std::stof(arg->binding.value); }
+                    catch (...) { throw SemanticException::IncorrectArgType(func_name, gPrinter.getprettifiedSExp(false, arg)); }
+                }
+            else if (func_name == "string-append" || func_name == "string>" || func_name == "string<" || func_name == "string=?") {
+                if (arg->binding.value[0] != '\"' || arg->binding.value[arg->binding.value.length() - 1] != '\"')
+                    throw SemanticException::IncorrectArgType(func_name, gPrinter.getprettifiedSExp(false, arg));
+            }
         }
 
         void checkHasReturnValue(std::shared_ptr<AST> cur) {
@@ -533,15 +537,14 @@ class S_Exp_Executor {
         }
 
         /* data & binding setters */
-        void getBinding(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1) {
-            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode;
+        void getBinding(std::shared_ptr<AST> &cur, int level, std::string func_name = "", int bypassLevel = -1) {
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
 
             // bind
             if (isDefined(cur->token.value)) cur->binding = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
             else if (isPrimFunc(cur->token.value)) {
-                if (bypassLevel == -1
-                    || (cur->token.value == "quote"
-                        && level == bypassLevel + 1)) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
+                if ((bypassLevel == -1 || (cur->token.value == "quote" && level == bypassLevel + 1))
+                    && ! cur->binding.isReturnOfQuote) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
                 else cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, cur->token.value);
             }
             else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
@@ -551,6 +554,7 @@ class S_Exp_Executor {
             // set back to prevent wrong cover
             cur->binding.isRoot = tempRoot;
             cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
             // set the minor data type of the token in binding
             cur->binding.dataType = getNodeMinorBindingDataTypeByTokenValue(cur);
         }
@@ -637,7 +641,11 @@ class S_Exp_Executor {
 
         // bind: define, let, set!
         void bind(std::shared_ptr<AST> &cur) {
+            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             // TODO
+            cur->binding.isRoot = tempRoot;
+            cur->binding.isFirstNode = tempFirstNode;
+            cur->binding.isReturnOfQuote = tempQHead;
         }
         
         // getPart
@@ -843,7 +851,7 @@ class S_Exp_Executor {
                 else cur = cur->right->right->right->left; // false
             }
             else { // cond, else
-                //
+                // TODO: get the first true condition, and convert it into begin tree and return
             }
 
             cur->binding.isRoot = tempRoot;
@@ -882,9 +890,9 @@ class S_Exp_Executor {
         // convertToString
         // errorObject
         
-        void debugPrintAST(std::shared_ptr<AST> &cur, int level = -1, std::string pos = "root") {
+        void debugPrintAST(std::shared_ptr<AST> &cur, int level, std::string pos = "root") {
             if (cur == nullptr) return;
-            debugPrintNode(pos, cur, (pos == "root") ? 0 : level);
+            debugPrintNode(pos, cur, level);
             debugPrintAST(cur->left, level + 1, "left");
             debugPrintAST(cur->right, level + 1, "right");
         }
@@ -925,46 +933,47 @@ class S_Exp_Executor {
             }
         }
         
-        void execute(std::shared_ptr<AST> &cur, int level, int &bypassLevel, bool elseOn) {
+        void execute(std::shared_ptr<AST> &cur, int level, int &bypassLevel) {
             checkPureList(cur, cur); // check pure list
             checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
-            if (isPrimFunc(cur->left->token.value) || cur->left->token.value == "else") { // primitive
+            if (isPrimFunc(cur->left->token.value)) { // primitive //  || cur->left->token.value == "else"
+                // init functions
+                if (cur->left->token.value == "quote") cur->binding.isReturnOfQuote = true, bypassLevel = level; // set bypass flags
+                evaluate(cur->left, level + 1, bypassLevel); // bind the function name
+                
                 // special cases: with arguments, those arguments should't be unbound symbol
-                // TODO: check format error of define, set!, let, cond, lambda
                 if (cur->left->token.value == "define") {
-                    // TODO: seperate the argument tree and the remainings
+                    //
+                }
+                else if (cur->left->token.value == "cond") {
+                    // check format
+
+                    // pick the to-execute condition and convert to begin
+                    // cur will be a begin AST of the first true condition
+                    // prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
+                    // and the following execute block will execute begin
+                    // also should evaluate the true condition
                 }
                 // else if (cur->left->token.value == "let") // project 3
                 // else if (cur->left->token.value == "lambda") // project 3
                 // else if (cur->left->token.value == "set!") // project 4
-                else if (cur->left->token.value == "cond") {
-                    //
-                }
                 else {
-                    if (cur->left->token.value == "quote") {
-                        cur->binding.isReturnOfQuote = true;
-                        bypassLevel = level;
-                    }
-                    evaluate(cur->left, level + 1, bypassLevel); // get function binding
-                    
                     checkArgumentsNumber(cur);
-                    evaluate(cur->right, level + 1, bypassLevel); // get remainigs' bindings
-
-                    checkArgumentType(cur);
+                    evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
                 }
 
                 if (bypassLevel == level) bypassLevel = -1; // reset
 
                 // execute
                 if (bypassLevel == -1) {
-                    std::cout << "level " << level << ": " << "Before\n";
-                    debugPrintAST(cur);
+                    //std::cout << "level " << level << ": " << "Before\n";
+                    //debugPrintAST(cur, level);
 
-                    std::cout << "execute " << cur->left->token.value << std::endl;
+                    //std::cout << "execute " << cur->left->token.value << std::endl;
                     prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
 
-                    std::cout << "level " << level << ": " << "After\n";
-                    debugPrintAST(cur);
+                    //std::cout << "level " << level << ": " << "After\n";
+                    //debugPrintAST(cur, level);
                 }
             }
             else { // user-defined
@@ -972,54 +981,47 @@ class S_Exp_Executor {
             }
         }
 
-        void evaluate(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1, bool elseOn = false) {
-            std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << std::endl;
+        void evaluate(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1, std::string func_name = "") { // , bool elseOn = false
+            if (cur == nullptr) return;
+            //std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << ", func_name = " << func_name << std::endl;
             
+            // current node is atom
             if (cur->token.type != TokenType::NIL
-                || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level, bypassLevel); // , bypassLevel, bypass
-            else if (cur->token.type == TokenType::NIL) { // middle nil
+                || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level, func_name, bypassLevel); // , bypassLevel, bypass
+            // current node is middle (nil) node
+            else if (cur->token.type == TokenType::NIL) {
                 // set current
                 cur->binding.bindingType = BindingType::MID;
+                bool hasLeftBinding = false;
 
-                // if cur is a function name and also the first left node of the current sub-tree
-                if (isFunction(cur->left->token.value) || (cur->left->token.value == "else" && elseOn)) {
-                    // the function name is the first left node of mid nil and no bypass
-                    if (cur->left->binding.isFirstNode && bypassLevel == -1) execute(cur, level, bypassLevel, elseOn);
-                    else { // # <procedure function_name> (i.e. funciton name not the first left node of mid nil)
-                        // treat it as a normal atom node, and recursively check it
-                        evaluate(cur->left, level + 1, bypassLevel);
-                        evaluate(cur->right, level + 1, bypassLevel);
-                    }
-                }
-                else if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) { // middle nil, i.e. a new (sub) tree encounter
-                    // ex. ('list) -> return of left = list, but cuz it's return of quote, so should be non-function error
-                    evaluate(cur->left, level + 1, bypassLevel);
+                // Step 1. if a new sub tree encountered, ex. ((begin +) "a" b) -> evaluate and execute the sub tree (begin +) -> (+ "a" b)
+                if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) evaluate(cur->left, level + 1, bypassLevel, func_name), hasLeftBinding = true;
+                
+                // Step 2-1.if cur->left is a function name and also the first left node of the current sub-tree
+                if (cur->left->binding.isFirstNode // is the first atom node of a s_exp
+                    && bypassLevel == -1 // bypass mode is off, i.e. should be executed
+                    && ! cur->left->binding.isReturnOfQuote // ex. ('list) -> (list), but list is a return of quote, which should be non-function error
+                    && isFunction(cur->left->token.value)) // then the current binding value is a function name
+                    execute(cur, level, bypassLevel);
+                else { // Step 2-2. cur->left is atom
+                    // if still not bind the left yet (i.e. didn't go to Step 1 before), get the binding (and check unbound symbol error)
+                    if (! hasLeftBinding) evaluate(cur->left, level + 1, bypassLevel, func_name);
 
-                    // ex. ((begin list)) -> return of left = # <procedure list> -> because should be function to execute, replace binding to original token
-                    if (cur->left->binding.isFirstNode && isFunction(cur->left->token.value)) cur->left->binding.value = cur->left->token.value;
+                    // check non-function error
+                    if (cur->left->binding.isFirstNode // is the first left node, which should be a function name normally
+                        && bypassLevel == -1 // and the bypass mode is off, i.e. should be executed
+                        && (! isFunction(cur->left->token.value) // but the first left node is not a function name
+                            || cur->left->binding.isReturnOfQuote)) // or the first left node is a function name that also is a return of quote
+                        throw SemanticException::NonFunction(gPrinter.getprettifiedSExp(false, cur->left));
+                    
+                    // check argument type error
+                    if (func_name != "") checkArgumentType(func_name, cur->left); // func_name, arg
 
-                    // check non-function error:
-                    // ex1. ((car (cons 1 2)) list) -> return of left = 1, isReturnOfQuote = false
-                    // ex2. ((begin list)) -> return of left = list, isReturnOfQuote = false
-                    // ex3. ('list) -> return of left = list, isReturnOfQuote = true
-                    if (bypassLevel == -1
-                        && (! isFunction(cur->left->token.value) || (isFunction(cur->left->token.value) && cur->left->binding.isReturnOfQuote))
-                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(gPrinter.getprettifiedSExp(true, cur->left));
-                    evaluate(cur->right, level + 1, bypassLevel);
-
-                    // if the return is a function-to-execute, execute, ex. ((begin list)) -> (list) -> nil; else bind the remainings
-                    if (! cur->left->binding.isReturnOfQuote) execute(cur, level, bypassLevel, elseOn); // execute if the return is a function-to-execute
-                }
-                else { // left is atom, check if non-func-atom at first left node
-                    evaluate(cur->left, level + 1, bypassLevel);
-                    // check non-function error: ex. (1 list) -> binding of left = 1
-                    if (bypassLevel == -1
-                        && (! isFunction(cur->left->token.value) || (isFunction(cur->left->token.value) && cur->left->binding.isReturnOfQuote))
-                        && cur->left->binding.isFirstNode) throw SemanticException::NonFunction(gPrinter.getprettifiedSExp(true, cur->left));
-                    evaluate(cur->right, level + 1, bypassLevel);
+                    // bind the remaining arguments
+                    evaluate(cur->right, level + 1, bypassLevel, func_name);
                 }
             }
-            // else neither ATOM nor NIL, never happen
+            // else neither ATOM nor NIL => nullptr, return
         }
 
     public:
