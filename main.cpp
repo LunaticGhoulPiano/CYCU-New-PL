@@ -129,7 +129,6 @@ static std::unordered_map<std::string, KeywordInfo> gKeywords = {
     {"equal?", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
     {"begin", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}}, // returnType can be any of primitives
     {"if", {ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
-    {"else", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives // special case
     {"cond", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
     //{"read", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}}, // returnType can be any of primitives
     //{"write", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
@@ -275,15 +274,23 @@ class Debugger {
 Debugger gDebugger;
 
 /* Error Exceptions */
-class ExitException: public std::exception { // Common usage
+class OurSchemeException: public std::exception {
     protected:
         std::string message = "";
 
     public:
-        explicit ExitException(const std::string &msg): message(msg) {}
+        explicit OurSchemeException(const std::string &msg): message(msg) {}
         const char *what() const noexcept override {
             return message.c_str();
         }
+};
+
+class ExitException: public OurSchemeException { // Common usage
+    protected:
+        std::string message = "";
+
+    public:
+        explicit ExitException(const std::string &msg): OurSchemeException(msg) {}
 
         static ExitException CorrectExit() { // Exit, implemented in project 1
             return ExitException("\nThanks for using OurScheme!");
@@ -298,15 +305,12 @@ class ExitException: public std::exception { // Common usage
         }
 };
 
-class SyntaxException: public std::exception {
+class SyntaxException: public OurSchemeException {
     protected:
         std::string message = "";
 
     public:
-        explicit SyntaxException(const std::string &msg): message(msg) {}
-        const char *what() const noexcept override {
-            return message.c_str();
-        }
+        explicit SyntaxException(const std::string &msg): OurSchemeException(msg) {}
 
         static SyntaxException UnexpectedToken(int line, int column, const std::string token) { // unexpected token, implemented in project 1
             return SyntaxException("ERROR (unexpected token) : atom or '(' expected when token at Line "
@@ -324,15 +328,12 @@ class SyntaxException: public std::exception {
         }
 };
 
-class SemanticException: public std::exception {
+class SemanticException: public OurSchemeException {
     protected:
         std::string message = "";
 
     public:
-        explicit SemanticException(const std::string &msg): message(msg) {}
-        const char *what() const noexcept override {
-            return message.c_str();
-        }
+        explicit SemanticException(const std::string &msg): OurSchemeException(msg) {}
 
         // level error
         static SemanticException LevelError(std::string func_name) { // implemented in project 2
@@ -366,29 +367,26 @@ class SemanticException: public std::exception {
             return SemanticException("ERROR (non-list) : " + s_exp);
         }
 
-        // function error
+        // not function name error
         static SemanticException NonFunction(std::string s_exp) { // implemented in project 2
             return SemanticException("ERROR (attempt to apply non-function) : " + s_exp);
         }
-        
-        static SemanticException NoReturnValue(std::string s_exp) { // implemented in project 2
-            return SemanticException("ERROR (no return value) : " + s_exp + "\n");
-        }
 };
 
-class RuntimeException: public std::exception {
+class RuntimeException: public OurSchemeException {
     protected:
         std::string message = "";
 
     public:
-        explicit RuntimeException(const std::string &msg): message(msg) {}
-        const char *what() const noexcept override {
-            return message.c_str();
-        }
+        explicit RuntimeException(const std::string &msg): OurSchemeException(msg) {}
 
         // function error
         static RuntimeException DivisionByZero() { // implemented in project 2
             return RuntimeException("ERROR (division by zero) : /\n");
+        }
+
+        static SemanticException NoReturnValue(std::string s_exp) { // implemented in project 2
+            return SemanticException("ERROR (no return value) : " + s_exp + "\n");
         }
 };
 
@@ -461,7 +459,7 @@ class S_Exp_Executor {
         std::unordered_map<std::string, Binding> globalVars, localVars;
 
         /* judgers */
-        bool isKeyword(std::string sym) { return (gKeywords.find(sym) != gKeywords.end() && sym != "else" && sym != "#t" && sym != "nil"); }
+        bool isKeyword(std::string sym) { return (gKeywords.find(sym) != gKeywords.end() && sym != "#t" && sym != "nil"); }
         bool isDefined(std::string sym) { return (globalVars.find(sym) != globalVars.end()); }
         bool isPrimFunc(std::string sym) {
             return isKeyword(sym) ? true : // check keywords
@@ -471,11 +469,11 @@ class S_Exp_Executor {
         bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
 
         /* error checkers */
-        void checkPureList(std::shared_ptr<AST> cur_node, std::shared_ptr<AST> cur_func) {
+        void checkPureList(std::shared_ptr<AST> cur_node, std::shared_ptr<AST> cur_func, bool useToken = false) {
             if (cur_node == nullptr || cur_node->isEndNode()) return;
             if (cur_node->right != nullptr && cur_node->right->token.type != TokenType::NIL)
-                throw SemanticException::NonList(gPrinter.getprettifiedSExp(false, cur_func));
-            checkPureList(cur_node->right, cur_func);
+                throw SemanticException::NonList(gPrinter.getprettifiedSExp(useToken, cur_func));
+            checkPureList(cur_node->right, cur_func, useToken);
         }
 
         void checkLevelOfSpecifics(std::string func_name, int level) {
@@ -532,10 +530,6 @@ class S_Exp_Executor {
             }
         }
 
-        void checkHasReturnValue(std::shared_ptr<AST> cur) {
-            //
-        }
-
         /* data & binding setters */
         void getBinding(std::shared_ptr<AST> &cur, int level, std::string func_name = "", int bypassLevel = -1) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
@@ -569,7 +563,7 @@ class S_Exp_Executor {
             else return KeywordType::SYMBOL;
         }
         
-        /* make an atom boolean node */
+        /* make useful atom nodes */
         std::shared_ptr<AST> makeBooleanNode(bool b) {
             std::shared_ptr<AST> result = std::make_shared<AST>();
             result->isAtom = true; // crucial
@@ -579,6 +573,18 @@ class S_Exp_Executor {
             result->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
             result->binding.dataType = KeywordType::BOOLEAN;
             result->binding.isRoot = true;
+            return result;
+        }
+
+        std::shared_ptr<AST> makeBeginNode() {
+            std::shared_ptr<AST> result = std::make_shared<AST>();
+            result->token.value = "begin";
+            result->token.type = TokenType::SYMBOL;
+            result->left = result->right = nullptr;
+            result->isAtom = true;
+            result->binding.value = "begin";
+            result->binding.bindingType = BindingType::PRIMITIVE_FUNCTION;
+            result->binding.dataType = KeywordType::SYMBOL;
             return result;
         }
         
@@ -592,7 +598,6 @@ class S_Exp_Executor {
             {KeywordType::OPERATION, [this](std::shared_ptr<AST> &cur) { operate(cur); } },
             {KeywordType::EQIVALENCE_TESTER, [this](std::shared_ptr<AST> &cur) { judgeEqivalence(cur); } },
             {KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, [this](std::shared_ptr<AST> &cur) { sequence(cur); } },
-            {KeywordType::CONDITIONAL, [this](std::shared_ptr<AST> &cur) { getCondition(cur); } },
             // KeywordType::READ
             // KeywordType::DISPLAY
             // KeywordType::LAMBDA
@@ -672,8 +677,7 @@ class S_Exp_Executor {
                     result = true;
                     if (cur->right->left->isEndNode() && cur->right->left->token.type != TokenType::NIL) result = false;
                 }
-                catch (...) { // false
-                }
+                catch (...) {} // false
             }
             else if (cur->left->token.value == "null?"
                 && cur->right->left->token.type == TokenType::NIL && cur->right->left->isEndNode()) result = true;
@@ -843,22 +847,6 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
 
-        // getCondition
-        void getCondition(std::shared_ptr<AST> &cur) {
-            bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
-            if (cur->left->token.value == "if") {
-                if (cur->right->left->binding.value != "nil") cur = cur->right->right->left; // true, ex. (if t 6), (if 8 9 10)
-                else cur = cur->right->right->right->left; // false
-            }
-            else { // cond, else
-                // TODO: get the first true condition, and convert it into begin tree and return
-            }
-
-            cur->binding.isRoot = tempRoot;
-            cur->binding.isFirstNode = tempFirstNode;
-            cur->binding.isReturnOfQuote = tempQHead;
-        }
-
         // cleanEnvironment
         void cleanEnvironment(std::shared_ptr<AST> &cur) {
             globalVars.clear();
@@ -934,25 +922,88 @@ class S_Exp_Executor {
         }
         
         void execute(std::shared_ptr<AST> &cur, int level, int &bypassLevel) {
-            checkPureList(cur, cur); // check pure list
             checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
-            if (isPrimFunc(cur->left->token.value)) { // primitive //  || cur->left->token.value == "else"
+            if (isPrimFunc(cur->left->token.value)) { // primitive
                 // init functions
                 if (cur->left->token.value == "quote") cur->binding.isReturnOfQuote = true, bypassLevel = level; // set bypass flags
                 evaluate(cur->left, level + 1, bypassLevel); // bind the function name
                 
                 // special cases: with arguments, those arguments should't be unbound symbol
                 if (cur->left->token.value == "define") {
-                    //
+                    // TODO
+                }
+                else if (cur->left->token.value == "if") {
+                    // evaluate the condition
+                    evaluate(cur->right->left);
+
+                    // get the result execution(s)
+                    if (cur->right->left->binding.value != "nil") cur = cur->right->right->left; // true
+                    else {
+                        if (cur->right->right->right->isEndNode()) throw RuntimeException::NoReturnValue(gPrinter.getprettifiedSExp(true, cur));
+                        else cur = cur->right->right->right->left; // false
+                    }
+
+                    // evaluate the result execution(s)
+                    evaluate(cur);
+                    return;
                 }
                 else if (cur->left->token.value == "cond") {
-                    // check format
+                    // get condition to be executed
+                    std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
+                    try {
+                        std::shared_ptr<AST> temp = cur->right, toBeExecuted = nullptr; // iterator, result
+                        if (temp->isEndNode()) throw std::runtime_error(""); // (cond)
 
-                    // pick the to-execute condition and convert to begin
-                    // cur will be a begin AST of the first true condition
-                    // prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
-                    // and the following execute block will execute begin
-                    // also should evaluate the true condition
+                        // first check if each condition's format
+                        do {
+                            // if a sub-condition-execution list is an atom, ex. (cond 1 2 3) -> 1, 2, 3 should be list
+                            // or no execution of that condition, ex. (cond (1)), (cond ((1 2)))
+                            if (temp->left->isEndNode() || temp->left->right->isEndNode()) throw std::runtime_error("");
+                            temp = temp->right;
+                        } while (temp->right != nullptr);
+                        
+                        // then evaluate each condition
+                        temp = cur->right;
+                        do {
+                            // if the last condition start with else => must-do => set to true
+                            if (temp->right->token.type == TokenType::NIL && temp->right->isEndNode()
+                                && temp->left->left->token.value == "else" && temp->left->left->isEndNode())
+                                temp->left->left = makeBooleanNode(true);
+
+                            // then evaluate the current condition
+                            evaluate(temp->left->left);
+                            
+                            if (temp->left->left->binding.value != "nil") { // true
+                                // convert the condition node to begin node
+                                temp->left->left = makeBeginNode();
+                                temp->left->left->binding.isRoot = false;
+                                temp->left->left->binding.isReturnOfQuote = false;
+                                temp->left->left->binding.isFirstNode = true;
+                                // set the begin executions
+                                toBeExecuted = temp->left;
+                                toBeExecuted->binding.isRoot = true;
+                                toBeExecuted->binding.isReturnOfQuote = false;
+                                toBeExecuted->binding.isFirstNode = false;
+                                break;
+                            }
+                            temp = temp->right;
+                        } while (temp->right != nullptr);
+
+                        // no true condition found
+                        if (toBeExecuted == nullptr) throw RuntimeException::NoReturnValue(origErrMsg);
+                        else cur = toBeExecuted;
+                    }
+                    catch (OurSchemeException &e) { // use the original tokens to throw format error
+                        throw; // the error of the condition tree, ex. (cond ((+) 'exec1 'return1) ())
+                    }
+                    catch (...) { // catch any error
+                        throw SemanticException::FormatError("cond", origErrMsg);
+                    }
+
+                    // evaluate the begin execution
+                    checkPureList(cur, cur);
+                    checkArgumentsNumber(cur);
+                    evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
                 }
                 // else if (cur->left->token.value == "let") // project 3
                 // else if (cur->left->token.value == "lambda") // project 3
@@ -981,7 +1032,7 @@ class S_Exp_Executor {
             }
         }
 
-        void evaluate(std::shared_ptr<AST> &cur, int level, int bypassLevel = -1, std::string func_name = "") { // , bool elseOn = false
+        void evaluate(std::shared_ptr<AST> &cur, int level = 0, int bypassLevel = -1, std::string func_name = "") {
             if (cur == nullptr) return;
             //std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << ", func_name = " << func_name << std::endl;
             
@@ -993,6 +1044,7 @@ class S_Exp_Executor {
                 // set current
                 cur->binding.bindingType = BindingType::MID;
                 bool hasLeftBinding = false;
+                if (bypassLevel == -1) checkPureList(cur, cur, true); // check pure list
 
                 // Step 1. if a new sub tree encountered, ex. ((begin +) "a" b) -> evaluate and execute the sub tree (begin +) -> (+ "a" b)
                 if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) evaluate(cur->left, level + 1, bypassLevel, func_name), hasLeftBinding = true;
@@ -1027,7 +1079,7 @@ class S_Exp_Executor {
     public:
         void run(std::shared_ptr<AST> &root) {
             labelRootAndFirstNode(root);
-            evaluate(root, 0);
+            evaluate(root);
             root->binding.isRoot = true;
             //debugPrintAST(root);
             gPrinter.printResult(gPrinter.getprettifiedSExp(false, root));
