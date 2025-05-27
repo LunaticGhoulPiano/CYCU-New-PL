@@ -159,8 +159,7 @@ enum class BindingType {
     MID,
     ATOM_BUT_NOT_SYMBOL,
     PRIMITIVE_FUNCTION,
-    USER_FUNCTION,
-    RESULT
+    USER_FUNCTION
 };
 
 struct AST; // forward declaration
@@ -346,7 +345,7 @@ class SemanticException: public OurSchemeException {
         static SemanticException FormatError(std::string func_name, std::string s_exp) { // implemented in project 2
             std::string upper;
             for (char c: func_name) upper += (('a' <= c && c <= 'z') ? toupper(c): c);
-            return SemanticException("ERROR (" + upper + " format) : " + s_exp + "\n"); // proj 2: cond, define, proj 3: let, lambda, proj 4: set!
+            return SemanticException("ERROR (" + upper + " format) : " + s_exp); // proj 2: cond, define, proj 3: let, lambda, proj 4: set!
         }
 
         // symbol error
@@ -386,7 +385,7 @@ class RuntimeException: public OurSchemeException {
         }
 
         static SemanticException NoReturnValue(std::string s_exp) { // implemented in project 2
-            return SemanticException("ERROR (no return value) : " + s_exp + "\n");
+            return SemanticException("ERROR (no return value) : " + s_exp);
         }
 };
 
@@ -456,17 +455,17 @@ Printer gPrinter;
 /* S-Expression Evaluator */
 class S_Exp_Executor {
     private:
-        std::unordered_map<std::string, Binding> globalVars, localVars;
+        std::unordered_map<std::string, std::shared_ptr<AST>> globalVars, localVars;
 
         /* judgers */
         bool isKeyword(std::string sym) { return (gKeywords.find(sym) != gKeywords.end() && sym != "#t" && sym != "nil"); }
         bool isDefined(std::string sym) { return (globalVars.find(sym) != globalVars.end()); }
-        bool isPrimFunc(std::string sym) {
+        bool isPrimFunc(std::string sym, bool checkBinding = true) { // must check if sym is keyword, optionally check if sym's binding is primitive function
             return isKeyword(sym) ? true : // check keywords
-                ((isDefined(sym) && globalVars[sym].bindingType == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
+                ((checkBinding && isDefined(sym) && globalVars[sym]->binding.bindingType == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
         }
-        bool isUserFunc(std::string sym) { return (isDefined(sym) && (globalVars[sym].bindingType == BindingType::USER_FUNCTION)); }
-        bool isFunction(std::string sym) { return (isPrimFunc(sym) || isUserFunc(sym)) ; }
+        bool isUserFunc(std::string sym) { return (isDefined(sym) && (globalVars[sym]->binding.bindingType == BindingType::USER_FUNCTION)); }
+        bool isFunction(std::string sym, bool checkBinding = true) { return (isPrimFunc(sym, checkBinding) || isUserFunc(sym)) ; }
 
         /* error checkers */
         void checkPureList(std::shared_ptr<AST> cur_node, std::shared_ptr<AST> cur_func, bool useToken = false) {
@@ -511,7 +510,7 @@ class S_Exp_Executor {
                 }
             }
             else if (cur->left->binding.bindingType == BindingType::USER_FUNCTION) { // user-defined function
-                // TODO
+                // TODO (project 3)
             }
         }
 
@@ -524,7 +523,7 @@ class S_Exp_Executor {
                     try { std::stof(arg->binding.value); }
                     catch (...) { throw SemanticException::IncorrectArgType(func_name, gPrinter.getprettifiedSExp(false, arg)); }
                 }
-            else if (func_name == "string-append" || func_name == "string>" || func_name == "string<" || func_name == "string=?") {
+            else if (func_name == "string-append" || func_name == "string>?" || func_name == "string<?" || func_name == "string=?") {
                 if (arg->binding.value[0] != '\"' || arg->binding.value[arg->binding.value.length() - 1] != '\"')
                     throw SemanticException::IncorrectArgType(func_name, gPrinter.getprettifiedSExp(false, arg));
             }
@@ -535,7 +534,7 @@ class S_Exp_Executor {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
 
             // bind
-            if (isDefined(cur->token.value)) cur->binding = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
+            if (isDefined(cur->token.value)) cur = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
             else if (isPrimFunc(cur->token.value)) {
                 if ((bypassLevel == -1 || (cur->token.value == "quote" && level == bypassLevel + 1))
                     && ! cur->binding.isReturnOfQuote) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
@@ -647,7 +646,25 @@ class S_Exp_Executor {
         // bind: define, let, set!
         void bind(std::shared_ptr<AST> &cur) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
-            // TODO
+            if (cur->left->token.value == "define") {
+                std::string sym = "";
+                if (cur->right->left->isEndNode()) { // define a symbol (project 2)
+                    sym = cur->right->left->token.value;
+                    globalVars[cur->right->left->token.value] = cur->right->right->left;
+                }
+                else { // define a function (project 3)
+                    //
+                }
+
+                // set defined message node
+                cur = std::make_shared<AST>();
+                cur->token.value = sym;
+                cur->token.type = TokenType::SYMBOL;
+                cur->isAtom = true;
+                cur->binding.value = sym + " defined";
+                cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL; // the minimal value of non-function symbol must be bound to an ATOM_BUT_NOT_SYMBOL
+                cur->binding.dataType = KeywordType::SYMBOL;
+            }
             cur->binding.isRoot = tempRoot;
             cur->binding.isFirstNode = tempFirstNode;
             cur->binding.isReturnOfQuote = tempQHead;
@@ -930,7 +947,21 @@ class S_Exp_Executor {
                 
                 // special cases: with arguments, those arguments should't be unbound symbol
                 if (cur->left->token.value == "define") {
-                    // TODO
+                    // check number of arguments
+                    try { checkArgumentsNumber(cur); }
+                    catch (...) { throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur)); }
+
+                    // evaluate the symbol name
+                    if (cur->right->left->isEndNode()) { // define a symbol (project 2), ex. (define sym (begin list car cdr (real? "str")))
+                        // should not re-define the primitive functions
+                        if (isPrimFunc(cur->right->left->token.value, false)) throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
+                        
+                        // evaluate the to-bind value
+                        evaluate(cur->right->right->left);
+                    }
+                    else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
+                        throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
+                    }
                 }
                 else if (cur->left->token.value == "if") {
                     // evaluate the condition
@@ -959,6 +990,9 @@ class S_Exp_Executor {
                             // if a sub-condition-execution list is an atom, ex. (cond 1 2 3) -> 1, 2, 3 should be list
                             // or no execution of that condition, ex. (cond (1)), (cond ((1 2)))
                             if (temp->left->isEndNode() || temp->left->right->isEndNode()) throw std::runtime_error("");
+                            // if a sub-condition-execution list is not pure list, ex. (cond ("Hi" (cons 5) . 6)) -> ("Hi" (cons 5) . 6) should not be pair
+                            try { checkPureList(temp->left, temp->left); }
+                            catch (...) { throw SemanticException::FormatError("cond", origErrMsg); }
                             temp = temp->right;
                         } while (temp->right != nullptr);
                         
@@ -1017,13 +1051,13 @@ class S_Exp_Executor {
 
                 // execute
                 if (bypassLevel == -1) {
-                    //std::cout << "level " << level << ": " << "Before\n";
+                    //std::cout << "Befor execute - level " << level << ":\n";
                     //debugPrintAST(cur, level);
 
                     //std::cout << "execute " << cur->left->token.value << std::endl;
                     prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
 
-                    //std::cout << "level " << level << ": " << "After\n";
+                    //std::cout << "After execute - level " << level << ":\n";
                     //debugPrintAST(cur, level);
                 }
             }
