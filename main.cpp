@@ -530,6 +530,16 @@ class S_Exp_Executor {
         }
 
         /* data & binding setters */
+        KeywordType getNodeMinorBindingDataTypeByTokenValue(std::shared_ptr<AST> cur) {
+            // judge by token value
+            if (std::regex_match(cur->token.value, std::regex("^-?\\d+$"))) return KeywordType::INTEGER;
+            else if (std::regex_match(cur->token.value, std::regex("^-?\\d+\\.\\d+$"))) return KeywordType::FLOAT;
+            else if (cur->token.type == TokenType::T
+                || (cur->token.value == "nil" && cur->binding.bindingType == BindingType::ATOM_BUT_NOT_SYMBOL)) return KeywordType::BOOLEAN;
+            else if (cur->token.type == TokenType::STRING) return KeywordType::STRING;
+            else return KeywordType::SYMBOL;
+        }
+        
         void getBinding(std::shared_ptr<AST> &cur, int level, std::string func_name = "", int bypassLevel = -1) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
 
@@ -550,16 +560,6 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
             // set the minor data type of the token in binding
             cur->binding.dataType = getNodeMinorBindingDataTypeByTokenValue(cur);
-        }
-
-        KeywordType getNodeMinorBindingDataTypeByTokenValue(std::shared_ptr<AST> cur) {
-            // judge by token value
-            if (std::regex_match(cur->token.value, std::regex("^-?\\d+$"))) return KeywordType::INTEGER;
-            else if (std::regex_match(cur->token.value, std::regex("^-?\\d+\\.\\d+$"))) return KeywordType::FLOAT;
-            else if (cur->token.type == TokenType::T
-                || (cur->token.value == "nil" && cur->binding.bindingType == BindingType::ATOM_BUT_NOT_SYMBOL)) return KeywordType::BOOLEAN;
-            else if (cur->token.type == TokenType::STRING) return KeywordType::STRING;
-            else return KeywordType::SYMBOL;
         }
         
         /* make useful atom nodes */
@@ -845,9 +845,47 @@ class S_Exp_Executor {
         }
 
         // judgeEqivalence
+        bool isStructureTheSame(std::shared_ptr<AST> obj1, std::shared_ptr<AST> obj2) {
+            // base cases
+            if (obj1 == nullptr || obj2 == nullptr) return obj1 == obj2;
+
+            // judge if both are atoms or the node position
+            if (obj1->isAtom != obj2->isAtom || obj1->isEndNode() != obj2->isEndNode()) return false;
+
+            // if both are atoms (then only need to use one node to judge if isAtom)
+            if (obj1->isAtom) {
+                // if value is real number (don't compare type cuz may be int or float), first convert to float, then convert back to string to compare
+                // else compare the types and values
+                try { return (std::stof(obj1->binding.value) == std::stof(obj2->binding.value)); }
+                catch (...) { return ((obj1->token.type == obj2->token.type) && (obj1->binding.value.compare(obj2->binding.value) == 0)); }
+            }
+
+            // recursively check left and right
+            return isStructureTheSame(obj1->left, obj2->left) && isStructureTheSame(obj1->right, obj2->right);
+        }
+
         void judgeEqivalence(std::shared_ptr<AST> &cur) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
-            // TODO
+            std::string func_name = cur->left->token.value;
+            // if addresses are the same, must be the same object, must be true
+            if (cur->right->left.get() == cur->right->right->left.get()) cur = makeBooleanNode(true);
+            // other cases should iterate all nodes to judge equality
+            else { // must be the different objects (addresses), judge the structure
+                // iterate all nodes
+                bool result = isStructureTheSame(cur->right->left, cur->right->right->left);
+                // TODO: if the structure is the same and the function name is eqv?
+                // in some cases need to be true: when they are atom and not string
+                // ex. (eqv? "" "") => nil, (eqv? 1 1) => #t
+                if (result && func_name == "eqv?") {
+                    if (cur->right->left->isAtom) {
+                        if (cur->right->left->binding.dataType == KeywordType::STRING) cur = makeBooleanNode(false);
+                        else cur = makeBooleanNode(true);
+                    }
+                    else cur = makeBooleanNode(false);
+                }
+                else cur = makeBooleanNode(result);
+            }
+
             cur->binding.isRoot = tempRoot;
             cur->binding.isFirstNode = tempFirstNode;
             cur->binding.isReturnOfQuote = tempQHead;
@@ -945,25 +983,8 @@ class S_Exp_Executor {
                 if (cur->left->token.value == "quote") cur->binding.isReturnOfQuote = true, bypassLevel = level; // set bypass flags
                 evaluate(cur->left, level + 1, bypassLevel); // bind the function name
                 
-                // special cases: with arguments, those arguments should't be unbound symbol
-                if (cur->left->token.value == "define") {
-                    // check number of arguments
-                    try { checkArgumentsNumber(cur); }
-                    catch (...) { throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur)); }
-
-                    // evaluate the symbol name
-                    if (cur->right->left->isEndNode()) { // define a symbol (project 2), ex. (define sym (begin list car cdr (real? "str")))
-                        // should not re-define the primitive functions
-                        if (isPrimFunc(cur->right->left->token.value, false)) throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
-                        
-                        // evaluate the to-bind value
-                        evaluate(cur->right->right->left);
-                    }
-                    else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
-                        throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
-                    }
-                }
-                else if (cur->left->token.value == "if") {
+                // special case 1. need to choose a true condition
+                if (cur->left->token.value == "if") {
                     // evaluate the condition
                     evaluate(cur->right->left);
 
@@ -1039,27 +1060,34 @@ class S_Exp_Executor {
                     checkArgumentsNumber(cur);
                     evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
                 }
+                // special case 2. with arguments whcich should't be unbound symbol
+                else if (cur->left->token.value == "define") {
+                    // check number of arguments
+                    try { checkArgumentsNumber(cur); }
+                    catch (...) { throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur)); }
+
+                    // evaluate the symbol name
+                    if (cur->right->left->isEndNode()) { // define a symbol (project 2), ex. (define sym (begin list car cdr (real? "str")))
+                        // should not re-define the primitive functions
+                        if (isPrimFunc(cur->right->left->token.value, false)) throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
+                        
+                        // evaluate the to-bind value
+                        evaluate(cur->right->right->left);
+                    }
+                    else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
+                        throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
+                    }
+                }
                 // else if (cur->left->token.value == "let") // project 3
                 // else if (cur->left->token.value == "lambda") // project 3
                 // else if (cur->left->token.value == "set!") // project 4
-                else {
+                else { // normal function checking
                     checkArgumentsNumber(cur);
                     evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
                 }
 
                 if (bypassLevel == level) bypassLevel = -1; // reset
-
-                // execute
-                if (bypassLevel == -1) {
-                    //std::cout << "Befor execute - level " << level << ":\n";
-                    //debugPrintAST(cur, level);
-
-                    //std::cout << "execute " << cur->left->token.value << std::endl;
-                    prim_func_map[gKeywords[cur->left->token.value].functionType](cur);
-
-                    //std::cout << "After execute - level " << level << ":\n";
-                    //debugPrintAST(cur, level);
-                }
+                if (bypassLevel == -1) prim_func_map[gKeywords[cur->left->token.value].functionType](cur); // execute
             }
             else { // user-defined
                 // project 3
@@ -1114,8 +1142,6 @@ class S_Exp_Executor {
         void run(std::shared_ptr<AST> &root) {
             labelRootAndFirstNode(root);
             evaluate(root);
-            root->binding.isRoot = true;
-            //debugPrintAST(root);
             gPrinter.printResult(gPrinter.getprettifiedSExp(false, root));
         }
 };
