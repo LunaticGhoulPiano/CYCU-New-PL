@@ -544,7 +544,7 @@ class S_Exp_Executor {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
 
             // bind
-            if (isDefined(cur->token.value)) cur = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
+            if (bypassLevel == -1 && isDefined(cur->token.value)) cur = globalVars[cur->token.value]; // get the binding: symbol or user-defined function
             else if (isPrimFunc(cur->token.value)) {
                 if ((bypassLevel == -1 || (cur->token.value == "quote" && level == bypassLevel + 1))
                     && ! cur->binding.isReturnOfQuote) cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, ("#<procedure " + cur->token.value + ">"));
@@ -985,22 +985,28 @@ class S_Exp_Executor {
                 
                 // special case 1. need to choose a true condition
                 if (cur->left->token.value == "if") {
+                    // get the original s-exp for error message
+                    std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
+
+                    // check the number of arguments
+                    checkArgumentsNumber(cur);
+
                     // evaluate the condition
-                    evaluate(cur->right->left);
+                    evaluate(cur->right->left, level + 2, bypassLevel);
 
                     // get the result execution(s)
                     if (cur->right->left->binding.value != "nil") cur = cur->right->right->left; // true
                     else {
-                        if (cur->right->right->right->isEndNode()) throw RuntimeException::NoReturnValue(gPrinter.getprettifiedSExp(true, cur));
+                        if (cur->right->right->right->isEndNode()) throw RuntimeException::NoReturnValue(origErrMsg);
                         else cur = cur->right->right->right->left; // false
                     }
 
                     // evaluate the result execution(s)
-                    evaluate(cur);
+                    evaluate(cur, level, bypassLevel);
                     return;
                 }
                 else if (cur->left->token.value == "cond") {
-                    // get condition to be executed
+                    // get the original s-exp for error message
                     std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
                     try {
                         std::shared_ptr<AST> temp = cur->right, toBeExecuted = nullptr; // iterator, result
@@ -1019,6 +1025,7 @@ class S_Exp_Executor {
                         
                         // then evaluate each condition
                         temp = cur->right;
+                        int tempLevel = level;
                         do {
                             // if the last condition start with else => must-do => set to true
                             if (temp->right->token.type == TokenType::NIL && temp->right->isEndNode()
@@ -1026,7 +1033,7 @@ class S_Exp_Executor {
                                 temp->left->left = makeBooleanNode(true);
 
                             // then evaluate the current condition
-                            evaluate(temp->left->left);
+                            evaluate(temp->left->left, tempLevel + 2, bypassLevel);
                             
                             if (temp->left->left->binding.value != "nil") { // true
                                 // convert the condition node to begin node
@@ -1042,6 +1049,7 @@ class S_Exp_Executor {
                                 break;
                             }
                             temp = temp->right;
+                            tempLevel++;
                         } while (temp->right != nullptr);
 
                         // no true condition found
@@ -1060,7 +1068,31 @@ class S_Exp_Executor {
                     checkArgumentsNumber(cur);
                     evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
                 }
-                // special case 2. with arguments whcich should't be unbound symbol
+                // special case 2. return the first condition (i.e. don't evaluate the remaining conditions)
+                else if (cur->left->token.value == "and" || cur->left->token.value == "or") {
+                    // check the number of arguments
+                    checkArgumentsNumber(cur);
+                    std::string op = cur->left->token.value;
+                    std::shared_ptr<AST> iter = cur->right;
+                    int tempLevel = level + 1; // + 1 cuz iter = cur->right
+                    do {
+                        // evaluate the condition
+                        evaluate(iter->left, tempLevel + 1, bypassLevel);
+                        if (op == "and" && iter->left->binding.value == "nil" // and return the first nil, else return the last that must != nil
+                            || op == "or" && iter->left->binding.value != "nil" // or return the first != nil, else return the last that must == nil
+                            || iter->right->isEndNode()) { // the last condition
+                            cur = iter->left;
+                            cur->binding.isRoot = true;
+                            break;
+                        }
+                        else {
+                            iter = iter->right;
+                            tempLevel++;
+                        }
+                    } while (true);
+                    return;
+                }
+                // special case 3. with arguments whcich should't be unbound symbol
                 else if (cur->left->token.value == "define") {
                     // check number of arguments
                     try { checkArgumentsNumber(cur); }
@@ -1068,11 +1100,16 @@ class S_Exp_Executor {
 
                     // evaluate the symbol name
                     if (cur->right->left->isEndNode()) { // define a symbol (project 2), ex. (define sym (begin list car cdr (real? "str")))
-                        // should not re-define the primitive functions
-                        if (isPrimFunc(cur->right->left->token.value, false)) throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
+                        // the symbol should not be real (number) / boolean / string / primitive functions
+                        bool isNum = false;
+                        try { std::stof(cur->right->left->token.value), isNum = true; }
+                        catch (...) {}
+                        if (isNum || cur->right->left->token.value == "#t" || cur->right->left->token.value == "nil"
+                            || (cur->right->left->token.value[0] == '\"' && cur->right->left->token.value[cur->right->left->token.value.size() - 1] == '\"')
+                            || isPrimFunc(cur->right->left->token.value, false)) throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
                         
                         // evaluate the to-bind value
-                        evaluate(cur->right->right->left);
+                        evaluate(cur->right->right->left, level + 3, bypassLevel);
                     }
                     else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
                         throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
@@ -1175,9 +1212,12 @@ class S_Exp_Parser {
         }
     
     public:
+        bool isReadingAndBuildingAMainSExp = false;
+
         void resetInfos() { // when a <S-exp> ended or error encountered
             lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
             dot_info = std::stack<std::pair<bool, int>>();
+            isReadingAndBuildingAMainSExp = false;
         }
 
         void convertToQuote(std::shared_ptr<AST> &cur_node) {
@@ -1213,7 +1253,9 @@ class S_Exp_Parser {
             }
         }
 
-        bool parseAndBuildAST(const Token &token, int lineNum, int columnNum) {
+        void parseAndBuildAST(const Token &token, int lineNum, int columnNum) {
+            // update status
+            isReadingAndBuildingAMainSExp = true;
             // check number of <S-exp> after DOT
             if (! dot_info.empty() && dot_info.top().first && dot_info.top().second == 1 && token.type != TokenType::RIGHT_PAREN) {
                 resetInfos();
@@ -1261,8 +1303,6 @@ class S_Exp_Parser {
                 auto cur_node = std::make_shared<AST>(token); // <ATOM>
                 endSExp(cur_node, true);
             }
-
-            return lists_info.empty(); // if the whole <S-exp> ended
         }
 };    
 
@@ -1271,7 +1311,6 @@ class S_Exp_Lexer {
     private:
         char ch;
         int lineNum = 1, columnNum = 0;
-        bool isSExpEnded = false;
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
         S_Exp_Parser parser;
 
@@ -1341,16 +1380,20 @@ class S_Exp_Lexer {
             std::getline(std::cin, useless_line);
         }
 
-        bool saveAToken(Token &token, int lineNum, int columnNum, bool eat = true) {
+        void saveAToken(Token &token, int lineNum, int columnNum, bool eat = true) {
             try {
                 judgeType(token);
-                bool res = parser.parseAndBuildAST(token, lineNum, columnNum);
+                parser.parseAndBuildAST(token, lineNum, columnNum);
                 token = Token(); // reset
-                return res;
             }
             catch (SyntaxException &e) {
                 parser.resetInfos();
                 if (eat) eatALine(); // eat: if need to eat a line when error encountered
+                throw;
+            }
+            catch (OurSchemeException &e) {
+                parser.resetInfos();
+                if (std::cin.peek() == '\n') eatALine();
                 throw;
             }
         }
@@ -1366,18 +1409,17 @@ class S_Exp_Lexer {
             lineNum = 1;
             columnNum = 0;
             ch = '\0';
-            isSExpEnded = false;
+            parser.isReadingAndBuildingAMainSExp = false;
 
-            if (! std::cin.eof()) gPrinter.printPrompt();
-            else throw ExitException::NoMoreInput();
+            gPrinter.printPrompt();
+            if (std::cin.eof()) throw ExitException::NoMoreInput();
             while (std::cin.get(ch)) {
+                //std::cout << "DEBUG: (" << lineNum << ", " << columnNum << ") -> " << ch;
+                //std::cout << ", isActivated = " << parser.isReadingAndBuildingAMainSExp << std::endl;
                 if (ch == ';') {
                     if (token.value == "") {
                         eatALine();
-                        if (isSExpEnded) {
-                            lineNum = 1;
-                            isSExpEnded = false;
-                        }
+                        if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, parser.isReadingAndBuildingAMainSExp = true;
                         else lineNum++;
                         columnNum = 0;
                     }
@@ -1387,12 +1429,9 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            saveAToken(token, lineNum, columnNum);
                             eatALine();
-                            if (isSExpEnded) {
-                                lineNum = 1;
-                                isSExpEnded = false;
-                            }
+                            if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, parser.isReadingAndBuildingAMainSExp = true;
                             else lineNum++;
                             columnNum = 0;
                         }
@@ -1401,10 +1440,7 @@ class S_Exp_Lexer {
                 else if (isWhiteSpace(ch)) {
                     if (ch == '\n') {
                         if (token.value == "") {
-                            if (isSExpEnded) {
-                                lineNum = 1;
-                                isSExpEnded = false;
-                            }
+                            if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, parser.isReadingAndBuildingAMainSExp = true;
                             else lineNum++;
                             columnNum = 0;
                         }
@@ -1415,12 +1451,9 @@ class S_Exp_Lexer {
                                 throw SyntaxException::NoClosingQuote(lineNum, columnNum);
                             }
                             else {
-                                isSExpEnded = saveAToken(token, lineNum, columnNum, false);
+                                saveAToken(token, lineNum, columnNum, false);
                                 
-                                if (isSExpEnded) {
-                                    lineNum = 1;
-                                    isSExpEnded = false;
-                                }
+                                if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, parser.isReadingAndBuildingAMainSExp = true;
                                 else lineNum++;
                                 columnNum = 0;
                             }
@@ -1434,12 +1467,10 @@ class S_Exp_Lexer {
                                 columnNum++;
                             }
                             else {
-                                isSExpEnded = saveAToken(token, lineNum, columnNum);
+                                saveAToken(token, lineNum, columnNum);
                                 
-                                if (isSExpEnded) {
-                                    lineNum = 1;
-                                    columnNum = 1; // 1 for ' ' or '\t'
-                                }
+                                // columnNum = 1 for recording current whitespace
+                                if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, columnNum = 1, parser.isReadingAndBuildingAMainSExp = true;
                                 else columnNum++;
                             }
                         }
@@ -1448,9 +1479,9 @@ class S_Exp_Lexer {
                 else if (ch == '(') {
                     if (token.value == "") {
                         parenStack.push(ch);
-                        token.value += ch; // "("
+                        token.value = "(";
                         columnNum++; // ex. "   f   (((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 7 is >>.<<
-                        isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
+                        saveAToken(token, lineNum, columnNum);
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -1459,33 +1490,31 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            saveAToken(token, lineNum, columnNum);
                             
                             // save current
                             parenStack.push(ch);
-                            token.value += ch; // "("
+                            token.value = "(";
                             columnNum++; // ex. "123A((.\n" -> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 3 is >>.<<
-                            isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
+                            saveAToken(token, lineNum, columnNum);
                         }
                     }
                 }
                 else if (ch == ')') {
                     if (token.value == "") {
                         if (parenStack.empty()) { // no LP before RP
-                            eatALine();
+                            //std::cout << "next: =>" << std::cin.peek() << "<=" << std::endl;
+                            if (std::cin.peek() != '\'') eatALine();
                             columnNum++;
                             parser.resetInfos();
                             throw SyntaxException::UnexpectedToken(lineNum, columnNum, ")");
                         }
                         else {
                             parenStack.pop();
-                            token.value += ch; // ")"
+                            token.value = ")";
                             columnNum++;
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
-                            if (isSExpEnded) {
-                                lineNum = 1;
-                                columnNum = 0;
-                            }
+                            saveAToken(token, lineNum, columnNum);
+                            if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, columnNum = 0;
                         }
                     }
                     else {
@@ -1495,11 +1524,12 @@ class S_Exp_Lexer {
                         }
                         else {
                             // save previous
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
-                            if (isSExpEnded) {
-                                lineNum = 1;
-                                columnNum = 0;
-                            }
+                            // if encounter errors while executing, remember to put back the current char
+                            try { saveAToken(token, lineNum, columnNum); }
+                            catch (SemanticException & e) { std::cin.putback(ch); throw e; }
+                            catch (RuntimeException & e) { std::cin.putback(ch); throw e; }
+
+                            if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, columnNum = 0;
                             // save current
                             if (parenStack.empty()) { // no LP before RP
                                 eatALine();
@@ -1511,11 +1541,8 @@ class S_Exp_Lexer {
                                 parenStack.pop();
                                 token.value += ch; // ")"
                                 columnNum++;
-                                isSExpEnded = saveAToken(token, lineNum, columnNum);
-                                if (isSExpEnded) {
-                                    lineNum = 1;
-                                    columnNum = 0;
-                                }
+                                saveAToken(token, lineNum, columnNum);
+                                if (! parser.isReadingAndBuildingAMainSExp) lineNum = 1, columnNum = 0;
                             }
                         }
                     }
@@ -1536,7 +1563,7 @@ class S_Exp_Lexer {
                     if (token.value == "") {
                         token.value += ch;
                         columnNum++;
-                        isSExpEnded = saveAToken(token, lineNum, columnNum); // must be false
+                        saveAToken(token, lineNum, columnNum);
                     }
                     else {
                         if (token.value[0] == '\"') { // in STRING
@@ -1544,12 +1571,12 @@ class S_Exp_Lexer {
                             columnNum++;
                         }
                         else {
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            saveAToken(token, lineNum, columnNum);
                             
-                            token.value += ch; // "\'"
-                            if (isSExpEnded) columnNum = 1;
+                            token.value = "\'";
+                            if (! parser.isReadingAndBuildingAMainSExp) columnNum = 1;
                             else columnNum++;
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            saveAToken(token, lineNum, columnNum);
                         }
                     }
                 }
@@ -1562,27 +1589,27 @@ class S_Exp_Lexer {
                         if (token.value[0] == '\"') { // the end of a STRING
                             token.value += ch;
                             columnNum++;
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            saveAToken(token, lineNum, columnNum);
                             
-                            if (isSExpEnded) columnNum = 0;
+                            if (! parser.isReadingAndBuildingAMainSExp) columnNum = 0;
                         }
                         else { // token + STRING, with no whitespace ex. > asf"
                             // save previous
-                            isSExpEnded = saveAToken(token, lineNum, columnNum);
+                            saveAToken(token, lineNum, columnNum);
                             
                             // the start of a STRING
                             token.value += ch;
-                            if (isSExpEnded) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
+                            if (! parser.isReadingAndBuildingAMainSExp) columnNum = 1; // no whitespace so set to 1, ex. > asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 2
                             else columnNum++; // ex. > (asf" -> ERROR (no closing quote) : END-OF-LINE encountered at Line 1 Column 6
                         }
                     }
                 }
                 else {
-                    token.value += ch;
-                    columnNum++;
-                    isSExpEnded = false;
-                }
+                        token.value += ch;
+                        columnNum++;
+                    }
             }
+            if (std::cin.eof()) throw ExitException::NoMoreInput();
         }
 };
 

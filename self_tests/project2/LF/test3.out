@@ -1,0 +1,326 @@
+Welcome to OurScheme!
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> nil
+
+> nil
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> nil
+
+> #t
+
+> #t
+
+> nil
+
+> "Hello, there!"
+
+> "Hello, there! Wait!"
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> nil
+
+> nil
+
+> nil
+
+> #t
+
+> ERROR (unbound symbol) : about
+
+> ERROR (unbound symbol) : about
+
+> ( 1
+  .
+  2
+)
+
+> ERROR (incorrect number of arguments) : cons
+
+> nil
+
+> ( #<procedure list>
+  #<procedure cons>
+  #<procedure car>
+  #<procedure cdr>
+)
+
+> ERROR (incorrect number of arguments) : car
+
+> #<procedure car>
+
+> ( quote
+  car
+  cdr
+  test
+  hahaha
+  test
+  fffffffuclllllllllllllicking
+  useless
+  PL
+  shits
+)
+
+> ( quote
+  ( quote
+    ( quote
+      ( quote
+        ( quote
+          ( quote
+            ( quote
+              ( quote
+                ( quote
+                  ( quote
+                    ( quote
+                      ( quote
+                        ( quote
+                          ( quote
+                            ( quote
+                              ( quote
+                                ( quote
+                                  ( quote
+                                    ( quote
+                                      a
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+> ( quote
+  ( quote
+    a
+  )
+)
+
+> #t
+
+> ( #<procedure car>
+  .
+  2
+)
+
+> ERROR (incorrect number of arguments) : exit
+
+> ERROR (level of EXIT)
+
+> ERROR (level of DEFINE)
+
+> ERROR (incorrect number of arguments) : cons
+
+> ERROR (incorrect number of arguments) : clean-environment
+
+> environment cleaned
+
+> ERROR (level of CLEAN-ENVIRONMENT)
+
+> 3
+
+> ERROR (level of EXIT)
+
+> 1034.801
+
+> ERROR (division by zero) : /
+
+> ERROR (level of EXIT)
+
+> ERROR (level of EXIT)
+
+> ERROR (incorrect number of arguments) : cons
+
+> nil
+
+> ERROR (attempt to apply non-function) : a
+
+> ( a
+)
+
+> ( 1
+  ( ( quote
+      1
+    )
+  )
+)
+
+> ERROR (incorrect number of arguments) : quote
+
+> ERROR (unbound symbol) : qutoe
+
+> ERROR (incorrect number of arguments) : atom?
+
+> #t
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> nil
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> nil
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> nil
+
+> #t
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> nil
+
+> #t
+
+> nil
+
+> ERROR (unbound symbol) : America
+
+> 
+Thanks for using OurScheme!
