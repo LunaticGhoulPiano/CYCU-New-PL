@@ -784,23 +784,6 @@ class S_Exp_Executor {
                     result = makeBooleanNode(result->binding.value == "nil");
                     break; // must only one argument
                 }
-                else if (op == "and" || op == "or") {
-                    if ((op == "and" && iter->left->binding.value == "nil") // return the first nil, else return the last that must != nil
-                        || (op == "or" && iter->left->binding.value != "nil") // return the first != nil, else return the last that must == nil
-                        || iter->right->isEndNode()) { // the above "else" conditions
-                        // set result
-                        result = iter->left;
-                        result->binding.isRoot = true;
-                        break;
-                    }
-                    else {
-                        // if the most-do function (ex. newline), do it and check the remainings
-                        // else do-nothing
-
-                        // check the remainings
-                        iter = iter->right;
-                    }
-                }
                 else if (op == ">" || op == ">=" || op == "<" || op == "<=" || op == "=") {
                     compareStatus = bool(arithmeticAndLogicalAndCompareOperateMap[op](iter->left->binding.value, iter->right->left->binding.value));
                     if (iter->right->right->isEndNode() || ! compareStatus) { // return when the last or the first false, cuz the continuous "and" operation
