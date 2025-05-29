@@ -1,0 +1,31 @@
+8
+https://www.fuckpl.com/
+ppp
+2021 spring, PL project 3 (OurScheme Project 3)
+
+Due : 6/27, 2021(Sunday) before midnight
+
+==================================================================
+
+For this project, you need to extend EvalSExp(), so that it is capable of
+evaluating user-defined functions.
+
+In order to do so, you must first extend your implementation of DEFINE, so
+that the user can define a function before he/she calls such a function.
+
+You also need to allow the creation and use of "local definitions" via the
+use of the 'let' construct.
+
+The use of "nameless functions" (via the use 'lambda') should also be allowed.
+
+In other words, the main focus of Proj. 3 consists of three special "forms":
+'let', 'lambda', and 'define'.
+
+In addition, you must also handle error cases (see Part II below).
+
+; test extreme error contidion or project 1
+UnboundSymbol(
+.
+)
+
+(exit)

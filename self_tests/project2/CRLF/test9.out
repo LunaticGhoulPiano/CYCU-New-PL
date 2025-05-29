@@ -1,0 +1,70 @@
+Welcome to OurScheme!
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 4 Column 1 is >>.<<
+
+> test_1
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_2
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_3
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_4
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 8 Column 1 is >>.<<
+
+> test_5
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_6
+
+> test_7
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_8
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 2 is >>.<<
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_10
+
+> test_11
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 2 is >>.<<
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_13
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 2 is >>.<<
+
+> ERROR (unbound symbol) : test_14
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> test_comments_lineNum
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 2 Column 4 is >>)<<
+
+> test_comments_lineNum_with_no_closing_LPRP
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 2 Column 1 is >>.<<
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 5 Column 1 is >>.<<
+
+> test_newline_lineNum
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 3 Column 1 is >>.<<
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 7 Column 1 is >>.<<
+
+> 
+Thanks for using OurScheme!

@@ -1,5 +1,5 @@
 # set project serial number
-$projectName = "project1"
+$projectName = "project2"
 
 # compile
 Push-Location "CompleteCodeByProjects"

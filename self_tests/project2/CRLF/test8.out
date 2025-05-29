@@ -1,0 +1,244 @@
+Welcome to OurScheme!
+
+> ERROR (unbound symbol) : https://www.fuckpl.com/
+
+> ERROR (unbound symbol) : ppp
+
+> 2021
+
+> ERROR (unbound symbol) : spring,
+
+> ERROR (unbound symbol) : PL
+
+> ERROR (unbound symbol) : project
+
+> 3
+
+> ERROR (unbound symbol) : OurScheme
+
+> ERROR (unbound symbol) : Due
+
+> ERROR (unbound symbol) : :
+
+> ERROR (unbound symbol) : 6/27,
+
+> 2021
+
+> ERROR (unbound symbol) : Sunday
+
+> ERROR (unbound symbol) : before
+
+> ERROR (unbound symbol) : midnight
+
+> ERROR (unbound symbol) : ==================================================================
+
+> ERROR (unbound symbol) : For
+
+> ERROR (unbound symbol) : this
+
+> ERROR (unbound symbol) : project,
+
+> ERROR (unbound symbol) : you
+
+> ERROR (unbound symbol) : need
+
+> ERROR (unbound symbol) : to
+
+> ERROR (unbound symbol) : extend
+
+> ERROR (unbound symbol) : EvalSExp
+
+> nil
+
+> ERROR (unbound symbol) : ,
+
+> ERROR (unbound symbol) : so
+
+> ERROR (unbound symbol) : that
+
+> ERROR (unbound symbol) : it
+
+> ERROR (unbound symbol) : is
+
+> ERROR (unbound symbol) : capable
+
+> ERROR (unbound symbol) : of
+
+> ERROR (unbound symbol) : evaluating
+
+> ERROR (unbound symbol) : user-defined
+
+> ERROR (unbound symbol) : functions.
+
+> ERROR (unbound symbol) : In
+
+> ERROR (unbound symbol) : order
+
+> ERROR (unbound symbol) : to
+
+> ERROR (unbound symbol) : do
+
+> ERROR (unbound symbol) : so,
+
+> ERROR (unbound symbol) : you
+
+> ERROR (unbound symbol) : must
+
+> ERROR (unbound symbol) : first
+
+> ERROR (unbound symbol) : extend
+
+> ERROR (unbound symbol) : your
+
+> ERROR (unbound symbol) : implementation
+
+> ERROR (unbound symbol) : of
+
+> ERROR (unbound symbol) : DEFINE,
+
+> ERROR (unbound symbol) : so
+
+> ERROR (unbound symbol) : that
+
+> ERROR (unbound symbol) : the
+
+> ERROR (unbound symbol) : user
+
+> ERROR (unbound symbol) : can
+
+> #<procedure define>
+
+> ERROR (unbound symbol) : a
+
+> ERROR (unbound symbol) : function
+
+> ERROR (unbound symbol) : before
+
+> ERROR (unbound symbol) : he/she
+
+> ERROR (unbound symbol) : calls
+
+> ERROR (unbound symbol) : such
+
+> ERROR (unbound symbol) : a
+
+> ERROR (unbound symbol) : function.
+
+> ERROR (unbound symbol) : You
+
+> ERROR (unbound symbol) : also
+
+> ERROR (unbound symbol) : need
+
+> ERROR (unbound symbol) : to
+
+> ERROR (unbound symbol) : allow
+
+> ERROR (unbound symbol) : the
+
+> ERROR (unbound symbol) : creation
+
+> #<procedure and>
+
+> ERROR (unbound symbol) : use
+
+> ERROR (unbound symbol) : of
+
+> "local definitions"
+
+> ERROR (unbound symbol) : via
+
+> ERROR (unbound symbol) : the
+
+> ERROR (unbound symbol) : use
+
+> ERROR (unbound symbol) : of
+
+> ERROR (unbound symbol) : the
+
+> let
+
+> construct.
+
+> ERROR (unbound symbol) : The
+
+> ERROR (unbound symbol) : use
+
+> ERROR (unbound symbol) : of
+
+> "nameless functions"
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 23 is >>)<<
+
+> ERROR (unbound symbol) : In
+
+> ERROR (unbound symbol) : other
+
+> ERROR (unbound symbol) : words,
+
+> ERROR (unbound symbol) : the
+
+> ERROR (unbound symbol) : main
+
+> ERROR (unbound symbol) : focus
+
+> ERROR (unbound symbol) : of
+
+> ERROR (unbound symbol) : Proj.
+
+> 3
+
+> ERROR (unbound symbol) : consists
+
+> ERROR (unbound symbol) : of
+
+> ERROR (unbound symbol) : three
+
+> ERROR (unbound symbol) : special
+
+> "forms"
+
+> ERROR (unbound symbol) : :
+
+> let
+
+> ,
+
+> lambda
+
+> ,
+
+> #<procedure and>
+
+> define
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 2 is >>.<<
+
+> ERROR (unbound symbol) : In
+
+> ERROR (unbound symbol) : addition,
+
+> ERROR (unbound symbol) : you
+
+> ERROR (unbound symbol) : must
+
+> ERROR (unbound symbol) : also
+
+> ERROR (unbound symbol) : handle
+
+> ERROR (unbound symbol) : error
+
+> ERROR (unbound symbol) : cases
+
+> ERROR (unbound symbol) : see
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>.<<
+
+> ERROR (unbound symbol) : UnboundSymbol
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 2 Column 1 is >>.<<
+
+> ERROR (unexpected token) : atom or '(' expected when token at Line 1 Column 1 is >>)<<
+
+> 
+Thanks for using OurScheme!
