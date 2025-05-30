@@ -1,4 +1,4 @@
-$projectName = "project2" # set project serial number
+$projectName = "project3" # set project serial number
 $crlfDir = "./self_tests/$projectName/CRLF/"
 $lfDir = "/self_tests/$projectName/LF/"
 

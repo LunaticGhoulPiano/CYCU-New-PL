@@ -1,4 +1,4 @@
-1
+1 ; verbose and verbose? test cases
 (verbose?)
 (verbose nil)
 (verbose?)

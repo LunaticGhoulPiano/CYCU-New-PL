@@ -1,5 +1,5 @@
 # set project serial number
-$projectName = "project2"
+$projectName = "project3"
 
 # compile
 g++ main.cpp -std=c++2a -o main.exe

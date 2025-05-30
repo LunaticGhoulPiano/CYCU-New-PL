@@ -1,0 +1,12 @@
+2 ; let test cases
+(let ((x 1)) ())
+(let ((x 1) (y 2)) y)
+
+; check local or global variables
+(clean-environment)
+(define x 10) ; global variable
+(define y 11) ; global variable
+(let ((x 1) (y 2)) (+ x y)) ; should be 3, using local variables
+(+ x y) ; should be 21, using global variables
+; also can use this test cases in project 4 to check local or global variable
+'(let ((x 1) (y 2)) (display-string (number->string x)) (display-string (number->string y)))

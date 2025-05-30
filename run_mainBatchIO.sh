@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # set project serial number
-project_name="project2"
+project_name="project3"
 
 # compile
 g++ "main.cpp" -std=c++2a -o "main"

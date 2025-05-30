@@ -273,7 +273,7 @@ class Debugger {
 Debugger gDebugger;
 
 /* Error Exceptions */
-class OurSchemeException: public std::exception {
+class OurSchemeException: public std::exception { // base class
     protected:
         std::string message = "";
 
@@ -285,8 +285,7 @@ class OurSchemeException: public std::exception {
         }
 };
 
-class ExitException: public OurSchemeException { // Common usage
-    protected:
+class ExitException: public OurSchemeException {
         std::string message = "";
 
     public:
@@ -345,7 +344,7 @@ class SemanticException: public OurSchemeException {
         // format error
         static SemanticException FormatError(std::string func_name, std::string s_exp) { // implemented in project 2
             std::string upper;
-            for (char c: func_name) upper += (('a' <= c && c <= 'z') ? toupper(c): c);
+            for (char c: func_name) upper += (('a' <= c && c <= 'z') ? toupper(c): c); // convert to uppercase
             return SemanticException("ERROR (" + upper + " format) : " + s_exp); // proj 2: cond, define, proj 3: let, lambda, proj 4: set!
         }
 
@@ -610,7 +609,7 @@ class S_Exp_Executor {
             {KeywordType::EXIT, [this](std::shared_ptr<AST> &cur) { exit(cur); } }
         };
 
-        // counstruct
+        // counstruct (project 2)
         void construct(std::shared_ptr<AST> &cur) { // project 2: list, cons
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             // init middle nil node
@@ -636,7 +635,7 @@ class S_Exp_Executor {
             }
         }
 
-        // bypass
+        // bypass (project 2)
         void bypass(std::shared_ptr<AST> &cur) { // project 2: quote
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             cur = cur->right->left; // pull up
@@ -645,7 +644,7 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
 
-        // bind: define, let, set!
+        // bind: define (project 2: symbol, project 3: function), let (project 3), set! (project 4)
         void bind(std::shared_ptr<AST> &cur) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             if (cur->left->token.value == "define") {
@@ -677,7 +676,7 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
         
-        // getPart
+        // getPart (project 2)
         void getPart(std::shared_ptr<AST> &cur) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             if (cur->left->token.value == "car") cur = cur->right->left->left; // car
@@ -687,7 +686,7 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
 
-        // judgePrimitivePredicate
+        // judgePrimitivePredicate (project 2)
         void judgePrimitivePredicate(std::shared_ptr<AST> &cur) {
             bool result = false;
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
@@ -728,7 +727,7 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
 
-        // operate
+        // operate (project 2)
         std::unordered_map<std::string, std::function<double(std::string a, std::string b)>> arithmeticAndLogicalAndCompareOperateMap = {
             // result in double
             {"+", [](std::string a, std::string b) { return std::stod(a) + std::stod(b); }},
@@ -834,7 +833,7 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
 
-        // judgeEqivalence
+        // judgeEqivalence (project 2)
         bool isStructureTheSame(std::shared_ptr<AST> obj1, std::shared_ptr<AST> obj2) {
             // base cases
             if (obj1 == nullptr || obj2 == nullptr) return obj1 == obj2;
@@ -863,9 +862,6 @@ class S_Exp_Executor {
             else { // must be the different objects (addresses), judge the structure
                 // iterate all nodes
                 bool result = isStructureTheSame(cur->right->left, cur->right->right->left);
-                // TODO: if the structure is the same and the function name is eqv?
-                // in some cases need to be true: when they are atom and not string
-                // ex. (eqv? "" "") => nil, (eqv? 1 1) => #t
                 if (result && func_name == "eqv?") {
                     if (cur->right->left->isAtom) {
                         if (cur->right->left->binding.dataType == KeywordType::STRING) cur = makeBooleanNode(false);
@@ -881,7 +877,7 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
         
-        // sequence
+        // sequence (project 2)
         void sequence(std::shared_ptr<AST> &cur) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             std::shared_ptr<AST> temp = cur;
@@ -892,22 +888,21 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
 
-        // project 3 & 4:
-        // read
-        // display
-        // lambda
+        // read (project 4)
+        // display (project 4)
+        // lambda (project 3)
 
-        // verbose
+        // verbose (project 3)
         void verboseMode(std::shared_ptr<AST> &cur) {
             if (cur->left->token.value == "verbose") verbose = (cur->right->left->binding.value != "nil");
             cur = makeBooleanNode(verbose);
         }
 
-        // evaluation
-        // convertToString
-        // errorObject
+        // evaluation (project 4)
+        // convertToString (project 4)
+        // errorObject (project 4)
 
-        // cleanEnvironment
+        // cleanEnvironment (project 2)
         void cleanEnvironment(std::shared_ptr<AST> &cur) {
             globalVars.clear();
             localVars.clear();
@@ -925,11 +920,13 @@ class S_Exp_Executor {
             isCleanOrDefine = true;
         }
 
-        // exit
+        // exit (project 1)
         void exit(std::shared_ptr<AST> &cur) {
             throw ExitException::CorrectExit();
         }
         
+        /* internal debug functions */
+
         void debugPrintAST(std::shared_ptr<AST> &cur, int level, std::string pos = "root") {
             if (cur == nullptr) return;
             debugPrintNode(pos, cur, level);
@@ -945,7 +942,8 @@ class S_Exp_Executor {
             std::cout << ", is return of quote: " << cur->binding.isReturnOfQuote << std::endl;
         }
         
-        void labelRootAndFirstNode(std::shared_ptr<AST> &cur, int level = 0) { // TODO: fix ((list)) didn't set list to true
+        /* label the crucial nodes */
+        void labelRootAndFirstNode(std::shared_ptr<AST> &cur, int level = 0) {
             /*
             ex. input: (car (cdr (list 123 (+ 89 00 999) (* 89 889 998 9) "" "test)" + - * /)))
             only car, cdr, list, these 3 nodes are considered as functions
@@ -973,6 +971,7 @@ class S_Exp_Executor {
             }
         }
         
+        /* execution */
         void execute(std::shared_ptr<AST> &cur, int level, int &bypassLevel) {
             checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
             if (isPrimFunc(cur->left->token.value)) { // primitive
@@ -1132,6 +1131,7 @@ class S_Exp_Executor {
             }
         }
 
+        /* evaluation */
         void evaluate(std::shared_ptr<AST> &cur, int level = 0, int bypassLevel = -1, std::string func_name = "") {
             if (cur == nullptr) return;
             //std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << ", func_name = " << func_name << std::endl;
@@ -1177,6 +1177,7 @@ class S_Exp_Executor {
         }
 
     public:
+        /* evaluate, execute, and print the result of a main <S-exp> */
         void run(std::shared_ptr<AST> &root) {
             labelRootAndFirstNode(root);
             evaluate(root);
@@ -1191,9 +1192,9 @@ class S_Exp_Executor {
 class S_Exp_Parser {
     private:
         enum class LIST_MODE {
-            NO_DOT,
-            WITH_DOT,
-            QUOTE
+            NO_DOT, // list
+            WITH_DOT, // dotted pair
+            QUOTE // quote
         };
     
         // store list modes and lists
@@ -1202,6 +1203,7 @@ class S_Exp_Parser {
         std::stack<std::pair<bool, int>> dot_info; // first: isDOTStart, second: <S-exp> after DOT
         S_Exp_Executor executor;
 
+        /* make list or dotted pair or quote */
         std::shared_ptr<AST> makeList(const std::vector<std::shared_ptr<AST>> &tree_root, // the part before DOT (car)
             const std::shared_ptr<AST> &cdr = std::make_shared<AST>(Token{TokenType::NIL, "nil"})) { // the part after DOT (cdr)
             std::shared_ptr<AST> res = cdr;
@@ -1210,25 +1212,27 @@ class S_Exp_Parser {
         }
     
     public:
+        /* AST status checker */
         bool isCurTreeEmpty() { return lists_info.empty(); }
 
-        void resetInfos() { // will be called only when a <S-exp> ended or init in readAndTokenize() (reset or error)
+        /* reset AST, will be called only when a <S-exp> ended or init in readAndTokenize() (reset or error) */
+        void resetInfos() {
             lists_info = std::stack<std::pair<LIST_MODE, std::vector<std::shared_ptr<AST>>>>();
             dot_info = std::stack<std::pair<bool, int>>();
         }
 
+        /* iterate all nodes, check and convert the TokenType::SYMBOL with value "quote" to TokenType::QUOTE, TokenType::QUOTE with value "" to value "quote" */
         void convertToQuote(std::shared_ptr<AST> &cur_node) {
             if (cur_node != nullptr) {
-                // convert the TokenType::SYMBOL with value "quote" to TokenType::QUOTE, TokenType::QUOTE with value "" to value "quote"
                 if (cur_node->token.type == TokenType::SYMBOL && cur_node->token.value == "quote") cur_node->token.type = TokenType::QUOTE;
                 else if (cur_node->token.type == TokenType::QUOTE) cur_node->token.value = "quote";
-                // else do nothing, check left and right
             }
             else return;
             if (cur_node->left != nullptr) convertToQuote(cur_node->left);
             if (cur_node->right != nullptr) convertToQuote(cur_node->right);
         }
 
+        /* end <S-exp>, if a main <S-exp> ended, then call executor, else store into AST */
         void endSExp(std::shared_ptr<AST> &cur_node, bool isAtom) {
             // NOTED: always check if lists_mode's top is quote when a <S-exp> ended (check the prev if quote)
             while (! lists_info.empty() && lists_info.top().first == LIST_MODE::QUOTE) {
@@ -1251,6 +1255,7 @@ class S_Exp_Parser {
             }
         }
 
+        /* parse */
         void parseAndBuildAST(const Token &token, int lineNum, int columnNum) {
             // check number of <S-exp> after DOT
             if (! dot_info.empty() && dot_info.top().first && dot_info.top().second == 1 && token.type != TokenType::RIGHT_PAREN) {
@@ -1309,6 +1314,7 @@ class S_Exp_Lexer {
         std::unordered_map<char, char> escape_map = {{'t', '\t'}, {'n', '\n'}, {'\\', '\\'}, {'\"', '\"'}};
         S_Exp_Parser parser;
 
+        /* char judger */
         bool isWhiteSpace(char ch) { return (ch == ' ' || ch == '\t' || ch == '\n'); }
 
         bool isDigit(char ch) { return ('0' <= ch && ch <= '9'); }
@@ -1317,10 +1323,12 @@ class S_Exp_Lexer {
 
         bool isEscape(char ch) { return (ch == 'n' || ch == '\"' || ch == 't'|| ch == '\\'); }
 
+        /* real (number) judger */
         bool isInt(const std::string &str) { return std::regex_match(str, std::regex("^[-+]?\\d+$")); }
 
         bool isFloat(const std::string &str) { return std::regex_match(str, std::regex("^[-+]?((\\d+\\.\\d*)|(\\.\\d+))$")); }
 
+        /* judge and set token type, also format if token is real (number) */
         void judgeType(Token &token) {
             if (isInt(token.value) || isFloat(token.value)) {
                 std::istringstream iss(token.value);
@@ -1356,12 +1364,14 @@ class S_Exp_Lexer {
             else token.type = TokenType::SYMBOL;
         }
 
+        /* line setter */
         void eatALine() {
             std::string useless_line;
             std::getline(std::cin, useless_line);
             isCurLineHasToken = false;
         }
 
+        /* save a token into AST, execute a main <S-exp> if the current AST ended, handle errors */
         void saveAToken(Token &token, int lineNum, int columnNum, char ch) {
             try {
                 judgeType(token);
@@ -1386,6 +1396,7 @@ class S_Exp_Lexer {
         }
 
     public:
+        /* tokenizer */
         void readAndTokenize() { // all inputs are dealed here
             Token token;
             std::stack<char> parenStack;
