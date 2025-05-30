@@ -1,0 +1,87 @@
+Welcome to OurScheme!
+
+> #t
+
+> nil
+
+> nil
+
+> 
+> 
+> 
+> 
+> #<procedure verbose>
+
+> #<procedure verbose?>
+
+> #<procedure clean-environment>
+
+> 
+> nil
+
+> 
+> 
+> 
+> ERROR (incorrect number of arguments) : verbose
+
+> nil
+
+> #t
+
+> #t
+
+> ERROR (incorrect number of arguments) : verbose?
+
+> #t
+
+> ERROR (incorrect number of arguments) : clean-environment
+
+> ERROR (incorrect number of arguments) : clean-environment
+
+> ERROR (incorrect number of arguments) : clean-environment
+
+> environment cleaned
+
+> ERROR (unbound symbol) : a
+
+> ERROR (unbound symbol) : b
+
+> ERROR (unbound symbol) : c
+
+> #t
+
+> #t
+
+> environment cleaned
+
+> #t
+
+> #t
+
+> nil
+
+> nil
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> #t
+
+> a defined
+
+> environment cleaned
+
+> nil
+
+> 
+> 
+> 
+> 
+Thanks for using OurScheme!

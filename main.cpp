@@ -95,7 +95,7 @@ static std::unordered_map<std::string, KeywordInfo> gKeywords = {
     {"list", {ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR, KeywordType::LIST}},
     {"quote", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}}, // returnType can be any of primitives
     {"define", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    //{"let", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
+    {"let", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
     //{"set!", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
     {"car", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
     {"cdr", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
@@ -134,9 +134,9 @@ static std::unordered_map<std::string, KeywordInfo> gKeywords = {
     //{"write", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
     //{"display-string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
     //{"newline", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY, KeywordType::NIL}},
-    //{"lambda", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
-    //{"verbose", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
-    //{"verbose?", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    {"lambda", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
+    {"verbose", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
+    {"verbose?", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
     //{"eval", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}}, // returnType can be any of primitives
     //{"symbol->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
     //{"number->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
@@ -456,6 +456,7 @@ Printer gPrinter;
 /* S-Expression Evaluator */
 class S_Exp_Executor {
     private:
+        bool verbose = true, isCleanOrDefine = false;
         std::unordered_map<std::string, std::shared_ptr<AST>> globalVars, localVars;
 
         /* judgers */
@@ -601,7 +602,7 @@ class S_Exp_Executor {
             // KeywordType::READ
             // KeywordType::DISPLAY
             // KeywordType::LAMBDA
-            // KeywordType::VERBOSE
+            {KeywordType::VERBOSE, [this](std::shared_ptr<AST> &cur) { verboseMode(cur); } },
             // KeywordType::EVALUATION
             // KeywordType::CONVERT_TO_STRING
             // KeywordType::ERROR_OBJECT_OPERATION
@@ -654,7 +655,7 @@ class S_Exp_Executor {
                     globalVars[cur->right->left->token.value] = cur->right->right->left;
                 }
                 else { // define a function (project 3)
-                    //
+                    // TODO
                 }
 
                 // set defined message node
@@ -665,6 +666,11 @@ class S_Exp_Executor {
                 cur->binding.value = sym + " defined";
                 cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL; // the minimal value of non-function symbol must be bound to an ATOM_BUT_NOT_SYMBOL
                 cur->binding.dataType = KeywordType::SYMBOL;
+
+                isCleanOrDefine = true;
+            }
+            else if (cur->left->token.value == "let") {
+                // TODO
             }
             cur->binding.isRoot = tempRoot;
             cur->binding.isFirstNode = tempFirstNode;
@@ -886,6 +892,21 @@ class S_Exp_Executor {
             cur->binding.isReturnOfQuote = tempQHead;
         }
 
+        // project 3 & 4:
+        // read
+        // display
+        // lambda
+
+        // verbose
+        void verboseMode(std::shared_ptr<AST> &cur) {
+            if (cur->left->token.value == "verbose") verbose = (cur->right->left->binding.value != "nil");
+            cur = makeBooleanNode(verbose);
+        }
+
+        // evaluation
+        // convertToString
+        // errorObject
+
         // cleanEnvironment
         void cleanEnvironment(std::shared_ptr<AST> &cur) {
             globalVars.clear();
@@ -901,21 +922,13 @@ class S_Exp_Executor {
             cur->binding.dataType = KeywordType::SYMBOL;
             cur->binding.bindingType = BindingType::ATOM_BUT_NOT_SYMBOL;
             cur->binding.value = cur->token.value;
+            isCleanOrDefine = true;
         }
 
         // exit
         void exit(std::shared_ptr<AST> &cur) {
             throw ExitException::CorrectExit();
         }
-
-        // project 3 & 4:
-        // read
-        // display
-        // lambda
-        // verbose
-        // evaluation
-        // convertToString
-        // errorObject
         
         void debugPrintAST(std::shared_ptr<AST> &cur, int level, std::string pos = "root") {
             if (cur == nullptr) return;
@@ -1096,11 +1109,15 @@ class S_Exp_Executor {
                         evaluate(cur->right->right->left, level + 3, bypassLevel);
                     }
                     else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
-                        throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
+                        // TODO
                     }
                 }
-                // else if (cur->left->token.value == "let") // project 3
-                // else if (cur->left->token.value == "lambda") // project 3
+                else if (cur->left->token.value == "let") { // project 3
+                    // TODO
+                }
+                else if (cur->left->token.value == "lambda") { // project 3
+                    // TODO
+                }
                 // else if (cur->left->token.value == "set!") // project 4
                 else { // normal function checking
                     checkArgumentsNumber(cur);
@@ -1163,17 +1180,14 @@ class S_Exp_Executor {
         void run(std::shared_ptr<AST> &root) {
             labelRootAndFirstNode(root);
             evaluate(root);
-            gPrinter.printResult(gPrinter.getprettifiedSExp(false, root));
+            // don't print "environment cleaned" and "synmbol defined" when verbose mode on, just print prompt
+            if (! verbose && isCleanOrDefine) gPrinter.printPrompt();
+            else gPrinter.printResult(gPrinter.getprettifiedSExp(false, root));
+            isCleanOrDefine = false;
         }
 };
 
 /* S-Expression Parser */
-// <S-exp> ::= <ATOM>
-//             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
-//             | QUOTE <S-exp>
-         
-// <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
-//             | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Parser {
     private:
         enum class LIST_MODE {
@@ -1626,17 +1640,17 @@ int main() {
             gPrinter.printError(e);
             break;
         }
-        catch (SyntaxException &e) {
+        // syntax / semantic / runtime errors
+        catch (OurSchemeException &e) {
             gPrinter.printError(e);
         }
-        catch (SemanticException &e) {
-            gPrinter.printError(e);
-        }
-        catch (RuntimeException &e) {
-            gPrinter.printError(e);
+        // should not happen
+        catch (std::exception &e) {
+            std::cout << "std::exception: " << e.what() << std::endl;
+            break;
         }
         catch (...) {
-            std::cout << "Unknown error" << std::endl;
+            std::cout << "Unknown error\n";
             break;
         }
     }

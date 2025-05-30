@@ -1,0 +1,52 @@
+1
+(verbose?)
+(verbose nil)
+(verbose?)
+(define a 0)
+(define a verbose)
+(define b verbose?)
+(define c clean-environment)
+a
+b
+c
+(clean-environment)
+(verbose?) ; should be nil, clean-environment will not reset verbose to #t
+(define a verbose)
+(define b verbose?)
+(define c clean-environment)
+(a)
+(a (not b)) ; nil
+(a (not (b))) ; #t
+(b) ; #t
+(b a)
+(a b)
+(c a)
+(c b)
+(c c)
+(c)
+a
+b
+c
+(verbose?)
+(verbose #t)
+(clean-environment)
+; set by result
+(verbose t)
+(verbose?)
+(verbose (eqv? 1 2))
+(verbose?)
+(verbose (equal? '(1 2 3) (quote (1 2 3))))
+(verbose?)
+(verbose (+ 1 2 (- 3 4 (* 5 6 (/ 7 8 (+ 0.9 1.0))))))
+(verbose?)
+; online test system is incorrect, which will occur no return value when (a) after clean-environment
+(verbose t)
+(verbose?)
+(define a clean-environment)
+(a)
+(verbose nil)
+(define a clean-environment)
+(a)
+(define a exit)
+(a)
+This is the test message that after (exit) was executed by (a).

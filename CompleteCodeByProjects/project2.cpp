@@ -1168,12 +1168,6 @@ class S_Exp_Executor {
 };
 
 /* S-Expression Parser */
-// <S-exp> ::= <ATOM>
-//             | LEFT-PAREN <S-exp> { <S-exp> } [ DOT <S-exp> ] RIGHT-PAREN
-//             | QUOTE <S-exp>
-         
-// <ATOM>  ::= SYMBOL | INT | FLOAT | STRING 
-//             | NIL | T | LEFT-PAREN RIGHT-PAREN
 class S_Exp_Parser {
     private:
         enum class LIST_MODE {
@@ -1626,17 +1620,17 @@ int main() {
             gPrinter.printError(e);
             break;
         }
-        catch (SyntaxException &e) {
+        // syntax / semantic / runtime errors
+        catch (OurSchemeException &e) {
             gPrinter.printError(e);
         }
-        catch (SemanticException &e) {
-            gPrinter.printError(e);
-        }
-        catch (RuntimeException &e) {
-            gPrinter.printError(e);
+        // should not happen
+        catch (std::exception &e) {
+            std::cout << "std::exception: " << e.what() << std::endl;
+            break;
         }
         catch (...) {
-            std::cout << "Unknown error" << std::endl;
+            std::cout << "Unknown error\n";
             break;
         }
     }
