@@ -85,63 +85,63 @@ enum class ARGUMENT_NUMBER_MODE {
 struct KeywordInfo {
     ARGUMENT_NUMBER_MODE arg_mode;
     std::vector<int> arg_nums;
-    KeywordType functionType, returnType;
+    KeywordType type;
 };
 
 /* Keywords */
+// {function name, {arg_mode, arg_nums, function type}}
 static std::unordered_map<std::string, KeywordInfo> gKeywords = {
-    // {function name, {arg_mode, arg_nums, function type, return type}}
-    {"cons", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR, KeywordType::PAIR}},
-    {"list", {ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR, KeywordType::LIST}},
-    {"quote", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}}, // returnType can be any of primitives
-    {"define", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    //{"let", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    //{"set!", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}}, // returnType can be any of primitives
-    {"car", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
-    {"cdr", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}}, // returnType can be any of primitives
-    {"atom?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"pair?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"list?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"null?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"integer?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"real?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"number?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"string?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"boolean?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"symbol?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE, KeywordType::BOOLEAN}},
-    {"+", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"-", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"*", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"/", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::NUMBER}},
-    {"not", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"and", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
-    {"or", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}}, // returnType can be NUMBER or BOOLEAN
-    {">", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {">=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"<", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"<=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"string-append", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::STRING}},
-    {"string>?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"string<?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"string=?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION, KeywordType::BOOLEAN}},
-    {"eqv?", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
-    {"equal?", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER, KeywordType::BOOLEAN}},
-    {"begin", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}}, // returnType can be any of primitives
-    {"if", {ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
-    {"cond", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}}, // returnType can be any of primitives
-    //{"read", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}}, // returnType can be any of primitives
-    //{"write", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be any of primitives
-    //{"display-string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}}, // returnType can be STRING or ERROR_OBJECT
-    //{"newline", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY, KeywordType::NIL}},
-    //{"lambda", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}}, // returnType can be any of primitives
-    //{"verbose", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
-    //{"verbose?", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE, KeywordType::BOOLEAN}},
-    //{"eval", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}}, // returnType can be any of primitives
-    //{"symbol->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
-    //{"number->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING, KeywordType::STRING}},
-    //{"create-error-object", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::ERROR_OBJECT}},
-    //{"error-object?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION, KeywordType::BOOLEAN}},
+    {"cons", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR}},
+    {"list", {ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR}},
+    {"quote", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}},
+    {"define", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}},
+    {"let", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}},
+    //{"set!", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}},
+    {"car", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}},
+    {"cdr", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}},
+    {"atom?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"pair?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"list?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"null?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"integer?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"real?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"number?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"string?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"boolean?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"symbol?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PRIMITIVE_PREDICATE}},
+    {"+", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"-", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"*", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"/", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"not", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::OPERATION}},
+    {"and", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"or", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {">", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {">=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"<", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"<=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"=", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"string-append", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"string>?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"string<?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"string=?", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::OPERATION}},
+    {"eqv?", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER}},
+    {"equal?", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::EQIVALENCE_TESTER}},
+    {"begin", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION}},
+    {"if", {ARGUMENT_NUMBER_MODE::SPECIFIC, {2, 3}, KeywordType::CONDITIONAL}},
+    {"cond", {ARGUMENT_NUMBER_MODE::AT_LEAST, {1}, KeywordType::CONDITIONAL}},
+    //{"read", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::READ}},
+    //{"write", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}},
+    //{"display-string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::DISPLAY}},
+    //{"newline", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::DISPLAY}},
+    {"lambda", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::LAMBDA}},
+    {"verbose", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::VERBOSE}},
+    {"verbose?", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::VERBOSE}},
+    //{"eval", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::EVALUATION}},
+    //{"symbol->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING}},
+    //{"number->string", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::CONVERT_TO_STRING}},
+    //{"create-error-object", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATIONT}},
+    //{"error-object?", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::ERROR_OBJECT_OPERATION}},
     {"clean-environment", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::CLEAN_ENVIRONMENT}},
     {"exit", {ARGUMENT_NUMBER_MODE::MUST_BE, {0}, KeywordType::EXIT}}
 };
@@ -260,7 +260,7 @@ class Debugger {
                 std::cout << " (isAtom = true, atom = \"" << node->token.value << "\", token type = " << getTokenType(node->token);
                 // if is keyword and is defined, print the binding content
                 if (gKeywords.find(node->token.value) != gKeywords.end())
-                    std::cout << ", keyword type = " << getKeywordType(gKeywords[node->token.value].functionType);
+                    std::cout << ", keyword type = " << getKeywordType(gKeywords[node->token.value].type);
                 std::cout << ")\n";
             }
             else {
@@ -453,10 +453,10 @@ class Printer { // all outputs are dealed here
 };
 Printer gPrinter;
 
-/* S-Expression Evaluator */
+/* S-Expression Executor */
 class S_Exp_Executor {
     private:
-        std::unordered_map<std::string, std::shared_ptr<AST>> globalVars, localVars;
+        std::unordered_map<std::string, std::shared_ptr<AST>> globalVars;
 
         /* judgers */
         bool isKeyword(std::string sym) { return (gKeywords.find(sym) != gKeywords.end() && sym != "#t" && sym != "nil"); }
@@ -894,7 +894,6 @@ class S_Exp_Executor {
         // cleanEnvironment (project 2)
         void cleanEnvironment(std::shared_ptr<AST> &cur) {
             globalVars.clear();
-            localVars.clear();
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
             cur = std::make_shared<AST>();
             cur->token.type = TokenType::SYMBOL;
@@ -914,20 +913,19 @@ class S_Exp_Executor {
         }
 
         /* internal debug functions */
-
-        void debugPrintAST(std::shared_ptr<AST> &cur, int level, std::string pos = "root") {
-            if (cur == nullptr) return;
-            debugPrintNode(pos, cur, level);
-            debugPrintAST(cur->left, level + 1, "left");
-            debugPrintAST(cur->right, level + 1, "right");
-        }
-
         void debugPrintNode(std::string pos, std::shared_ptr<AST> cur, int level) {
             std::cout << "\t[level " << level << " " << pos << "]: " << "token = " << cur->token.value << ", token type = " << gDebugger.getTokenType(cur->token);
             std::cout  << ", binding value = " << cur->binding.value << ", binding type = " << gDebugger.getBindingType(cur->binding.bindingType);
             std::cout << ", data type = " << gDebugger.getKeywordType(cur->binding.dataType);
             std::cout << ", is root: " << cur->binding.isRoot << ", is first node: " << cur->binding.isFirstNode;
             std::cout << ", is return of quote: " << cur->binding.isReturnOfQuote << std::endl;
+        }
+
+        void debugPrintAST(std::shared_ptr<AST> &cur, int level, std::string pos = "root") {
+            if (cur == nullptr) return;
+            debugPrintNode(pos, cur, level);
+            debugPrintAST(cur->left, level + 1, "left");
+            debugPrintAST(cur->right, level + 1, "right");
         }
 
         /* label the crucial nodes */
@@ -957,6 +955,18 @@ class S_Exp_Executor {
                 if (remainings->left != nullptr && ! remainings->left->isAtom) labelRootAndFirstNode(remainings->left, level + 1);
                 remainings = remainings->right;
             }
+        }
+
+        /* judge if the symbol name is legal */
+        bool isLegalSymbolToBeBound(std::string sym) {
+            bool isNum = false;
+            try { std::stof(sym), isNum = true; }
+            catch (...) {}
+            if (isNum
+                || sym == "#t" || sym == "nil"
+                || (sym[0] == '\"' && sym[sym.size() - 1] == '\"')
+                || isPrimFunc(sym, false)) return false;
+            else return true;
         }
         
         /* execution */
@@ -992,6 +1002,12 @@ class S_Exp_Executor {
                 else if (cur->left->token.value == "cond") {
                     // get the original s-exp for error message
                     std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
+
+                    // check the number of arguments
+                    try { checkArgumentsNumber(cur); }
+                    catch (...) { throw SemanticException::FormatError("cond", origErrMsg); }
+
+                    // iterate each condition
                     try {
                         std::shared_ptr<AST> temp = cur->right, toBeExecuted = nullptr; // iterator, result
                         if (temp->isEndNode()) throw std::runtime_error(""); // (cond)
@@ -1078,25 +1094,22 @@ class S_Exp_Executor {
                 }
                 // special case 3. with arguments whcich should't be unbound symbol
                 else if (cur->left->token.value == "define") {
+                    // get the original s-exp for error message
+                    std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
+
                     // check number of arguments
                     try { checkArgumentsNumber(cur); }
-                    catch (...) { throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur)); }
+                    catch (...) { throw SemanticException::FormatError("define", origErrMsg); }
 
                     // evaluate the symbol name
                     if (cur->right->left->isEndNode()) { // define a symbol (project 2), ex. (define sym (begin list car cdr (real? "str")))
                         // the symbol should not be real (number) / boolean / string / primitive functions
-                        bool isNum = false;
-                        try { std::stof(cur->right->left->token.value), isNum = true; }
-                        catch (...) {}
-                        if (isNum || cur->right->left->token.value == "#t" || cur->right->left->token.value == "nil"
-                            || (cur->right->left->token.value[0] == '\"' && cur->right->left->token.value[cur->right->left->token.value.size() - 1] == '\"')
-                            || isPrimFunc(cur->right->left->token.value, false)) throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
-                        
+                        if (! isLegalSymbolToBeBound(cur->right->left->token.value)) throw SemanticException::FormatError("define", origErrMsg);
                         // evaluate the to-bind value
                         evaluate(cur->right->right->left, level + 3, bypassLevel);
                     }
                     else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
-                        throw SemanticException::FormatError("define", gPrinter.getprettifiedSExp(true, cur));
+                        throw SemanticException::FormatError("define", origErrMsg);
                     }
                 }
                 // else if (cur->left->token.value == "let") // project 3
@@ -1108,7 +1121,7 @@ class S_Exp_Executor {
                 }
 
                 if (bypassLevel == level) bypassLevel = -1; // reset
-                if (bypassLevel == -1) prim_func_map[gKeywords[cur->left->token.value].functionType](cur); // execute
+                if (bypassLevel == -1) prim_func_map[gKeywords[cur->left->token.value].type](cur); // execute
             }
             else { // user-defined
                 // project 3
@@ -1133,7 +1146,7 @@ class S_Exp_Executor {
                 // Step 1. if a new sub tree encountered, ex. ((begin +) "a" b) -> evaluate and execute the sub tree (begin +) -> (+ "a" b)
                 if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) evaluate(cur->left, level + 1, bypassLevel, func_name), hasLeftBinding = true;
                 
-                // Step 2-1.if cur->left is a function name and also the first left node of the current sub-tree
+                // Step 2-1. if cur->left is a function name and also the first left node of the current sub-tree
                 if (cur->left->binding.isFirstNode // is the first atom node of a s_exp
                     && bypassLevel == -1 // bypass mode is off, i.e. should be executed
                     && ! cur->left->binding.isReturnOfQuote // ex. ('list) -> (list), but list is a return of quote, which should be non-function error

@@ -1,0 +1,154 @@
+Welcome to OurScheme!
+
+> nil
+
+> 2
+
+> environment cleaned
+
+> x defined
+
+> y defined
+
+> 3
+
+> 21
+
+> ( ( 2
+    1
+  )
+  10
+)
+
+> environment cleaned
+
+> 1
+
+> 1
+
+> 2
+
+> ( ( ( 666
+      33
+    )
+    2
+  )
+)
+
+> environment cleaned
+
+> ERROR (unbound symbol) : z
+
+> ERROR (unbound symbol) : y
+
+> ERROR (unbound symbol) : x
+
+> ( let
+  ( ( x
+      1
+    )
+    ( y
+      2
+    )
+  )
+  ( display-string
+    ( number->string
+      x
+    )
+  )
+  ( display-string
+    ( number->string
+      y
+    )
+  )
+)
+
+> ( 3
+  2
+  3
+)
+
+> ERROR (unbound symbol) : x
+
+> ERROR (LET format) : ( let
+  ( car
+    ( quote
+      ( 1
+        2
+        3
+      )
+    )
+  )
+)
+
+> ERROR (LET format) : ( let
+  ( ( x
+      3
+      4
+    )
+  )
+  5
+)
+
+> 5
+
+> ERROR (LET format) : ( let
+  ( ( ( car
+        ( quote
+          ( x
+            y
+            z
+          )
+        )
+      )
+      3
+    )
+  )
+  5
+)
+
+> ERROR (LET format) : ( let
+  nil
+)
+
+> 5
+
+> ERROR (LET format) : ( let
+  ( ( ( car
+        ( quote
+          ( x
+            y
+            z
+          )
+        )
+      )
+      5
+    )
+  )
+)
+
+> ERROR (incorrect number of arguments) : cons
+
+> ERROR (LET format) : ( let
+  ( ( x
+      ( cons
+        5
+      )
+    )
+  )
+)
+
+> ERROR (attempt to apply non-function) : 1
+
+> ERROR (LET format) : ( let
+  ( ( x
+      ( 1
+        2
+        3
+      )
+    )
+  )
+)
+
+> 
+Thanks for using OurScheme!

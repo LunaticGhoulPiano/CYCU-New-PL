@@ -8,5 +8,149 @@
 (define y 11) ; global variable
 (let ((x 1) (y 2)) (+ x y)) ; should be 3, using local variables
 (+ x y) ; should be 21, using global variables
+
+(list (let ((x 1))
+           (list (let ((x 2))
+                      x
+                 )
+                 x
+           )
+      )
+      x
+)
+
+; check the local variable was cleared correctly
+(clean-environment)
+; correct
+(let ((x 1))
+     (let ((y 2))
+          (let ((z 3))
+               z
+          )
+          y
+     )
+     x
+)
+(let ((x 1))
+     (let ((y 2))
+          (let ((z 3))
+               (+ x y z)
+          )
+          (- x y)
+     )
+     (* x x)
+)
+(let ((x 1))
+     (let ((y 2))
+          (let ((x 3))
+               x ; x = 3
+          )
+     )
+     (+ x x) ; x = 1
+)
+(list (let ((x 1))
+           (list (let ((x 11) (y 22))
+                      (list (let ((x 111) (y 222) (z 333))
+                                 (+ x y z) ; 111 + 222 + 333
+                            ) ; 666
+                            (+ x y) ; 11 + 22
+                      ) ; (list 666 33)
+                  )
+                  (+ x x) ; 1 + 1
+           ) ; (list 666 33 2)
+      ) ; (list 666 33 2)
+) ; (list 666 33 2)
+(clean-environment)
+; error
+(list (let ((x 1))
+           (list (let ((x 11) (y 22))
+                      (list (let ((x 111) (y 222) (z 333))
+                                 (+ x y z)
+                            )
+                            (+ x y)
+                            z ; unbound
+                      )
+                  )
+                  (+ x x)
+                  y ; unbound
+           )
+      )
+      x ; unbound
+)
+(list (let ((x 1))
+           (list (let ((x 11) (y 22))
+                      (list (let ((x 111) (y 222) (z 333))
+                                 (+ x y z)
+                            )
+                            (+ x y)
+                      )
+                  )
+                  (+ x x)
+                  y ; unbound
+           )
+      )
+      x ; unbound
+)
+(list (let ((x 1))
+           (list (let ((x 11) (y 22))
+                      (list (let ((x 111) (y 222) (z 333))
+                                 (+ x y z)
+                            )
+                            (+ x y)
+                      )
+                  )
+                  (+ x x)
+           )
+      )
+      x ; unbound
+)
+
 ; also can use this test cases in project 4 to check local or global variable
 '(let ((x 1) (y 2)) (display-string (number->string x)) (display-string (number->string y)))
+
+; official tests
+( let ( (x 3) (y '(1 2 3))
+        )
+        (cons 1 '(4 5))       ; this will be evaluated ; but no use
+        (cons x (cdr y))      ; the value of this one is the value of LET
+)
+x
+(let (car '(1 2 3))  ; first argument of 'let' should be a list of pairs 
+                        ; moreover, there ought to be a second argument
+)
+(let ((x 3 4)) 5     ; first argument of LET should be a list of
+                        ; pairs ; '(x 3 4)' is not an acceptable pair
+)
+(let ((x 3)
+        ) 
+        5     
+)
+(let ( ( (car '(x y z)) ; first argument of LET should be a list of pairs
+            3              
+        )                ; Furthermore, the first element of each 
+        )                  ; pair must be a symbol
+        5
+)
+(let ()             ; There should be at least one S-expression following
+                    ; the first argument
+)     
+(let () 5           
+)
+(let ( ( ( car '(x y z)) 
+            5
+        )
+        )        
+)
+(let ( ( x (cons 5) ) ; the problem is not in LET-format
+        )
+        ( + x x )
+)
+(let ( ( x (cons 5) ) 
+        )
+)
+(let ((x (1 2 3))) 5)  ; LET-format OK
+(let ((x (1 2 3))
+        )
+)
+
+(exit)

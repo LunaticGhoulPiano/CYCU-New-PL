@@ -12,6 +12,8 @@ project4
 .vscode
 
 # others
+pj3.cpp
+Chen.cpp
 self_tests/**
 !self_tests/
 !self_tests/**/
