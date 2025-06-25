@@ -3,6 +3,7 @@
 - 本人修大四下畢業班，夏老大（夏延德）授課，計分方式與大三不同
 - [Project 1 的簡報](https://www.canva.com/design/DAGemJ7sLQI/X3aeWBckMJEJuJ5ks3dF7w/edit)
 - [Project 2 的簡報](https://www.canva.com/design/DAGhDegFZEU/uxxLU615FuWu6gMkWg2Aaw/edit)
+- [Project 3 的簡報](https://www.canva.com/design/DAGm4BCQdFo/5O3Q9TywXnNS9H1M0772Vg/edit)
 - 老大的上傳系統：
     - [設定密碼](https://pai.lab715.uk:5001/ChangePassword/)
     - [上傳檔案](https://pai.lab715.uk:5001/PL-PostCode/)
