@@ -29,8 +29,29 @@
     0. Not good
 - Project分數到80可以不用出席
 
+## 進度
+- Project 1 全過
+- Project 2 卡三題隱測：5, 13, 15
+- main打完Project3所有的功能實作，但有一堆bug沒修，但我過了
+
+## 碎碎唸
+- 我過了，所以不想繼續寫了，好懶
+- 如果你直接抄，那準備下去吧你
+- 卡隱測的時候去想想看是不是你前一個全過的project有漏掉東西（我project2原本卡四題隱測，把tokenizer重寫邏輯後就過了一題）
+- 看完所有documents把整體架構架好在開始實作，不然你的code會亂到根本看不懂在幹嘛
+- 夏老大沒考慮的東西挺多的，以線上系統的輸出維"正解"
+- 有些時候互動式和寫檔的輸出不一樣，例如用到eof或cin.peek()時（我猜測是）因為他需要有輸入但互動式在等待使用者輸入導致必須多輸一個char（不過我的實作應該沒那個問題），反正DC系統是用寫檔測的所以沒差
+- 學著寫腳本測試吧，每次打一大串```Get-Content``` + 路徑很煩
+- 欸我應該是documents寫得最認真的了吧==
+- 別抄襲，別盲目自信你能騙過抓抄襲系統
+- 別找外包，你以為蝦皮和FB外包抓了多少個了
+- 自己寫啦
+- 三小時寫完project1，剩下三個在三天內搞定的強者朋友[老葉](https://github.com/oldper/PL_Project)
+
 ## 我的實作
 ### [Project 1](./CompleteCodeByProjects/Project1.md)
+### [Project 2](./CompleteCodeByProjects/Project2.md)
+### [Project 2](./CompleteCodeByProjects/Project3.md)
 
 ## What is OurScheme?
 - 它是中原資工大三下的**程式語言**課程Project，會有```OurC```與```OurScheme```兩種每年輪替，OurScheme是比較簡單的。
@@ -932,7 +953,9 @@ CYCU-New-PL
 │ └──RecursiveDescentParsing-Intro.doc
 ├──CompleteCodeByProjects // 對應project的完整程式碼及說明文件，一個project完成才會丟
 │ ├──Project1.cpp
-│ └──Project1.md
+│ ├──Project1.md
+│ ├──Project2.cpp
+│ └──Project2.md
 ├──pictures // 說明用圖片
 │ ├──choose_to_compare.jpeg
 │ ├──compare_folders.jpeg
@@ -940,33 +963,106 @@ CYCU-New-PL
 │ └──native_compare.jpeg
 ├──self_tests // 自訂義的測資，部分為測試系統官方的，理論上全過就能過測試系統
 │ ├──project1
-│ │   ├──test1.in
-│ │   ├──test1.out
-│ │   ├──test2.in
-│ │   ├──test2.out
-│ │   ├──test3.in
-│ │   ├──test3.out
-│ │   ├──test4.in
-│ │   ├──test4.out
-│ │   ├──test5.in
-│ │   ├──test5.out
-│ │   ├──test6.in
-│ │   ├──test6.out
-│ │   ├──test7.in
-│ │   ├──test7.out
-│ │   ├──test8.in
-│ │   ├──test8.out
-│ │   ├──test9.in
-│ │   ├──test9.out
-│ │   ├──test10.in
-│ │   └──test10.out
+│ │   ├──CRLF
+│ │   |  ├──test1.in
+│ │   |  ├──test1.out
+│ │   |  ├──test2.in
+│ │   |  ├──test2.out
+│ │   |  ├──test3.in
+│ │   |  ├──test3.out
+│ │   |  ├──test4.in
+│ │   |  ├──test4.out
+│ │   |  ├──test5.in
+│ │   |  ├──test5.out
+│ │   |  ├──test6.in
+│ │   |  ├──test6.out
+│ │   |  ├──test7.in
+│ │   |  ├──test7.out
+│ │   |  ├──test8.in
+│ │   |  ├──test8.out
+│ │   |  ├──test9.in
+│ │   |  ├──test9.out
+│ │   |  ├──test10.in
+│ │   |  └──test10.out
+│ │   └──LF
+│ │      ├──test1.in
+│ │      ├──test1.out
+│ │      ├──test2.in
+│ │      ├──test2.out
+│ │      ├──test3.in
+│ │      ├──test3.out
+│ │      ├──test4.in
+│ │      ├──test4.out
+│ │      ├──test5.in
+│ │      ├──test5.out
+│ │      ├──test6.in
+│ │      ├──test6.out
+│ │      ├──test7.in
+│ │      ├──test7.out
+│ │      ├──test8.in
+│ │      ├──test8.out
+│ │      ├──test9.in
+│ │      ├──test9.out
+│ │      ├──test10.in
+│ │      └──test10.out
 │ └──project2
-│     ├──test1.in
-│     ├──test1.out
-│     ├──test2.in
-│     ├──test2.out
-│     ├──test3.in
-│     └──test3.out
+│ │   ├──CRLF
+│ │   |  ├──test1.in
+│ │   |  ├──test1.out
+│ │   |  ├──test2.in
+│ │   |  ├──test2.out
+│ │   |  ├──test3.in
+│ │   |  ├──test3.out
+│ │   |  ├──test4.in
+│ │   |  ├──test4.out
+│ │   |  ├──test5.in
+│ │   |  ├──test5.out
+│ │   |  ├──test6.in
+│ │   |  ├──test6.out
+│ │   |  ├──test7.in
+│ │   |  ├──test7.out
+│ │   |  ├──test8.in
+│ │   |  ├──test8.out
+│ │   |  ├──test9.in
+│ │   |  ├──test9.out
+│ │   |  ├──test10.in
+│ │   |  ├──test10.out
+│ │   |  ├──test11.in
+│ │   |  ├──test11.out
+│ │   |  └──test12.in // 有不會出現或夏老大沒處理的case
+│ │   └──LF
+│ │      ├──test1.in
+│ │      ├──test1.out
+│ │      ├──test2.in
+│ │      ├──test2.out
+│ │      ├──test3.in
+│ │      ├──test3.out
+│ │      ├──test4.in
+│ │      ├──test4.out
+│ │      ├──test5.in
+│ │      ├──test5.out
+│ │      ├──test6.in
+│ │      ├──test6.out
+│ │      ├──test7.in
+│ │      ├──test7.out
+│ │      ├──test8.in
+│ │      ├──test8.out
+│ │      ├──test9.in
+│ │      ├──test9.out
+│ │      ├──test10.in
+│ │      ├──test10.out
+│ │      ├──test11.in
+│ │      └──test11.out
+│ └──project3
+│ │   ├──CRLF
+│ │   |  ├──test1.in
+│ │   |  ├──test1.out
+│ │   |  ├──test2.in
+│ │   |  ├──test2.out
+│ │   |  ├──test3.in
+│ │   |  ├──test3.out
+│ │   |  └──test10.in // 有不會出現或夏老大沒處理的case
+│ │   └──LF
 ├──.gitignore
 ├──README.md // overview
 ├──main.cpp // 我的最新project進度

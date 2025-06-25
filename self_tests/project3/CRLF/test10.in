@@ -1,0 +1,201 @@
+3 ; lambda
+
+; official test cases
+( lambda )
+( lambda x )   
+( lambda (x) y z       ; the evaluation of a lambda expression
+                       ; produces an internal representation of a 
+)                      ; function
+( lambda (x) )
+( lambda () y ) ; this function just returns the binding of 'y'
+( lambda (5) y )
+( lambda () 5 )
+( lambda () () )
+( lambda () )
+( lambda () (+ c 5)
+)
+( ( lambda () (+ c 5)  ; first, the internal representation of a function
+    )                    ; is produced ; this internal representation
+                        ; is "the evaluated result of the first argument"
+                        ; once the binding of the first argument (of
+                        ; the top-level list) is obtained and found
+                        ; to be a function, that function is applied ;
+)
+( ( lambda () (+ 5 5) (+ 5 6) 
+    )
+)
+( ( lambda () (+ 5 5) (+ c 6)
+    )
+    8
+)
+
+; self test cases
+(clean-environment)
+((lambda (x) (list x)) (list 1 2 3))
+((lambda (x) (list x)) (list 1 2 . 3))
+((lambda (x) (list x)) ((lambda (x y z) (+ x y z)) 1 2 3))
+((lambda (x y) (+ 1 x)) 10)
+((lambda () 1))
+
+( ( lambda () (+ 5 5) (+ c 6)
+       )
+       8
+     )
+((lambda (x)
+           (list x)
+   )
+   ((lambda (x y z) (+ x y z)) 1 2 3)
+  )
+(clean-environment)
+(define x 1)
+(define y 2)
+(define z 3)
+(begin (+ x y z))
+((lambda (x)
+         (list x)
+ )
+ (begin (+ 1 2 3))
+)
+ ( begin
+  ( list
+    x
+  )
+)
+(define x 6)
+(begin (list x))
+((lambda (x y z)
+         (list x)
+         (list x y)
+         (list x y z)
+ )
+ ((lambda (xx) xx) 1)
+ ((lambda (yy) yy) 2)
+ ((lambda (zz) zz) 3)
+)
+x
+y
+z
+xx
+yy
+zz
+
+((lambda (x y z)) (+ x y z) 1 2 3)
+((lambda (x y z) (+ x y z)) 1 2 3)
+((lambda (x y z)))
+
+(define x ((lambda (x y z)) (+ x y z) 1 2 3))
+((lambda (x y z)) (+ x y z) 1 2 3)
+( ( lambda () (+ 5 5) (+ c 6)
+       )
+       8
+     )
+((lambda (x y z)) (+ x y z) 1 2 3)
+((lambda (x y z))
+)
+
+(clean-environment)
+(if (lambda () ()) 1 2) ; 1
+(if ((lambda () ())) 1 2) ; 2
+(cond (((lambda()())) nil) ((lambda()()) 'procedure_lambda) (else 'else)) ; procedure_lambda
+(cond ((lambda()()) 'procedure_lambda) (((lambda()())) nil) (else 'else)) ; procedure_lambda
+(define a (lambda (x y z) (+ x y z)))
+a
+(a)
+(let ((x (lambda (x y z))) (x 1 2 3)))
+(let ((x (lambda (x y z) (+ x y z))) (x 1 2 3)))
+(lambda (x y z) (+ x y z))
+((lambda (x y z) (+ x y z)) 1 2 3)
+(let ((x
+       (lambda (x y z) (+ x y z)))
+     )
+     (x 1 2 3)
+) ; 6
+(let ((x
+       ((lambda (x y z) (+ x y z)))
+      )
+     )
+     (x 1 2 3)
+) ; incorrect number of arguments : lambda
+(let ((x
+       ((lambda (x y z) (+ x y z)) 11 22 33)
+      )
+     )
+     (x 1 2 3)
+) ; non-function : 66
+(let ((x
+       ((lambda (x y z) (+ x y z)) 11 22 33)
+      )
+     )
+     (+ x 1 2 3)
+) ; 72
+(let ((x 1)) (lambda () ()) ((lambda () ()))) ; nil
+(let ((x 1)) ((lambda () ())) (lambda () ())) ; procedure lambda
+
+; (define condA (eqv? '(1 2 3) (quote (1 2 3))))
+; (define condB (not ((lambda (x y z)))))
+
+(clean-environment)
+(define x 2)
+(list 'global_x
+        x
+        (let ((x
+               1
+              )
+             )
+             (list 'local_let
+                   x
+                   ((lambda (x
+                            )
+                            (list 'local_lambda
+                                  x
+                            )
+                    )
+                    x
+                   )
+             )
+        )
+)
+
+(clean-environment)
+(define x 1)
+(define (f x) (let ((x x)) (+ x x)))
+(f x) ; -> should use the previous binding status first, i.e. don't push nullptr first, will get null pointer error
+
+(clean-environment)
+(define x 1)
+(define (main x) (+ x x))
+(main x) ; -> should use the previous binding status first, i.e. don't push nullptr first, will get null pointer error
+
+(clean-environment)
+
+'test1-nested
+(define (f x) (let ((x x)) (+ x x))) ; f defined
+(f 3) ; 6
+(define x 3) ; x defined
+(f x) ; 6
+(define (x f) (let ((x x)) (+ x x))) ; x defined
+x ; #<procedure x>
+(f x) ; ERROR (+ with incorrect argument type) : #<procedure x>
+(f 3) ; 6
+(x 3) ; ERROR (+ with incorrect argument type) : #<procedure x>
+((x 1)) ; ERROR (incorrect number of arguments) : x
+(x 1) ; ERROR (+ with incorrect argument type) : #<procedure x>
+((x 1)1) ; ERROR (+ with incorrect argument type) : #<procedure x>
+(((x 1) 1) 1) ; ERROR (+ with incorrect argument type) : #<procedure x>
+
+(clean-environment)
+
+'test2-nested
+(define (f x) (let ((x x)) x)) ; f defined
+(f 3) ; 3
+(define x 3) ; x defined
+(f x) ; 3
+(define (x f) (let ((x x)) x)) ; x defined
+x ; #<procedure x>
+(f x) ; #<procedure x>
+(f 3) ; 3
+(x 3) ; #<procedure x>
+((x 1)) ; ERROR (incorrect number of arguments) : x
+(x 1) ; #<procedure x>
+((x 1)1) ; #<procedure x>
+(((x 1) 1) 1) ; #<procedure x>

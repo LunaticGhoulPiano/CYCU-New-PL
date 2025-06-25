@@ -94,7 +94,7 @@ static std::unordered_map<std::string, KeywordInfo> gKeywords = {
     {"cons", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR}},
     {"list", {ARGUMENT_NUMBER_MODE::AT_LEAST, {0}, KeywordType::CONSTRUCTOR}},
     {"quote", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::BYPASS_EVALUATION}},
-    {"define", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}},
+    {"define", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}},
     {"let", {ARGUMENT_NUMBER_MODE::AT_LEAST, {2}, KeywordType::BINDING}},
     //{"set!", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::BINDING}},
     {"car", {ARGUMENT_NUMBER_MODE::MUST_BE, {1}, KeywordType::PART_ACCESSOR}},
@@ -467,7 +467,13 @@ class S_Exp_Executor {
             return isKeyword(sym) ? true : // check keywords
                 ((checkBinding && isDefined(sym) && globalVars[sym]->binding.bindingType == BindingType::PRIMITIVE_FUNCTION) ? true : false); // check bindings
         }
-        bool isUserFunc(std::string sym) { return (isDefined(sym) && (globalVars[sym]->binding.bindingType == BindingType::USER_FUNCTION)); }
+        bool isUserFunc(std::string sym) {
+            return (isDefined(sym)
+                && ! globalVars[sym]->isEndNode()
+                && ! globalVars[sym]->left->isEndNode()
+                && globalVars[sym]->left->left->isEndNode()
+                && (globalVars[sym]->left->left->binding.bindingType == BindingType::USER_FUNCTION));
+        }
         bool isFunction(std::string sym, bool checkBinding = true) { return (isPrimFunc(sym, checkBinding) || isUserFunc(sym)) ; }
 
         /* error checkers */
@@ -484,36 +490,33 @@ class S_Exp_Executor {
                 throw SemanticException::LevelError(func_name);
         }
         
-        void checkArgumentsNumber(std::shared_ptr<AST> cur) {
-            if (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION) { // primitive function
-                // count
-                std::shared_ptr<AST> temp = cur->right;
-                int count = 0;
-                while (! temp->isEndNode()) {
-                    count++;
-                    temp = temp->right;
-                }
+        void checkSubSExpsNumberOfPrimFuncs(std::shared_ptr<AST> cur) {
+            // check (prim_func_name <zero-or-more-SExps>), number of <zero-or-more-SExps> should related to prim_func_name
 
-                // check
-                KeywordInfo info = gKeywords[cur->left->token.value];
-                switch (info.arg_mode) {
-                    case ARGUMENT_NUMBER_MODE::AT_LEAST: {
-                        if (count < info.arg_nums[0]) throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
-                        break;
-                    }
-                    case ARGUMENT_NUMBER_MODE::MUST_BE: {
-                        if (count != info.arg_nums[0]) throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
-                        break;
-                    }
-                    default: { // specific
-                        if (std::find(info.arg_nums.begin(), info.arg_nums.end(), count) == info.arg_nums.end())
-                            throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
-                        break;
-                    }
-                }
+            // count
+            std::shared_ptr<AST> temp = cur->right;
+            int count = 0;
+            while (! temp->isEndNode()) {
+                count++;
+                temp = temp->right;
             }
-            else if (cur->left->binding.bindingType == BindingType::USER_FUNCTION) { // user-defined function
-                // TODO (project 3)
+
+            // check
+            KeywordInfo info = gKeywords[cur->left->token.value];
+            switch (info.arg_mode) {
+                case ARGUMENT_NUMBER_MODE::AT_LEAST: {
+                    if (count < info.arg_nums[0]) throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
+                    break;
+                }
+                case ARGUMENT_NUMBER_MODE::MUST_BE: {
+                    if (count != info.arg_nums[0]) throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
+                    break;
+                }
+                default: { // specific
+                    if (std::find(info.arg_nums.begin(), info.arg_nums.end(), count) == info.arg_nums.end())
+                        throw SemanticException::IncorrectNumOfArgs(cur->left->token.value);
+                    break;
+                }
             }
         }
 
@@ -543,13 +546,31 @@ class S_Exp_Executor {
             else return KeywordType::SYMBOL;
         }
         
+        void duplicateBinding(std::shared_ptr<AST> src, std::shared_ptr<AST> &tgt) {
+            if (src == nullptr) tgt = nullptr;
+            else {
+                tgt = std::make_shared<AST>();
+                tgt->isAtom = src->isAtom;
+                tgt->token.type = src->token.type;
+                tgt->token.value = src->token.value;
+                tgt->binding.bindingType = src->binding.bindingType;
+                tgt->binding.dataType = src->binding.dataType;
+                tgt->binding.isFirstNode = src->binding.isFirstNode;
+                tgt->binding.isRoot = src->binding.isRoot;
+                tgt->binding.isReturnOfQuote = src->binding.isReturnOfQuote;
+                tgt->binding.value = src->binding.value;
+                duplicateBinding(src->left, tgt->left);
+                duplicateBinding(src->right, tgt->right);
+            }
+        }
+
         void getBinding(std::shared_ptr<AST> &cur, int level, std::string func_name = "", int bypassLevel = -1) {
             bool tempRoot = cur->binding.isRoot, tempFirstNode = cur->binding.isFirstNode, tempQHead = cur->binding.isReturnOfQuote;
 
             // bind
             if (bypassLevel == -1 && isDefined(cur->token.value)) { // get the binding: symbol or user-defined function
-                if (localVars.find(cur->token.value) != localVars.end()) cur = localVars[cur->token.value].top(); // local variable first
-                else cur = globalVars[cur->token.value]; // global variable second
+                if (localVars.find(cur->token.value) != localVars.end()) duplicateBinding(localVars[cur->token.value].top(), cur); // local variable first
+                else duplicateBinding(globalVars[cur->token.value], cur); // global variable second
             }
             else if (isPrimFunc(cur->token.value)) {
                 if ((bypassLevel == -1 || (cur->token.value == "quote" && level == bypassLevel + 1))
@@ -557,10 +578,7 @@ class S_Exp_Executor {
                 else cur->binding = Binding(BindingType::PRIMITIVE_FUNCTION, cur->token.value);
             }
             else if (cur->token.type != TokenType::SYMBOL) cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
-            else if (bypassLevel == -1) {
-                localVars.clear(); // clear all local variables
-                throw SemanticException::UnboundSymbol(cur->token.value);
-            }
+            else if (bypassLevel == -1) throw SemanticException::UnboundSymbol(cur->token.value);
             else cur->binding = Binding(BindingType::ATOM_BUT_NOT_SYMBOL, cur->token.value);
             
             // set back to prevent wrong cover
@@ -617,7 +635,6 @@ class S_Exp_Executor {
             {KeywordType::SEQUENCING_AND_FUNCTIONAL_COMPOSITION, [this](std::shared_ptr<AST> &cur) { sequence(cur); } },
             // KeywordType::READ
             // KeywordType::DISPLAY
-            // KeywordType::LAMBDA
             {KeywordType::VERBOSE, [this](std::shared_ptr<AST> &cur) { verboseMode(cur); } },
             // KeywordType::EVALUATION
             // KeywordType::CONVERT_TO_STRING
@@ -668,10 +685,12 @@ class S_Exp_Executor {
                 std::string sym = "";
                 if (cur->right->left->isEndNode()) { // define a symbol (project 2)
                     sym = cur->right->left->token.value;
-                    globalVars[cur->right->left->token.value] = cur->right->right->left;
+                    globalVars[sym] = cur->right->right->left;
                 }
                 else { // define a function (project 3)
-                    // TODO
+                    sym = cur->right->left->left->token.value;
+                    cur->right->left->left->binding = Binding(BindingType::USER_FUNCTION, ("#<procedure " + sym + ">")); // set function name node
+                    globalVars[sym] = cur->right;
                 }
 
                 // set defined message node
@@ -904,7 +923,6 @@ class S_Exp_Executor {
 
         // read (project 4)
         // display (project 4)
-        // lambda (project 3)
 
         // verbose (project 3)
         void verboseMode(std::shared_ptr<AST> &cur) {
@@ -996,281 +1014,426 @@ class S_Exp_Executor {
             else return true;
         }
         
-        /* execution */
+        /* check if the number of pass-in values in lambda or user-defined functions are same as the arguments */
+        bool checkTheNumberOfFuncPassInSymAndVal(std::shared_ptr<AST> symIter, std::shared_ptr<AST> valIter) {
+            // ex. (define (main x y) (+ x y))
+            //     (main 1) -> error
+            // ex. (define f (lambda (x y) (+ x y)))
+            //     (f 1) -> error
+            
+            // check arguments
+            do {
+                // if two pointer not synchronized -> error
+                if (symIter->isEndNode() != valIter->isEndNode()) return false;
+
+                // if no arguments -> break
+                if (symIter->isEndNode() && symIter->token.value == "nil" && valIter->isEndNode()) break;
+
+                symIter = symIter->right;
+                valIter = valIter->right;
+            } while (! symIter->isEndNode());
+
+            return true;
+        }
+
+        /* execution: only execute primitive functions */
         void execute(std::shared_ptr<AST> &cur, int level, int &bypassLevel) {
             checkLevelOfSpecifics(cur->left->token.value, level); // check if level is 0 when specific functions
-            if (isPrimFunc(cur->left->token.value)) { // primitive
-                // init functions
-                if (cur->left->token.value == "quote") cur->binding.isReturnOfQuote = true, bypassLevel = level; // set bypass flags
-                evaluate(cur->left, level + 1, bypassLevel); // bind the function name
+            // init functions
+            if (cur->left->token.value == "quote") cur->binding.isReturnOfQuote = true, bypassLevel = level; // set bypass flags
+            evaluate(cur->left, level + 1, bypassLevel); // bind the function name
 
-                // local variables to be popped in the current layer of <S-exp> after execution or error encountered
-                std::vector<std::string> toPops;
-                
-                // special case 1. need to choose a true condition
-                if (cur->left->token.value == "if") {
-                    // get the original s-exp for error message
-                    std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
+            // get the original s-exp using token instead of binding for error message
+            std::string origSExp = gPrinter.getprettifiedSExp(true, cur);
 
-                    // check the number of arguments
-                    checkArgumentsNumber(cur);
+            // local variables to be popped in the current layer of <S-exp> after execution or error encountered
+            std::vector<std::string> toPopArgs;
 
-                    // evaluate the condition
-                    evaluate(cur->right->left, level + 2, bypassLevel);
+            // special case 1. need to choose a true condition
+            if (cur->left->token.value == "if") {
+                // check the number of arguments
+                checkSubSExpsNumberOfPrimFuncs(cur);
 
-                    // get the result execution(s)
-                    if (cur->right->left->binding.value != "nil") cur = cur->right->right->left; // true
-                    else {
-                        if (cur->right->right->right->isEndNode()) throw RuntimeException::NoReturnValue(origErrMsg);
-                        else cur = cur->right->right->right->left; // false
-                    }
+                // evaluate the condition
+                evaluate(cur->right->left, level + 2, bypassLevel);
 
-                    // evaluate the result execution(s)
-                    evaluate(cur, level, bypassLevel);
-                    return;
+                // get the result execution(s)
+                if (cur->right->left->binding.value != "nil") cur = cur->right->right->left; // true
+                else {
+                    if (cur->right->right->right->isEndNode()) throw RuntimeException::NoReturnValue(origSExp);
+                    else cur = cur->right->right->right->left; // false
                 }
-                else if (cur->left->token.value == "cond") {
-                    // get the original s-exp for error message
-                    std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
 
-                    // check the number of arguments
-                    try { checkArgumentsNumber(cur); }
-                    catch (...) { throw SemanticException::FormatError("cond", origErrMsg); }
+                // evaluate the result execution(s)
+                evaluate(cur, level, bypassLevel);
+                return;
+            }
+            else if (cur->left->token.value == "cond") {
+                // check the number of arguments
+                try { checkSubSExpsNumberOfPrimFuncs(cur); }
+                catch (...) { throw SemanticException::FormatError("cond", origSExp); }
 
-                    // iterate each condition
-                    try {
-                        std::shared_ptr<AST> temp = cur->right, toBeExecuted = nullptr; // iterator, result
-                        if (temp->isEndNode()) throw std::runtime_error(""); // (cond)
+                // iterate each condition
+                try {
+                    std::shared_ptr<AST> temp = cur->right, toBeExecuted = nullptr; // iterator, result
+                    if (temp->isEndNode()) throw std::runtime_error(""); // (cond)
 
-                        // first check if each condition's format
-                        do {
-                            // if a sub-condition-execution list is an atom, ex. (cond 1 2 3) -> 1, 2, 3 should be list
-                            // or no execution of that condition, ex. (cond (1)), (cond ((1 2)))
-                            if (temp->left->isEndNode() || temp->left->right->isEndNode()) throw std::runtime_error("");
-                            // if a sub-condition-execution list is not pure list, ex. (cond ("Hi" (cons 5) . 6)) -> ("Hi" (cons 5) . 6) should not be pair
-                            try { checkPureList(temp->left, temp->left); }
-                            catch (...) { throw SemanticException::FormatError("cond", origErrMsg); }
-                            temp = temp->right;
-                        } while (temp->right != nullptr);
-                        
-                        // then evaluate each condition
-                        temp = cur->right;
-                        int tempLevel = level;
-                        do {
-                            // if the last condition start with else => must-do => set to true
-                            if (temp->right->token.type == TokenType::NIL && temp->right->isEndNode()
-                                && temp->left->left->token.value == "else" && temp->left->left->isEndNode())
-                                temp->left->left = makeBooleanNode(true);
-
-                            // then evaluate the current condition
-                            evaluate(temp->left->left, tempLevel + 2, bypassLevel);
-                            
-                            if (temp->left->left->binding.value != "nil") { // true
-                                // convert the condition node to begin node
-                                temp->left->left = makeBeginNode();
-                                temp->left->left->binding.isRoot = false;
-                                temp->left->left->binding.isReturnOfQuote = false;
-                                temp->left->left->binding.isFirstNode = true;
-                                // set the begin executions
-                                toBeExecuted = temp->left;
-                                toBeExecuted->binding.isRoot = true;
-                                toBeExecuted->binding.isReturnOfQuote = false;
-                                toBeExecuted->binding.isFirstNode = false;
-                                break;
-                            }
-                            temp = temp->right;
-                            tempLevel++;
-                        } while (temp->right != nullptr);
-
-                        // no true condition found
-                        if (toBeExecuted == nullptr) throw RuntimeException::NoReturnValue(origErrMsg);
-                        else cur = toBeExecuted;
-                    }
-                    catch (OurSchemeException &e) { // use the original tokens to throw format error
-                        throw; // the error of the condition tree, ex. (cond ((+) 'exec1 'return1) ())
-                    }
-                    catch (...) { // catch any error
-                        throw SemanticException::FormatError("cond", origErrMsg);
-                    }
-
-                    // evaluate the begin execution
-                    checkPureList(cur, cur);
-                    checkArgumentsNumber(cur);
-                    evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
-                }
-                // special case 2. return the first condition (i.e. don't evaluate the remaining conditions)
-                else if (cur->left->token.value == "and" || cur->left->token.value == "or") {
-                    // check the number of arguments
-                    checkArgumentsNumber(cur);
-                    std::string op = cur->left->token.value;
-                    std::shared_ptr<AST> iter = cur->right;
-                    int tempLevel = level + 1; // + 1 cuz iter = cur->right
+                    // first check if each condition's format
                     do {
-                        // evaluate the condition
-                        evaluate(iter->left, tempLevel + 1, bypassLevel);
-                        if (op == "and" && iter->left->binding.value == "nil" // and return the first nil, else return the last that must != nil
-                            || op == "or" && iter->left->binding.value != "nil" // or return the first != nil, else return the last that must == nil
-                            || iter->right->isEndNode()) { // the last condition
-                            cur = iter->left;
-                            cur->binding.isRoot = true;
+                        // if a sub-condition-execution list is an atom, ex. (cond 1 2 3) -> 1, 2, 3 should be list
+                        // or no execution of that condition, ex. (cond (1)), (cond ((1 2)))
+                        if (temp->left->isEndNode() || temp->left->right->isEndNode()) throw std::runtime_error("");
+                        // if a sub-condition-execution list is not pure list, ex. (cond ("Hi" (cons 5) . 6)) -> ("Hi" (cons 5) . 6) should not be pair
+                        try { checkPureList(temp->left, temp->left); }
+                        catch (...) { throw SemanticException::FormatError("cond", origSExp); }
+                        temp = temp->right;
+                    } while (temp->right != nullptr);
+                    
+                    // then evaluate each condition
+                    temp = cur->right;
+                    int tempLevel = level;
+                    do {
+                        // if the last condition start with else => must-do => set to true
+                        if (temp->right->token.type == TokenType::NIL && temp->right->isEndNode()
+                            && temp->left->left->token.value == "else" && temp->left->left->isEndNode())
+                            temp->left->left = makeBooleanNode(true);
+
+                        // then evaluate the current condition
+                        evaluate(temp->left->left, tempLevel + 2, bypassLevel);
+                        
+                        if (temp->left->left->binding.value != "nil") { // true
+                            // convert the condition node to begin node
+                            temp->left->left = makeBeginNode();
+                            temp->left->left->binding.isRoot = false;
+                            temp->left->left->binding.isReturnOfQuote = false;
+                            temp->left->left->binding.isFirstNode = true;
+                            // set the begin executions
+                            toBeExecuted = temp->left;
+                            toBeExecuted->binding.isRoot = true;
+                            toBeExecuted->binding.isReturnOfQuote = false;
+                            toBeExecuted->binding.isFirstNode = false;
                             break;
                         }
-                        else {
-                            iter = iter->right;
-                            tempLevel++;
-                        }
-                    } while (true);
-                    return;
+                        temp = temp->right;
+                        tempLevel++;
+                    } while (temp->right != nullptr);
+
+                    // no true condition found
+                    if (toBeExecuted == nullptr) throw RuntimeException::NoReturnValue(origSExp);
+                    else cur = toBeExecuted;
                 }
-                // special case 3. with arguments whcich should't be unbound symbol
-                else if (cur->left->token.value == "define") {
-                    // get the original s-exp for error message
-                    std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
-
-                    // check number of arguments
-                    try { checkArgumentsNumber(cur); }
-                    catch (...) { throw SemanticException::FormatError("define", origErrMsg); }
-
-                    // evaluate the symbol name
-                    if (cur->right->left->isEndNode()) { // define a symbol (project 2), ex. (define sym (begin list car cdr (real? "str")))
-                        // the symbol should not be real (number) / boolean / string / primitive functions
-                        if (! isLegalSymbolToBeBound(cur->right->left->token.value)) throw SemanticException::FormatError("define", origErrMsg);
-                        // evaluate the to-bind value
-                        // if (isPrimFunc(cur->right->right->left->token.value)) throw SemanticException::FormatError("define", origErrMsg);
-                        evaluate(cur->right->right->left, level + 3, bypassLevel);
-                    }
-                    else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
-                        // TODO
-                    }
+                catch (OurSchemeException &e) { // use the original tokens to throw format error
+                    throw; // the error of the condition tree, ex. (cond ((+) 'exec1 'return1) ())
                 }
-                else if (cur->left->token.value == "let") { // project 3
-                    // get the original s-exp for error message
-                    std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
+                catch (...) { // catch any error
+                    throw SemanticException::FormatError("cond", origSExp);
+                }
 
-                    // check number of arguments
-                    try { checkArgumentsNumber(cur); }
-                    catch (...) { localVars.clear(), throw SemanticException::FormatError("let", origErrMsg); }
+                // evaluate the begin execution
+                checkPureList(cur, cur);
+                checkSubSExpsNumberOfPrimFuncs(cur);
+                evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
+            }
+            // special case 2. return the first condition (i.e. don't evaluate the remaining conditions)
+            else if (cur->left->token.value == "and" || cur->left->token.value == "or") {
+                // check the number of arguments
+                checkSubSExpsNumberOfPrimFuncs(cur);
+                std::string op = cur->left->token.value;
+                std::shared_ptr<AST> iter = cur->right;
+                int tempLevel = level + 1; // + 1 cuz iter = cur->right
+                do {
+                    // evaluate the condition
+                    evaluate(iter->left, tempLevel + 1, bypassLevel);
+                    if (op == "and" && iter->left->binding.value == "nil" // and return the first nil, else return the last that must != nil
+                        || op == "or" && iter->left->binding.value != "nil" // or return the first != nil, else return the last that must == nil
+                        || iter->right->isEndNode()) { // the last condition
+                        cur = iter->left;
+                        cur->binding.isRoot = true;
+                        break;
+                    }
+                    else {
+                        iter = iter->right;
+                        tempLevel++;
+                    }
+                } while (true);
+                return;
+            }
+            // special case 3. with arguments whcich should't be unbound symbol
+            else if (cur->left->token.value == "define") {
+                // check number of arguments
+                try { checkSubSExpsNumberOfPrimFuncs(cur); }
+                catch (...) { throw SemanticException::FormatError("define", origSExp); }
+
+                // evaluate the symbol name
+                if (cur->right->left->isEndNode()) { // define a symbol (project 2), ex. (define sym (begin list car cdr (real? "str")))
+                    // check the symbol name is legal, and when defining a non-function symbol, the exection <S-exp> should be only 1
+                    if (! isLegalSymbolToBeBound(cur->right->left->token.value)
+                        || ! cur->right->right->right->isEndNode()) throw SemanticException::FormatError("define", origSExp);
+                    // evaluate the to-bind value
+                    // if (isPrimFunc(cur->right->right->left->token.value)) throw SemanticException::FormatError("define", origSExp);
+                    evaluate(cur->right->right->left, level + 3, bypassLevel, "", true);
+                }
+                else { // define a function (project 3), ex. (define (func x y) (list (+ x y) (- x y) (* x y) (/ x y)))
+                    // check if the function name is atom and legal
+                    if (! cur->right->left->left->isEndNode()
+                        || ! isLegalSymbolToBeBound(cur->right->left->left->token.value)) throw SemanticException::FormatError("define", origSExp);
                     
-                    // set the local variables
-                    std::shared_ptr<AST> lVarIter = cur->right->left, arguIter;
-                    int tempLetLevel = level + 2, tempArgLevel = tempLetLevel, count = 0;
-                    std::string lSym = "";
-                    
-                    // check and bind
-                    if (! (lVarIter->isEndNode() && lVarIter->token.value == "nil")) {
-                        if (! lVarIter->isEndNode()) { // if the argument <S-exp> is a list
-                            // check if the to-set sub-tree is pure list, ex. (let ((x 1) (y 2) . (z 3)) nil)
-                            try { checkPureList(lVarIter, lVarIter); }
-                            catch (...) { localVars.clear(), throw SemanticException::FormatError("let", origErrMsg); }
-                            
-                            // evaluate and bind the local variables
-                            do {
-                                arguIter = lVarIter->left;
-                                tempArgLevel++;
-                                // check if the to-set arguments sub-tree is not atom and pure list, ex. (let (1) nil), (let (x . 1) nil)
-                                if (arguIter == nullptr || arguIter->isEndNode()) {
-                                    localVars.clear();
-                                    throw SemanticException::FormatError("let", origErrMsg);
-                                }
-                                try { checkPureList(arguIter, arguIter); }
-                                catch (...) { localVars.clear(), throw SemanticException::FormatError("let", origErrMsg); }
-                                
-                                count = 0;
-                                lSym = "";
-                                do {
-                                    count++;
-                                    if (count == 1) { // get the symbol
-                                        if (arguIter->left == nullptr || ! arguIter->left->isEndNode() || ! isLegalSymbolToBeBound(arguIter->left->token.value)) {
-                                            localVars.clear();
-                                            throw SemanticException::FormatError("let", origErrMsg);
-                                        }
-                                        lSym = arguIter->left->token.value;
-                                    }
-                                    else if (count == 2) { // bind the local variable
-                                        if (arguIter->left == nullptr || ! arguIter->right->isEndNode()) {
-                                            localVars.clear();
-                                            throw SemanticException::FormatError("let", origErrMsg);
-                                        }
-                                        evaluate(arguIter->left, tempArgLevel + 2, bypassLevel);
-                                        localVars[lSym].push(arguIter->left);
-                                        // record the current local variable to be popped after execution
-                                        toPops.emplace_back(lSym);
-                                    }
-                                    arguIter = arguIter->right;
-                                } while (arguIter->right != nullptr);
-                                if (lVarIter->right->isEndNode()) break; // end binding local variables
-                                
-                                lVarIter = lVarIter->right;
-                            } while (lVarIter->right != nullptr);
-                        }
-                        else { // else it is non-nil atom -> error, ex. (let 1 nil)
-                            localVars.clear();
-                            throw SemanticException::FormatError("let", origErrMsg);
-                        }
+                    // check the argument names
+                    if (cur->right->left->right->isEndNode()) { // no arguments
+                        // ex. (define (f . x) x) -> error
+                        if (cur->right->left->right->token.value != "nil") throw SemanticException::FormatError("define", origSExp); // dotted pair
+                        // else no arguments, ex. (define (f . nil) x)
                     }
-                    // else no argument (no local variables), ex. (let () 5)
+                    else {
+                        std::shared_ptr<AST> arguSymIter = cur->right->left->right;
+                        do {
+                            // check argument name
+                            if (! isLegalSymbolToBeBound(arguSymIter->left->token.value)) throw SemanticException::FormatError("define", origSExp);
+                            // PL system didn't check the same symbol name
+                            //if (std::find(toPops.begin(), toPops.end(), arguSymIter->left->token.value) != toPops.end()) throw SemanticException::FormatError("let", origSExp);
+                            //toPops.emplace_back(arguSymIter->left->token.value);
+                            arguSymIter = arguSymIter->right;
 
-                    // convert to begin
-                    cur = cur->right;
-                    cur->left = makeBeginNode();
-                    cur->binding.isRoot = true;
-                    cur->left->binding.isFirstNode = true;
-
-                    // evaluate the begin execution
-                    checkPureList(cur, cur);
-                    checkArgumentsNumber(cur);
-                    evaluate(cur->right, tempLetLevel, bypassLevel, cur->left->token.value); // check & bind arguments
+                            // check if dotted-pair
+                            if (arguSymIter->isEndNode() && arguSymIter->token.value != "nil") throw SemanticException::FormatError("define", origSExp);
+                        } while (! arguSymIter->isEndNode());
+                    }
                 }
-                else if (cur->left->token.value == "lambda") { // project 3
-                    // TODO
-                }
-                // else if (cur->left->token.value == "set!") // project 4
-                else { // normal function checking
-                    checkArgumentsNumber(cur);
-                    evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
-                }
-
-                // reset
-                if (bypassLevel == level) bypassLevel = -1;
+            }
+            else if (cur->left->token.value == "let") { // project 3
+                // check number of arguments
+                try { checkSubSExpsNumberOfPrimFuncs(cur); }
+                catch (...) { localVars.clear(), throw SemanticException::FormatError("let", origSExp); }
                 
-                // execute
-                if (bypassLevel == -1) prim_func_map[gKeywords[cur->left->token.value].type](cur);
+                // set the local variables
+                std::shared_ptr<AST> argIter = cur->right->left, execIter = cur->right->right;
+                int tempLetSubSExpLevel = level + 2, tempShouldBePairLevel = tempLetSubSExpLevel;
+                
+                // check and bind
+                if (! (argIter->isEndNode() && argIter->token.value == "nil")) {
+                    if (! argIter->isEndNode()) { // if the argument <S-exp> is a list
+                        // check if the to-set sub-tree is pure list, ex. (let ((x 1) (y 2) . (z 3)) nil)
+                        try { checkPureList(argIter, argIter); }
+                        catch (...) { throw SemanticException::FormatError("let", origSExp); }
+                        
+                        // bind
+                        int count = 0;
+                        std::string sym = "";
+                        std::shared_ptr<AST> shouldBePairIter = nullptr;
+                        do {
+                            shouldBePairIter = argIter->left;
+                            tempShouldBePairLevel++;
 
-                // pop local variables
-                popLocalVars(toPops);
+                            // check if the to-set arguments sub-tree is not atom and pure list, ex. (let (1) nil), (let (x . 1) nil)
+                            if (shouldBePairIter == nullptr || shouldBePairIter->isEndNode()) throw SemanticException::FormatError("let", origSExp);
+                            try { checkPureList(shouldBePairIter, shouldBePairIter); }
+                            catch (...) { throw SemanticException::FormatError("let", origSExp); }
+                            
+                            count = 0;
+                            sym = "";
+                            do {
+                                count++;
+                                if (count == 1) { // get the symbol
+                                    if (shouldBePairIter->left == nullptr || ! shouldBePairIter->left->isEndNode()
+                                        || ! isLegalSymbolToBeBound(shouldBePairIter->left->token.value)) throw SemanticException::FormatError("let", origSExp);
+                                    sym = shouldBePairIter->left->token.value;
+                                }
+                                else if (count == 2) { // bind the local variable
+                                    if (shouldBePairIter->left == nullptr || ! shouldBePairIter->right->isEndNode()) throw SemanticException::FormatError("let", origSExp);
+                                    // evaluate the value first
+                                    evaluate(shouldBePairIter->left, tempShouldBePairLevel + 2, bypassLevel, "", true);
+                                    
+                                    // bind the symbol
+                                    /*
+                                    (define x 1)
+                                    (define (f x) (let ((x x)) (+ x x)))
+                                    (f x) -> should use the previous binding status first, i.e. don't push nullptr first, will get null pointer error
+                                    */
+                                    
+                                    // then bind
+                                    if (std::find(toPopArgs.begin(), toPopArgs.end(), sym) == toPopArgs.end()) { // first time encounter
+                                        localVars[sym].push(shouldBePairIter->left); // push an empty placeholder to avoid unbound local symbol error
+                                        toPopArgs.emplace_back(sym);
+                                    }
+                                    else localVars[sym].top() = shouldBePairIter->left; // if same argument name encountered -> replace
+                                }
+                                shouldBePairIter = shouldBePairIter->right;
+                            } while (shouldBePairIter->right != nullptr);
+                            if (argIter->right->isEndNode()) break; // end binding local variables
+                            
+                            argIter = argIter->right;
+                        } while (argIter->right != nullptr);
+                    }
+                    else throw SemanticException::FormatError("let", origSExp); // else it is non-nil atom -> error, ex. (let 1 nil)
+                }
+                // else no argument (no local variables), ex. (let () 5)
+
+                // convert to begin
+                cur = std::make_shared<AST>();
+                cur->binding.isRoot = true;
+                cur->left = makeBeginNode();
+                cur->left->binding.isFirstNode = true;
+                cur->right = execIter;
+
+                // evaluate the begin execution
+                checkPureList(cur, cur);
+                checkSubSExpsNumberOfPrimFuncs(cur);
+                evaluate(cur->right, level, bypassLevel, cur->left->token.value); // check & bind arguments
             }
-            else { // user-defined
-                // project 3
+            else if (cur->left->token.value == "lambda") { // project 3
+                // check number of arguments
+                try { checkSubSExpsNumberOfPrimFuncs(cur); }
+                catch (...) { throw SemanticException::FormatError("lambda", origSExp); }
+
+                if (cur->right->left->isEndNode()) {
+                    if (cur->right->left->token.value != "nil") throw SemanticException::FormatError("lambda", origSExp);
+                    // else no arguments, ex. (lambda () ())
+                }
+                else { // check arguments
+                    std::shared_ptr<AST> arguIter = cur->right->left;
+                    do {
+                        if (! isLegalSymbolToBeBound(arguIter->left->token.value)) throw SemanticException::FormatError("lambda", origSExp);
+                        arguIter = arguIter->right; // ignore the same symbol name if exist
+                    } while (! arguIter->isEndNode());
+                }
+                
+                return; // don't evaluate & execute the body yet
             }
+            // else if (cur->left->token.value == "set!") // project 4
+            else { // normal function checking
+                checkSubSExpsNumberOfPrimFuncs(cur);
+                evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
+            }
+
+            // reset
+            if (bypassLevel == level) bypassLevel = -1;
+            
+            // execute
+            if (bypassLevel == -1) prim_func_map[gKeywords[cur->left->token.value].type](cur);
+            
+            // pop local variables
+            if (! toPopArgs.empty()) popLocalVars(toPopArgs);
+        }
+
+        /* deal with lambda and user-defined function execution */
+        void checkAndConvertLambdaAndUserDefFuncExecIntoBegin(bool isLambdaMode, std::shared_ptr<AST> &cur, std::vector<std::string> &toPopArgs, int level, int bypassLevel) {
+            //std::cout << "MODE: " << (isLambdaMode ? "lambda function" : "user-defined function") << std::endl;
+            //std::cout << "Before: " << gPrinter.getprettifiedSExp(true, cur) << std::endl;
+
+            std::shared_ptr<AST> argSymIter = nullptr, argValIter = nullptr, execIter = nullptr;
+            std::string functionName = "";
+            if (isLambdaMode) { // lambda function
+                argSymIter = cur->left->right->left, argValIter = cur->right, execIter = cur->left->right->right; // set iterators
+                if (execIter->isEndNode()) throw SemanticException::FormatError("lambda", gPrinter.getprettifiedSExp(true, cur->left)); // check execution exist
+                functionName = "lambda"; // set lambda function name
+            }
+            else { // user-defined function
+                getBinding(cur->left, level); // get the binding
+                argSymIter = cur->left->left->right, argValIter = cur->right, execIter = cur->left->right; // set the iterators
+                functionName = cur->left->left->left->token.value; // set user-defined function name
+            }
+
+            // check the number of arguments
+            if (! checkTheNumberOfFuncPassInSymAndVal(argSymIter, argValIter)) throw SemanticException::IncorrectNumOfArgs(functionName);
+
+            // bind arguments if exist
+            if (! argSymIter->isEndNode()) {
+                int tempLevel = level + 1;
+                std::string sym = "";
+                std::shared_ptr<AST> val = nullptr;
+                
+                // bind
+                do {
+                    sym = argSymIter->left->token.value;
+                    val = argValIter->left;
+
+                    // bind the symbol
+                    /*
+                    (define x 1)
+                    (define (main x) (+ x x))
+                    (main x) -> should use the previous binding status first, i.e. don't push nullptr first, will get null pointer error
+                    */
+                    // evaluate the value first
+                    evaluate(val, tempLevel + 1, bypassLevel, "", true);
+                    // then bind
+                    if (std::find(toPopArgs.begin(), toPopArgs.end(), sym) == toPopArgs.end()) { // first time encounter
+                        localVars[sym].push(val); // push an empty placeholder to avoid unbound local symbol error
+                        toPopArgs.emplace_back(sym);
+                    }
+                    else localVars[sym].top() = val; // if same argument name encountered -> replace
+                    
+                    argSymIter = argSymIter->right;
+                    argValIter = argValIter->right;
+                    tempLevel++;
+                } while (! argSymIter->isEndNode());
+            }
+
+            // convert into begin
+            cur = std::make_shared<AST>();
+            cur->binding.isRoot = true;
+            cur->left = makeBeginNode();
+            cur->left->binding.isFirstNode = true;
+            cur->right = execIter;
+
+            // evaluate the executions
+            evaluate(cur->right, level + 1, bypassLevel);
+            //std::cout << "After: " << gPrinter.getprettifiedSExp(true, cur) << std::endl;
         }
 
         /* evaluation */
-        void evaluate(std::shared_ptr<AST> &cur, int level = 0, int bypassLevel = -1, std::string func_name = "") {
+        void evaluate(std::shared_ptr<AST> &cur, int level = 0, int bypassLevel = -1,
+            std::string func_name = "", bool isArguSExp = false, bool isLambdaExec = false) {
             if (cur == nullptr) return;
-            //std::cout << "\t[level " << level << "]: " << "cur token: " << cur->token.value << ", token type: " << gDebugger.getTokenType(cur->token) << ", bypass level = " << bypassLevel << ", func_name = " << func_name << std::endl;
-            
-            // current node is atom
-            if (cur->token.type != TokenType::NIL
-                || (cur->token.type == TokenType::NIL && cur->isEndNode())) getBinding(cur, level, func_name, bypassLevel); // , bypassLevel, bypass
-            // current node is middle (nil) node
-            else if (cur->token.type == TokenType::NIL) {
+            else if (cur->token.type != TokenType::NIL || (cur->token.type == TokenType::NIL && cur->isEndNode())) {
+                getBinding(cur, level, func_name, bypassLevel); // , bypassLevel, bypass // current node is atom
+
+                // if the binding is (lambda ...) or (user-deinfed-function ...), judge if need to convert into procedure
+                if (! isArguSExp && ! cur->isEndNode()) {            
+                    if (cur->left->isEndNode() && cur->left->token.value == "lambda" && ! isLambdaExec) cur = cur->left;
+                    else if (! cur->left->isEndNode() && cur->left->left->isEndNode() && isUserFunc(cur->left->left->token.value)) cur = cur->left->left;
+                }
+            }
+            else if (cur->token.type == TokenType::NIL) { // current node is middle (nil) node
                 // set current
                 cur->binding.bindingType = BindingType::MID;
                 bool hasLeftBinding = false;
+                std::vector<std::string> toPopArgs;
                 if (bypassLevel == -1) checkPureList(cur, cur, true); // check pure list
 
-                // Step 1. if a new sub tree encountered, ex. ((begin +) "a" b) -> evaluate and execute the sub tree (begin +) -> (+ "a" b)
-                if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) evaluate(cur->left, level + 1, bypassLevel, func_name), hasLeftBinding = true;
-                
+                // Step 1. if the first left node is not atom, ex. ((begin +) "a" b) -> evaluate and execute the sub tree (begin +) -> (+ "a" b)
+                if (cur->left->token.type == TokenType::NIL && ! cur->left->isEndNode()) {
+                    hasLeftBinding = true;
+                    
+                    // label if lambda execution
+                    // ex. (lambda () ()) -> #procedure <lambda> -> false
+                    // ex. ((lambda () ())) -> need to execute lambda function -> true
+                    if (cur->left->left != nullptr && cur->left->left->token.value == "lambda") {
+                        isLambdaExec = true;
+                        checkAndConvertLambdaAndUserDefFuncExecIntoBegin(true, cur, toPopArgs, level, bypassLevel);
+                    }
+                    else evaluate(cur->left, level + 1, bypassLevel, func_name, false, isLambdaExec); // evaluate the first
+                }
+
                 // Step 2-1. if cur->left is a function name and also the first left node of the current sub-tree
                 if (cur->left->binding.isFirstNode // is the first atom node of a s_exp
                     && bypassLevel == -1 // bypass mode is off, i.e. should be executed
                     && ! cur->left->binding.isReturnOfQuote // ex. ('list) -> (list), but list is a return of quote, which should be non-function error
-                    && isFunction(cur->left->token.value)) // then the current binding value is a function name
+                    && isFunction(cur->left->token.value)) { // then the current binding value is a function name
+                    
+                    // transform the user-dfined function into begin
+                    if (isUserFunc(cur->left->token.value)) checkAndConvertLambdaAndUserDefFuncExecIntoBegin(false, cur, toPopArgs, level, bypassLevel);
+
+                    // execute primitive function
                     execute(cur, level, bypassLevel);
+
+                    // (lambda () ()) -> #procedure <lambda>
+                    // cuz in execute(), only evaluate the lambda format, didn't execute, so if procedure -> convert into a single procedure node
+                    
+                    if (cur->left != nullptr && cur->left->token.value == "lambda" && ! isLambdaExec && ! isArguSExp) cur = cur->left;
+                }
                 else { // Step 2-2. cur->left is atom
                     // if still not bind the left yet (i.e. didn't go to Step 1 before), get the binding (and check unbound symbol error)
-                    if (! hasLeftBinding) evaluate(cur->left, level + 1, bypassLevel, func_name);
+                    if (! hasLeftBinding) evaluate(cur->left, level + 1, bypassLevel, func_name, false);
 
                     // check non-function error
                     if (cur->left->binding.isFirstNode // is the first left node, which should be a function name normally
@@ -1283,21 +1446,30 @@ class S_Exp_Executor {
                     if (func_name != "") checkArgumentType(func_name, cur->left); // func_name, arg
 
                     // bind the remaining arguments
-                    evaluate(cur->right, level + 1, bypassLevel, func_name);
+                    evaluate(cur->right, level + 1, bypassLevel, func_name, false);
                 }
+
+                // Step 3. if lambda execution, pop lambda local variables
+                if (! toPopArgs.empty()) popLocalVars(toPopArgs);
             }
-            // else neither ATOM nor NIL => nullptr, return
+            // else neither ATOM nor NIL, should never happen
         }
 
     public:
         /* evaluate, execute, and print the result of a main <S-exp> */
         void run(std::shared_ptr<AST> &root) {
-            labelRootAndFirstNode(root);
-            evaluate(root);
-            // don't print "environment cleaned" and "synmbol defined" when verbose mode on, just print prompt
-            if (! verbose && isCleanOrDefine) gPrinter.printPrompt();
-            else gPrinter.printResult(gPrinter.getprettifiedSExp(false, root));
-            isCleanOrDefine = false;
+            try {
+                labelRootAndFirstNode(root);
+                evaluate(root);
+                // don't print "environment cleaned" and "synmbol defined" when verbose mode on, just print prompt
+                if (! verbose && isCleanOrDefine) gPrinter.printPrompt();
+                else gPrinter.printResult(gPrinter.getprettifiedSExp(false, root));
+                isCleanOrDefine = false;
+            }
+            catch (OurSchemeException &e) {
+                localVars.clear();
+                throw;
+            }
         }
 };
 

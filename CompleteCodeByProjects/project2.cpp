@@ -482,7 +482,7 @@ class S_Exp_Executor {
                 throw SemanticException::LevelError(func_name);
         }
         
-        void checkArgumentsNumber(std::shared_ptr<AST> cur) {
+        void checkSubSExpsNumberOfPrimFuncs(std::shared_ptr<AST> cur) {
             if (cur->left->binding.bindingType == BindingType::PRIMITIVE_FUNCTION) { // primitive function
                 // count
                 std::shared_ptr<AST> temp = cur->right;
@@ -983,7 +983,7 @@ class S_Exp_Executor {
                     std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
 
                     // check the number of arguments
-                    checkArgumentsNumber(cur);
+                    checkSubSExpsNumberOfPrimFuncs(cur);
 
                     // evaluate the condition
                     evaluate(cur->right->left, level + 2, bypassLevel);
@@ -1004,7 +1004,7 @@ class S_Exp_Executor {
                     std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
 
                     // check the number of arguments
-                    try { checkArgumentsNumber(cur); }
+                    try { checkSubSExpsNumberOfPrimFuncs(cur); }
                     catch (...) { throw SemanticException::FormatError("cond", origErrMsg); }
 
                     // iterate each condition
@@ -1065,13 +1065,13 @@ class S_Exp_Executor {
 
                     // evaluate the begin execution
                     checkPureList(cur, cur);
-                    checkArgumentsNumber(cur);
+                    checkSubSExpsNumberOfPrimFuncs(cur);
                     evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
                 }
                 // special case 2. return the first condition (i.e. don't evaluate the remaining conditions)
                 else if (cur->left->token.value == "and" || cur->left->token.value == "or") {
                     // check the number of arguments
-                    checkArgumentsNumber(cur);
+                    checkSubSExpsNumberOfPrimFuncs(cur);
                     std::string op = cur->left->token.value;
                     std::shared_ptr<AST> iter = cur->right;
                     int tempLevel = level + 1; // + 1 cuz iter = cur->right
@@ -1098,7 +1098,7 @@ class S_Exp_Executor {
                     std::string origErrMsg = gPrinter.getprettifiedSExp(true, cur);
 
                     // check number of arguments
-                    try { checkArgumentsNumber(cur); }
+                    try { checkSubSExpsNumberOfPrimFuncs(cur); }
                     catch (...) { throw SemanticException::FormatError("define", origErrMsg); }
 
                     // evaluate the symbol name
@@ -1116,7 +1116,7 @@ class S_Exp_Executor {
                 // else if (cur->left->token.value == "lambda") // project 3
                 // else if (cur->left->token.value == "set!") // project 4
                 else { // normal function checking
-                    checkArgumentsNumber(cur);
+                    checkSubSExpsNumberOfPrimFuncs(cur);
                     evaluate(cur->right, level + 1, bypassLevel, cur->left->token.value); // check & bind arguments
                 }
 

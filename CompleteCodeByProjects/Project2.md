@@ -50,7 +50,28 @@
 - 定義了一個keyword的相關資訊
     1. ```ARGUMENT_NUMBER_MODE arg_mode```: 函數的參數模式
     2. ```std::vector<int> arg_nums```: 可接受的參數數量，僅在```arg_mode == ARGUMENT_NUMBER_MODE::SPECIFIC```時有多個，否則僅有一個值
-    3. ```KeywordType functionType```: 定義此keyword所屬的function type
+    3. ```KeywordType type```: 定義此keyword所屬的function type
+### ```static std::unordered_map<std::string, KeywordInfo> gKeywords```
+- 定義了所有projects的保留關鍵字，函數的傳入參數及關鍵字的類別
+    - 範例：
+        ```C++
+        {"cons", {ARGUMENT_NUMBER_MODE::MUST_BE, {2}, KeywordType::CONSTRUCTOR}},
+        ```
+        - 關鍵字為```cons```
+        - 它是屬於建構類別，即將傳入參數包裝成特定的結構並回傳
+        - 此關鍵字是primitive function, 跟在main S-expressoin中cons後面必為兩棵sub S-expression tree，即
+            ```
+            <main S-exp> = ( <sub S-exp 1> <sub S-exp 2> <sub S-exp 3> )
+            <sub S-exp 1> = "cons"
+            <sub S-exp 2> = arg1
+            <sub S-exp 3> = arg2
+            ```
+        - 例如
+            ```Scheme
+            (cons ('this 'is 'arg1) 'arg2)
+            ; <sub S-exp 2> := ('this 'is 'arg1)
+            ; <sub S-exp 3> := 'arg2
+            ```
 ### ```struct Token```
 - 定義了一個token node的結構
     1. ```TokenType type```: 此token的type
@@ -144,8 +165,8 @@
 - 是否為非dotted pair的list
 ##### ```void checkLevelOfSpecifics(std::string func_name, int level)```
 - 檢查```clean-environment```, ```define```及```exit```的level是否正確
-##### ```void checkArgumentsNumber(std::shared_ptr<AST> cur)```
-- 檢查函數的參數數量是否正確
+##### ```void checkSubSExpsNumberOfPrimFuncs(std::shared_ptr<AST> cur)```
+- 檢查函數的參數數量（在main S-exp中跟在關鍵字子樹後面的子樹數量）是否正確
 ##### ```void checkArgumentType(std::string func_name, std::shared_ptr<AST> arg)```
 - 檢查函數的參數型別是否正確
 ##### ```KeywordType getNodeMinorBindingDataTypeByTokenValue(std::shared_ptr<AST> cur)```
