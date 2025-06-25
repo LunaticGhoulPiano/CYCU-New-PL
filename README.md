@@ -53,7 +53,7 @@
 ## 我的實作
 ### [Project 1](./CompleteCodeByProjects/Project1.md)
 ### [Project 2](./CompleteCodeByProjects/Project2.md)
-### [Project 2](./CompleteCodeByProjects/Project3.md)
+### [Project 3](./CompleteCodeByProjects/Project3.md)
 
 ## What is OurScheme?
 - 它是中原資工大三下的**程式語言**課程Project，會有```OurC```與```OurScheme```兩種每年輪替，OurScheme是比較簡單的。
