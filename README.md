@@ -33,7 +33,7 @@
 ## 進度
 - Project 1 全過
 - Project 2 卡三題隱測：5, 13, 15
-- main打完Project3所有的功能實作，但有一堆bug沒修，但我過了
+- main打完Project3所有的功能實作，但有一堆bug沒修，但我只寫了Project1 全部+Project2 13題就過了
 
 ## 碎碎唸
 - 我過了，所以不想繼續寫了，好懶
