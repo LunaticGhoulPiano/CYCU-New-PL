@@ -30,6 +30,90 @@
     0. Not good
 - Project分數到80可以不用出席
 
+## 上課影片(YouTube)
+### Week 1
+- [為什麼要修習PL](https://youtu.be/S_1GG5KGH5w)
+- [What are Compiler and Interpreter](https://youtu.be/20H4gVHmcsk)
+- Why you should seriously consider seriously doing it (需要登入ilearning 1.0)
+### Week 2
+- [Lexical analysis](https://youtu.be/aL-E135d8s8)
+- [Syntax analysis](https://youtu.be/n4vX1D_aM-Q)
+- [Code generation](https://youtu.be/nn81earzSJY)
+### Week 3
+- [Let's go to PL world](https://youtu.be/RmOuTFla4nQ)
+- [Language evaluation criteria](https://youtu.be/wCJcPOE0X_E)
+- [Programming Language History](https://youtu.be/u-HBLI4EWvA)
+- [Language Design](https://youtu.be/rj1ElNYbeBw)
+### Week 4
+- [Index out of range](https://youtu.be/ygNY9MdL-6s)
+- [Review and Logical error](https://youtu.be/iELY7rsR3ko)
+- [Run time error and compile error](https://youtu.be/A7go4ER13yI)
+- [Programming domain](https://youtu.be/UCCBMW7kfwo)
+- [Programming language評估](https://youtu.be/SV2mEY-IlwM)
+### Week 6
+- [Orthogonality](https://youtu.be/3Rzns9odUzw)
+- [Storage Allocation](https://youtu.be/nyvh3MNwUFw)
+- [Activation Record](https://youtu.be/_9OeDRiYKIM)
+### Week 7
+- [Static and array](https://youtu.be/hfJ2MIFZwh4)
+- [Operator and Function overloading, Regular Expr.](https://youtu.be/S1kC2D3FOOU)
+- [再論Programming Language評估](https://youtu.be/tDG7JW4cLSs)
+- [dereference](https://youtu.be/RYcA-Mu_U2M)
+- [Language Design Trade-offs](https://youtu.be/Q5vP-BC9GYA)
+- [Implementation Methods](https://youtu.be/9HVlYBeKRzc)
+- [Programming Environment](https://youtu.be/fMN548qpW3I)
+### Week 10
+- [Part 1 - Callback](https://youtu.be/HMqbaQ-lCgo)
+- [Part 2 - 再談CH3 and 4](https://youtu.be/2R2Pa-j00qQ)
+- [Part 3 - State diagram and 再談recursive descent parsing](https://youtu.be/5oJ6Ra92vuw)
+- [Part 4 - Part 4 - A Six Tuple of attributes](https://youtu.be/gW8-0Pwc_XQ)
+- [Part 5 - 初談Binding](https://youtu.be/WW_MBkO-MJ4)
+### Week 11
+- [Part 1 - Review](https://youtu.be/2HiG_DHGo7Q)
+- [Part 2 - Binding可能發生的時期](https://youtu.be/fTpo95jCbl0)
+- [Part 3 - Static Binding and Dynamic Binding](https://youtu.be/etpo9wfpnMw)
+### Week 12
+- [Part 1 - Review](https://youtu.be/DNulALRPhbA)
+- [Part 2 - Variables Binding and Variable各種可能](https://youtu.be/539bY0VtqJY)
+- [Part 3 - Storeage binding and Scope](https://youtu.be/eVaQ0hE6RLk)
+- [Part 4 - 續談Scope](https://youtu.be/VnOvk9X8LBU)
+- [Part 5 - 宣告 vs 定義](https://youtu.be/qtr7FQhXQKA)
+### Week 13
+- [Part 1 - Review](https://youtu.be/xEKdv0g3Wqc)
+- [Part 2 - Named Constant](https://youtu.be/ogr26O5auZ8)
+- [Part 3 - Data type intro](https://youtu.be/tvPHcYMyLf8)
+- [Part 4 - Primitive Data type](https://youtu.be/eqTN5kfCiGg)
+- [Part 5 - User defined ordinal types](https://youtu.be/2R3dQEjVepM)
+- [Part 6 - Array](https://youtu.be/EVFteyuFWS0)
+### Week 14
+- [Part 1 - 版本勸世 and Review](https://youtu.be/BMnH5VkFs88)
+- [Part 2 - Array設計考量, 結構選擇, Lisp and Python](https://youtu.be/zGYSCL9Z-Xc)
+- [Part 3 - Row major and column major](https://youtu.be/VUgURLhpGN4)
+- [Part 4 - Union](https://youtu.be/bLcKXt_tUq8)
+- [Part 5 - Danging Pointer](https://youtu.be/5HSCC1M-KIQ)
+### Week 15
+- [Part 1 - Project衝刺 and Review](https://youtu.be/UKD4x6j2fy0)
+- [Part 2 - Heap Management](https://youtu.be/iA2qCMJfUxY)
+- [Part 3 - Pointer and Reference Type](https://youtu.be/GgEQktsBmVw)
+- [Part 4 - Type Checking, Type equuvalence and Function Pointers](https://youtu.be/SLAT86ca0hs)
+- [Part 5 - Expression Intro](https://youtu.be/F609tCBF5n8)
+- [Part 6 - Referential Transparency and Side Effect, Overloaded Operators](https://youtu.be/KB2jtuZXWG4)
+- [Part 7 - Short circuited evaluation, Assignment statement](https://youtu.be/Ew_6TQuAJoc)
+### Week 16
+- [Part 1 - polymorphim](https://youtu.be/05ANYgL3VPw)
+- [Part 2 - Statement Intro](https://youtu.be/fZHIuJehi4g)
+- [Part 3 - Control level statement](https://youtu.be/oOXKH4HbBRI)
+- [Part 4 - Iterative Statements](https://youtu.be/SC85rZkYEto)
+- [Part 5 - Control level statement Cont.](https://youtu.be/bJHSTgF2Ej0)
+- [Part 6 - List Iterator](https://youtu.be/RE6SGDsMt48)
+- [Part 7 - Logical Controlled loop](https://youtu.be/aAcMy2jgSC8)
+- [Part 8 - User Located Loop Control Mechanisms and Guarded Commands](https://youtu.be/HuT8kZ7tsYE)
+### Week 17
+- [Part 1 - Review CH5 to CH8](https://youtu.be/ZBKSN2_YjW4)
+- [Part 2 - Fundamentals of Subprograms](https://youtu.be/1Va_Y4nP8Gg)
+- [Part 3 - Design Issues for Subprograms and Local referencing environments](https://youtu.be/t3gCtCe0e0Y)
+- [Part 4 - Parameter Passing Method](https://youtu.be/WBK4UHuslRk)
+
 ## 進度
 - Project 1 全過
 - Project 2 卡三題隱測：5, 13, 15
@@ -1067,6 +1151,7 @@ CYCU-New-PL
 │ │   └──LF
 ├──.gitignore
 ├──README.md // overview
+├──Notes.md // 學弟上課做的筆記，考試會從裡面出題
 ├──main.cpp // 我的最新project進度
 ├──run_mainBatchIO.ps1 // main.cpp的multi-test-cases測試腳本
 ├──run_project1BatchIO.ps1 // project1.cpp的multi-test-cases測試腳本
